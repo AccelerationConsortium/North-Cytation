@@ -1,19 +1,23 @@
 """Qt liquid review of a scheduler result's immutable log."""
 from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-from PySide6.QtWidgets import (QComboBox, QDialog, QLabel, QPushButton,
+from PySide6.QtCore import QDate
+from PySide6.QtWidgets import (QComboBox, QDateEdit, QDialog, QHBoxLayout, QLabel, QPushButton,
                                QScrollArea, QTabWidget, QTableWidget, QTableWidgetItem, QTextEdit,
                                QVBoxLayout, QWidget, QHeaderView)
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 
 from scheduler.liquid_review import (calibration_files, coverage, current_parameters,
-    environmental_history, estimate_optimum, fingerprint, load_calibration,
+    environmental_history, fingerprint, load_calibration,
     matching_measurements, past_result_measurements, past_result_parameters,
-    past_results, parse_log)
+    past_results, parse_log, session_overaspirate_estimates, summarize_overaspirate,
+    summarize_past_validation)
 
 
 class LiquidReviewDialog(QDialog):
@@ -21,7 +25,7 @@ class LiquidReviewDialog(QDialog):
         super().__init__(parent)
         self.root, self.result = Path(root), result
         self.setWindowTitle("Liquid dispensing review")
-        self.resize(1100, 850)
+        self.resize(1400, 1000)
         layout = QVBoxLayout(self)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
@@ -68,6 +72,8 @@ class LiquidTab(QWidget):
     def __init__(self, root, liquid, events):
         super().__init__()
         self.root, self.liquid, self.events = root, liquid, events
+        self.validation_end = QDate.currentDate()
+        self.validation_start = self.validation_end.addMonths(-3)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(f"{len(events)} dispenses · {sum(e.volume_ul for e in events):g} µL total"))
         self.selector = QComboBox()
@@ -84,6 +90,7 @@ class LiquidTab(QWidget):
         self.render()
 
     def render(self):
+        self.date_edits = []
         while self.pages.count():
             widget = self.pages.widget(0)
             self.pages.removeTab(0)
@@ -94,16 +101,30 @@ class LiquidTab(QWidget):
             recommendations = self.build_coverage(frame)
             self.build_past_calibration()
             if frame is not None:
-                data = self.build_validation(frame)
+                matched, excluded = matching_measurements(self.root, self.liquid, frame)
+                self.build_past_validation(matched, excluded)
+                data = self.build_validation(frame, matched, excluded)
                 self.build_environment(data)
                 for volume in sorted({e.volume_ul for e in self.events if e.method == "pipette"}):
                     if data.empty or not np.isclose(data.target_volume_ml * 1000, volume).any():
                         recommendations.add(f"Run embedded validation at {volume:g} µL to test and adjust current settings.")
+            else:
+                self.pages.addTab(QLabel("Select a current calibration file to review accepted validation results."), "Past Validation Results")
             self.build_recommendations(recommendations)
+            self.order_pages()
         except (OSError, ValueError, KeyError, TypeError) as error:
             label = QLabel(f"Data could not be analyzed: {error}")
             label.setWordWrap(True)
             self.pages.addTab(label, "Data issue")
+
+    def order_pages(self):
+        order = ["Summary", "Past Validation Results", "Past Calibration Results", "Overvolume Changes",
+                 "Environmental Analysis", "Workflow Coverage", "Workflow Recommendations"]
+        bar = self.pages.tabBar()
+        present = [name for name in order if any(self.pages.tabText(i) == name for i in range(self.pages.count()))]
+        for target, name in enumerate(present):
+            current = next(i for i in range(self.pages.count()) if self.pages.tabText(i) == name)
+            bar.moveTab(current, target)
 
     def build_coverage(self, frame):
         page = QScrollArea()
@@ -152,7 +173,7 @@ class LiquidTab(QWidget):
                            title="Current calibration from the selected optimal conditions file")
         layout.addWidget(FigureCanvasQTAgg(calibration_figure))
         page.setWidget(content)
-        self.pages.addTab(page, "Calibration Summary")
+        self.pages.addTab(page, "Summary")
 
         coverage_page = QWidget()
         coverage_layout = QVBoxLayout(coverage_page)
@@ -165,72 +186,223 @@ class LiquidTab(QWidget):
         details.setReadOnly(True)
         details.setPlainText("Log references\n" + "\n".join(f"Line {e.line}: {e.volume_ul:g} µL → {e.destination}" for e in self.events))
         coverage_layout.addWidget(details)
-        self.pages.addTab(coverage_page, "Coverage")
+        self.pages.addTab(coverage_page, "Workflow Coverage")
         return recommendations
 
-    def build_validation(self, frame):
-        data, excluded = matching_measurements(self.root, self.liquid, frame)
+    def add_dated_tab(self, name, content):
+        """Tab with From/To pickers shared by every dated tab; content(start, end) builds the body."""
+        outer = QWidget()
+        outer_layout = QVBoxLayout(outer)
+        controls = QHBoxLayout()
+        controls.addWidget(QLabel("From:"))
+        start_edit, end_edit = QDateEdit(self.validation_start), QDateEdit(self.validation_end)
+        for edit in (start_edit, end_edit):
+            edit.setCalendarPopup(True)
+            edit.setDisplayFormat("yyyy-MM-dd")
+        controls.addWidget(start_edit)
+        controls.addWidget(QLabel("To (inclusive):"))
+        controls.addWidget(end_edit)
+        controls.addStretch()
+        outer_layout.addLayout(controls)
+        holder = QVBoxLayout()
+        outer_layout.addLayout(holder)
+        self.date_edits.append((start_edit, end_edit))
+
+        def redraw(*_):
+            while holder.count():
+                holder.takeAt(0).widget().deleteLater()
+            start, end = self.validation_start, self.validation_end
+            holder.addWidget(content(datetime(start.year(), start.month(), start.day()),
+                                     datetime(end.year(), end.month(), end.day()) + timedelta(days=1)))
+
+        def changed(*_):
+            self.validation_start, self.validation_end = start_edit.date(), end_edit.date()
+            for other_start, other_end in self.date_edits:
+                other_start.setDate(self.validation_start)
+                other_end.setDate(self.validation_end)
+            redraw()
+        start_edit.dateChanged.connect(changed)
+        end_edit.dateChanged.connect(changed)
+        redraw()
+        self.pages.addTab(outer, name)
+
+    def build_past_validation(self, matched, excluded):
+        self.add_dated_tab("Past Validation Results",
+                           lambda start, end: self._past_validation_content(matched, excluded, start, end))
+
+    def _past_validation_content(self, matched, excluded, start, end):
+        data, summary, exclusions = summarize_past_validation(matched, excluded, start, end)
         page = QWidget()
         layout = QVBoxLayout(page)
-        summary = QLabel("Source: pipetting_data/master_pipetting_measurements.csv (embedded validation measurements).\n"
-                         + f"{len(data)} matching measurements across {data.target_volume_ml.nunique() if not data.empty else 0} historical target volumes. "
-                         + "The table lists measured validation targets; they may differ from this workflow's dispenses.\n"
-                         + "Excluded: " + (", ".join(f"{k}: {v}" for k, v in excluded.items()) or "none"))
-        summary.setWordWrap(True)
-        layout.addWidget(summary)
-        raw_button = QPushButton("Show matching individual measurements")
-        raw_button.setEnabled(not data.empty)
+        title = QLabel(f"{len(data)} accepted measurements between {start:%Y-%m-%d} and {(end - timedelta(days=1)):%Y-%m-%d} "
+                       "match the current dispensing settings (overvolume may vary). "
+                       "Each session has equal weight in the historical mean.")
+        title.setWordWrap(True)
+        layout.addWidget(title)
+        figure = Figure(figsize=(9, 3.5), constrained_layout=True)
+        ax = figure.subplots()
+        if not data.empty:
+            sessions = data.groupby(["target_volume_ml", "session_id"], as_index=False).measured_volume_ml.mean()
+            ax.scatter(sessions.target_volume_ml * 1000, sessions.measured_volume_ml * 1000,
+                       s=14, alpha=.2, color="steelblue", label="Accepted session means")
+            ax.scatter(summary.target_ul, summary.mean_ul, s=40, color="crimson", zorder=4, label="Historical mean")
+            with_ci = summary[summary.ci_low_ul.notna()]
+            if not with_ci.empty:
+                ax.errorbar(with_ci.target_ul, with_ci.mean_ul,
+                            yerr=with_ci.mean_ul - with_ci.ci_low_ul, fmt="none", ecolor="crimson",
+                            capsize=4, label="95% CI of the mean")
+            high = max(summary.target_ul.max(), data.measured_volume_ml.max() * 1000)
+            ax.plot([0, high], [0, high], linestyle="--", color="gray", label="Ideal V_M = V_T")
+            ax.legend(loc="best")
+        else:
+            ax.text(.5, .5, "No accepted validation measurements match this calibration.",
+                    ha="center", va="center", transform=ax.transAxes)
+        ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
+        canvas = FigureCanvasQTAgg(figure)
+        layout.addWidget(NavigationToolbar2QT(canvas, page))
+        layout.addWidget(canvas)
+        rows = []
+        for _, row in summary.iterrows():
+            ci = f"{row.ci_low_ul:.3f} – {row.ci_high_ul:.3f}" if pd.notna(row.ci_low_ul) else "Unavailable: one session"
+            rows.append([f"{row.target_ul:g}", f"{row.mean_ul:.3f}", f"{row.error_ul:+.3f}", ci,
+                         str(row.sessions), str(row.measurements), row.last_validation])
+        table = make_table(["Target µL", "Mean measured µL", "Mean error µL", "95% confidence interval µL",
+                            "Sessions", "Measurements", "Last validation date"], rows)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        layout.addWidget(table)
+        button = QPushButton("Inspect accepted measurements for selected volume")
+        button.setEnabled(not summary.empty)
+        layout.addWidget(button)
+
+        def inspect(*_):
+            index = table.currentRow()
+            if index < 0:
+                return
+            volume = summary.iloc[index].target_ul
+            detail = data[np.isclose(data.target_volume_ml * 1000, volume)].copy()
+            detail.insert(0, "error_ul", (detail.measured_volume_ml - detail.target_volume_ml) * 1000)
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"{self.liquid}: accepted validation at {volume:g} µL")
+            dialog.resize(1100, 600)
+            inner = QVBoxLayout(dialog)
+            inner.addWidget(QLabel("Selected-stage measurements, including reconstructed decisions and results outside tolerance."))
+            inner.addWidget(make_table(list(detail.columns), [[str(v) if pd.notna(v) else "Unknown" for v in row]
+                                                             for row in detail.itertuples(index=False, name=None)]))
+            dialog.exec()
+        button.clicked.connect(inspect)
+        table.cellDoubleClicked.connect(inspect)
+        if rows:
+            table.selectRow(0)
+        excluded_label = QLabel("Excluded measurements: " + ("; ".join(f"{key}: {value}" for key, value in exclusions.items()) or "none"))
+        excluded_label.setWordWrap(True)
+        layout.addWidget(excluded_label)
+        note = QLabel("Intervals describe uncertainty in the historical mean across sessions, not the range of individual dispenses. "
+                      "One session has no historical interval; intervals with few sessions are uncertain. "
+                      "Accepted results can remain outside tolerance. Historical tip identity is inferred from volume.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        return page
+
+    def build_validation(self, frame, data, excluded):
+        self.add_dated_tab("Overvolume Changes", lambda start, end: self._overvolume_content(frame, data, excluded, start, end))
+        return data
+
+    def _overvolume_content(self, frame, data, excluded, start, end):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        estimates, dropped = session_overaspirate_estimates(data, start, end)
+        current = {volume * 1000: current_parameters(frame, volume * 1000)["overaspirate_vol"] * 1000
+                   for volume in (data.target_volume_ml.unique() if not data.empty else [])}
+        summary = summarize_overaspirate(estimates, current)
+        everything, _ = session_overaspirate_estimates(data)
+        if everything.empty:
+            span = "No session in the history recorded more than one V_OA, so no estimate is possible."
+        else:
+            span = (f"Usable sessions in the whole history: {len(everything)}, from {everything.when.min():%Y-%m-%d} "
+                    f"to {everything.when.max():%Y-%m-%d}. Older sessions that saved the same V_OA on every stage "
+                    "cannot show how delivery responds to V_OA and are not used.")
+        span_label = QLabel(span)
+        span_label.setWordWrap(True)
+        layout.addWidget(span_label)
+        explanation = QLabel(
+            "Question: what overaspirate volume (V_OA) is statistically most likely to deliver the target volume?\n"
+            "Each embedded validation session tests up to three V_OA values at a target volume (stages 1-3, all stages used here). "
+            "For each session, a line through (V_OA, error = V_M - V_T) gives the V_OA where error would be zero: that session's "
+            "estimate of the true V_OA. Estimates from all sessions in the date range are averaged (each session counts once).\n"
+            "Left: the estimate range per target against the current V_OA (black x). Right: how each session's estimate differs "
+            "from the current V_OA over time (0 = current V_OA is exactly right; a steady offset means recalibrate, a wide scatter means noise).")
+        explanation.setWordWrap(True)
+        layout.addWidget(explanation)
+        figure = Figure(figsize=(11, 3.8), constrained_layout=True)
+        left, right = figure.subplots(1, 2)
+        palette = matplotlib.colormaps["tab10"]
+        if estimates.empty:
+            for ax in (left, right):
+                ax.text(.5, .5, "No sessions with usable V_OA estimates in this date range.",
+                        ha="center", va="center", transform=ax.transAxes)
+        else:
+            left.scatter(estimates.target_ul, estimates.oa_ul, s=14, alpha=.25, color="steelblue", label="Session estimates")
+            left.scatter(summary.target_ul, summary.mean_ul, s=40, color="crimson", zorder=4, label="Mean estimate")
+            with_ci = summary[summary.ci_low_ul.notna()]
+            if not with_ci.empty:
+                left.errorbar(with_ci.target_ul, with_ci.mean_ul, yerr=with_ci.mean_ul - with_ci.ci_low_ul,
+                              fmt="none", ecolor="crimson", capsize=4, label="95% CI of the mean")
+            left.scatter(summary.target_ul, summary.current_ul, marker="x", s=60, color="black", zorder=5, label="Current V_OA")
+            left.legend(loc="best", fontsize=8)
+            for index, (volume, group) in enumerate(estimates.groupby("target_ul")):
+                right.scatter(group.when.to_numpy(), (group.oa_ul - current[volume]).to_numpy(), s=18, alpha=.7,
+                              color=palette(index % 10), label=f"{volume:g} µL")
+            right.axhline(0, color="gray", linestyle="--")
+            right.legend(loc="best", fontsize=8, ncol=2, title="Target")
+            right.tick_params(axis="x", rotation=30)
+        right.set_xlim(start, end)
+        left.set(xlabel="Target V_T (µL)", ylabel="Overaspirate V_OA (µL)", title="Estimated true V_OA vs current")
+        right.set(xlabel="Validation date", ylabel="Session estimate - current V_OA (µL)", title="Drift of the estimate over time")
+        canvas = FigureCanvasQTAgg(figure)
+        layout.addWidget(NavigationToolbar2QT(canvas, page))
+        layout.addWidget(canvas)
+        rows = []
+        for _, row in summary.iterrows():
+            if row.sessions == 1:
+                interval, reading = "Unavailable", "One session: no interval"
+            else:
+                interval = f"{row.ci_low_ul:.2f} – {row.ci_high_ul:.2f}"
+                if row.sessions < 3:
+                    reading = "Few sessions: uncertain"
+                elif row.ci_low_ul <= row.current_ul <= row.ci_high_ul:
+                    reading = "Current V_OA consistent with data"
+                else:
+                    reading = "Current V_OA outside interval: consider updating"
+            used = "Yes" if any(np.isclose(e.volume_ul, row.target_ul) for e in self.events if e.method == "pipette") else "No"
+            rows.append([f"{row.target_ul:g}", used, f"{row.current_ul:.2f}", str(row.sessions), f"{row.mean_ul:.2f}", interval,
+                         f"{row.sd_ul:.2f}" if pd.notna(row.sd_ul) else "n/a", f"{row.mean_ul - row.current_ul:+.2f}",
+                         row.last_validation.strftime("%Y-%m-%d") if pd.notna(row.last_validation) else "Unknown", reading])
+        layout.addWidget(make_table(["V_T µL", "Workflow uses", "Current V_OA µL", "Sessions", "Estimated true V_OA µL",
+                                      "95% interval µL", "Between-session SD µL", "Suggested change µL",
+                                      "Last validation", "Reading"], rows))
+        notes = {**excluded, **dropped}
+        note = QLabel("Excluded: " + ("; ".join(f"{k}: {v}" for k, v in notes.items()) or "none") + "\n"
+                      "The interval is the uncertainty of the mean across sessions, not the spread of single dispenses. "
+                      "Suggested change = estimated true V_OA - current V_OA. Estimates assume V_M responds roughly linearly to V_OA; "
+                      "sessions with an implausible response are excluded.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        raw_button = QPushButton("Show session estimates")
+        raw_button.setEnabled(not estimates.empty)
+
         def show_raw():
             dialog = QDialog(self)
-            dialog.setWindowTitle(f"{self.liquid}: matching validation measurements")
-            dialog.resize(1000, 600)
-            raw_layout = QVBoxLayout(dialog)
-            detail = data.copy()
-            detail["error_ul"] = (detail.measured_volume_ml - detail.target_volume_ml) * 1000
-            detail["absolute_error_ul"] = detail.error_ul.abs()
-            columns = list(detail.columns)
-            raw_layout.addWidget(make_table(columns, [[str(v) for v in row]
-                                                     for row in detail.itertuples(index=False, name=None)]))
+            dialog.setWindowTitle(f"{self.liquid}: per-session V_OA estimates")
+            dialog.resize(900, 600)
+            inner = QVBoxLayout(dialog)
+            inner.addWidget(make_table(["Session", "V_T µL", "Date", "Estimated V_OA µL", "Response slope", "Tested V_OA values"],
+                                       [[str(r.session_id), f"{r.target_ul:g}", str(r.when), f"{r.oa_ul:.3f}",
+                                         f"{r.slope:.2f}", str(r.points)] for r in estimates.itertuples()]))
             dialog.exec()
         raw_button.clicked.connect(show_raw)
         layout.addWidget(raw_button)
-        figure = Figure(figsize=(9, 3), constrained_layout=True)
-        ax = figure.subplots()
-        rows = []
-        if not data.empty:
-            error = (data.measured_volume_ml - data.target_volume_ml) * 1000
-            relative = abs(error) / np.maximum(data.target_volume_ml * 1000, 1e-9) * 100
-            ax.scatter(data.target_volume_ml * 1000, data.overaspirate_vol * 1000,
-                       s=8 + 70 / (1 + relative), alpha=.25, color="steelblue", label="Observed; smaller = larger relative error")
-            for volume, group in data.groupby("target_volume_ml"):
-                estimate, message = estimate_optimum(group)
-                current = current_parameters(frame, volume * 1000)
-                ax.scatter([volume * 1000], [current["overaspirate_vol"] * 1000], marker="x", color="black")
-                value = "Not identifiable"
-                interval = "Unavailable"
-                if estimate:
-                    optimum, bounds = estimate
-                    value = f"{optimum:.3g}"
-                    ax.scatter([volume * 1000], [optimum], color="crimson", zorder=5)
-                    if bounds:
-                        ax.vlines(volume * 1000, *bounds, color="crimson")
-                        interval = f"{bounds[0]:.3g}–{bounds[1]:.3g}"
-                signed = (group.measured_volume_ml - group.target_volume_ml) * 1000
-                date = pd.to_datetime(group.timestamp, format="%Y%m%d_%H%M%S", errors="coerce").max()
-                last = date.strftime("%Y-%m-%d") if pd.notna(date) else "Unknown"
-                used = "Yes" if any(np.isclose(e.volume_ul, volume * 1000) for e in self.events if e.method == "pipette") else "No"
-                rows.append([f"{volume * 1000:g}", used, str(len(group)), str(group.session_id.nunique()),
-                             last, f"{signed.mean():+.2f}", f"{signed.abs().quantile(.95):.2f}", value, interval, message])
-        ax.set(xlabel="Target V_T (µL)", ylabel="Overaspirate V_OA (µL)")
-        layout.addWidget(FigureCanvasQTAgg(figure))
-        layout.addWidget(make_table(["V_T µL", "Workflow uses", "Measurements", "Sessions", "Last validation date",
-                                      "Mean error µL", "95th |error| µL", "Optimum V_OA µL", "95% interval µL", "Evidence"], rows))
-        label = QLabel("Errors are V_M − V_T. Mean error keeps the sign; 95th |error| shows the spread, including large misses. "
-                       "Black ×: current V_OA. Red: estimated zero-error V_OA. Intervals are exploratory.")
-        label.setWordWrap(True)
-        layout.addWidget(label)
-        self.pages.addTab(page, "Overvolume Validation")
-        return data
+        return page
 
     def build_environment(self, data):
         page = QWidget()
@@ -247,7 +419,7 @@ class LiquidTab(QWidget):
         label.setWordWrap(True)
         layout.addWidget(label)
         layout.addWidget(make_table(["Timestamp", "Session", "V_T µL", "Temperature °C", "Humidity %", "Corrected V_OA mL"], rows))
-        self.pages.addTab(page, "Environment")
+        self.pages.addTab(page, "Environmental Analysis")
 
     def build_past_calibration(self):
         page = QWidget()
@@ -349,7 +521,7 @@ class LiquidTab(QWidget):
         text.setReadOnly(True)
         text.setPlainText("\n\n".join(f"• {item}" for item in sorted(recommendations)))
         layout.addWidget(text)
-        self.pages.addTab(page, "Recommendations")
+        self.pages.addTab(page, "Workflow Recommendations")
 
 
 def make_table(headers, rows):

@@ -4,8 +4,8 @@ Run **Simulate**, then click **Review liquids** in the workflow row's **Liquids*
 The dialog reads that result's workflow log; it does not derive liquid usage from vial
 names or workflow configuration. An incomplete result may show only partial usage.
 
-Each liquid has Calibration Summary, Coverage, Past Calibration Results, Overvolume
-Validation, Environment, and Recommendations tabs. Calibration Summary contains the
+Each liquid has Calibration Summary, Coverage, Past Calibration Results, Past Validation,
+Overvolume Validation, Environment, and Recommendations tabs. Calibration Summary contains the
 tip-specific coverage graph and measured-versus-target plot from the selected optimal
 conditions file. Coverage contains the workflow volume table and log line references.
 Past Calibration Results lets the user select a saved optimal-conditions result or
@@ -48,6 +48,29 @@ Exact duplicate measurement rows are also removed. Exclusion counts show the fir
 setting mismatch for each rejected record.
 
 ## Statistical display
+
+### Past Validation
+
+This tab reads embedded measurements from `master_pipetting_measurements.csv`, using
+only explicitly accepted stages that match current settings under the rules above.
+Overaspirate may vary, including at interpolated target volumes. Unknown acceptance
+decisions and unselected stages are excluded and counted. Explicitly marked simulated
+measurements are excluded; records without simulation metadata cannot be classified
+by execution mode. Acceptance provenance is documented in
+`embedded_validation_decisions.md`.
+
+At each target volume, the plot shows accepted session means and their equally weighted
+historical mean. The 95% Student-t confidence interval uses variation between session
+means, so sessions with more replicates do not receive extra weight. One session has
+no historical confidence interval; intervals based on few sessions are uncertain.
+The interval estimates the mean, not the range of future individual dispenses.
+Accepted out-of-tolerance measurements remain included.
+
+The table shows mean measured volume, signed error, confidence interval, session and
+measurement counts, and latest validation date. Select a target to inspect its accepted
+measurements and decision metadata. The graph toolbar supports zooming and saving.
+
+### Overvolume Validation
 
 For each measured target volume, average observations by session and tested V_OA, fit
 signed delivery error versus V_OA, and find the zero-error crossing. Only positive slopes

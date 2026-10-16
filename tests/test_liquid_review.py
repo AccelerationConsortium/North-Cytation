@@ -5,12 +5,74 @@ import unittest
 
 import pandas as pd
 
-from scheduler.liquid_review import (coverage, current_parameters, estimate_optimum,
+from scheduler.liquid_review import (coverage, current_parameters,
     matching_measurements, parse_log, environmental_history, past_results,
-    past_result_measurements, past_result_parameters)
+    past_result_measurements, past_result_parameters, session_overaspirate_estimates,
+    summarize_overaspirate, summarize_past_validation)
 
 
 class LiquidReviewTests(unittest.TestCase):
+    def test_overaspirate_estimate_per_session_and_date_filter(self):
+        rows = []
+        for session, stamp, true_oa in (('a', '20261001_120000', .004), ('b', '20260101_120000', .006)):
+            for stage, oa in ((1, .001), (2, .011)):
+                rows.append(dict(session_id=session, timestamp=stamp, target_volume_ml=.05, optimization_stage=stage,
+                                 overaspirate_vol=oa, measured_volume_ml=.05 + oa - true_oa))
+        rows.append(dict(session_id='one', timestamp='20261001_120000', target_volume_ml=.05, optimization_stage=1,
+                         overaspirate_vol=.002, measured_volume_ml=.05))
+        data = pd.DataFrame(rows)
+        estimates, dropped = session_overaspirate_estimates(data)
+        self.assertEqual(sorted(estimates.oa_ul.round(6)), [4, 6])
+        self.assertEqual(dropped['Fewer than three stages recorded (V_OA response unknowable)'], 1)
+        recent, dropped = session_overaspirate_estimates(data, pd.Timestamp('2026-09-01'), pd.Timestamp('2026-11-01'))
+        self.assertEqual(list(recent.session_id), ['a'])
+        self.assertEqual(dropped['Outside date range'], 2)
+        summary = summarize_overaspirate(estimates, {50.0: 5.0})
+        self.assertAlmostEqual(summary.iloc[0].mean_ul, 5)
+        self.assertEqual(summary.iloc[0].sessions, 2)
+
+    def test_past_validation_uses_accepted_sessions_with_equal_weight(self):
+        rows = [dict(target_volume_ml=.05, measured_volume_ml=.049, session_id='a',
+                     timestamp='20261001_120000', accepted=True) for _ in range(10)]
+        rows += [dict(target_volume_ml=.05, measured_volume_ml=.053, session_id='b',
+                      timestamp='20261009_120000', accepted=True),
+                 dict(target_volume_ml=.05, measured_volume_ml=.080, session_id='c',
+                      timestamp='20261010_120000', accepted=False),
+                 dict(target_volume_ml=.05, measured_volume_ml=.090, session_id='d',
+                      timestamp='20261011_120000', accepted=None)]
+        data, summary, excluded = summarize_past_validation(pd.DataFrame(rows))
+        self.assertEqual(len(data), 11)
+        row = summary.iloc[0]
+        self.assertEqual(row.mean_ul, 51)
+        self.assertEqual(row.sessions, 2)
+        self.assertEqual(row.last_validation, '2026-10-09')
+        self.assertLess(row.ci_low_ul, 51)
+        self.assertGreater(row.ci_high_ul, 51)
+        self.assertEqual(excluded['Stage not accepted'], 1)
+        self.assertEqual(excluded['Acceptance unresolved'], 1)
+        _, one, _ = summarize_past_validation(pd.DataFrame(rows[:10]))
+        self.assertTrue(pd.isna(one.iloc[0].ci_low_ul))
+
+    def test_past_validation_matches_interpolated_volume_allowing_overvolume_changes(self):
+        frame = pd.DataFrame({'volume_target': [20, 50], 'aspirate_speed': [15, 15]})
+        parameters = current_parameters(frame, 35)
+        row = dict(parameters, target_volume_ml=.035, measured_volume_ml=.035,
+                   liquid_type='water', validation_type='vial_to_vial', session_id='a',
+                   timestamp='20261009_120000', accepted=True)
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder) / 'pipetting_data'
+            directory.mkdir()
+            pd.DataFrame([dict(row, overaspirate_vol=.001),
+                          dict(row, session_id='b', overaspirate_vol=.005),
+                          dict(row, session_id='old', aspirate_speed=10)]).to_csv(
+                              directory / 'master_pipetting_measurements.csv', index=False)
+            matched, excluded = matching_measurements(folder, 'water', frame)
+            data, summary, excluded = summarize_past_validation(matched, excluded)
+            self.assertEqual(len(data), 2)
+            self.assertEqual(summary.iloc[0].target_ul, 35)
+            self.assertEqual(summary.iloc[0].sessions, 2)
+            self.assertEqual(excluded['Different aspirate_speed'], 1)
+
     def test_log_counts_destinations_and_retains_explicit_class(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "run.log"
@@ -72,15 +134,35 @@ class LiquidReviewTests(unittest.TestCase):
             self.assertEqual(len(matched), 1)
             self.assertEqual(excluded.get('Exact duplicate measurement'), 1)
 
-    def test_estimation_and_single_setting(self):
-        rows = [dict(session_id=str(s), overaspirate_vol=x / 1000,
-                     target_volume_ml=.05, measured_volume_ml=(50 + x - 3 + s * .01) / 1000)
-                for s in range(4) for x in [1, 3, 5]]
-        data = pd.DataFrame(rows)
-        estimate, _ = estimate_optimum(data)
-        self.assertAlmostEqual(estimate[0], 2.985)
-        self.assertIsNotNone(estimate[1])
-        self.assertIsNone(estimate_optimum(data[data.overaspirate_vol == .001])[0])
+    def test_overvolume_tab_renders_rows(self):
+        from PySide6.QtWidgets import QApplication
+        from scheduler.liquid_review_gui import LiquidTab
+        from scheduler.liquid_review import Dispense
+        QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'pipetting_data').mkdir()
+            (root / 'pipetting_data/optimal_conditions_water.csv').write_text('volume_target,aspirate_speed\n50,15\n')
+            frame = pd.read_csv(root / 'pipetting_data/optimal_conditions_water.csv')
+            base = current_parameters(frame, 50)
+            stamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+            rows = [dict(base, liquid_type='water', validation_type='vial_to_vial', target_volume_ml=.05,
+                         session_id=s, timestamp=stamp, accepted=True, overaspirate_vol=oa,
+                         measured_volume_ml=.05 + oa - .004)
+                    for s in 'ab' for oa in (.001, .011)]
+            pd.DataFrame(rows).to_csv(root / 'pipetting_data/master_pipetting_measurements.csv', index=False)
+            tab = LiquidTab(root, 'water', [Dispense('water', 50, 'v', 1, 'small_tip')])
+            names = [tab.pages.tabText(i) for i in range(tab.pages.count())]
+            self.assertIn('Overvolume Changes', names)
+            tab.deleteLater()
+
+    def test_sessions_that_saved_one_overaspirate_for_all_stages_are_not_estimated(self):
+        data = pd.DataFrame([dict(session_id='old', timestamp='20260501_120000', target_volume_ml=.05,
+                                  optimization_stage=stage, overaspirate_vol=.002, measured_volume_ml=measured)
+                             for stage, measured in ((1, .046), (2, .054), (3, .050))])
+        estimates, dropped = session_overaspirate_estimates(data)
+        self.assertTrue(estimates.empty)
+        self.assertEqual(sum(dropped.values()), 1)
 
     def test_legacy_environment_header(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -158,10 +240,10 @@ class LiquidReviewTests(unittest.TestCase):
             log.write_text('Liquid review context: {"liquid":"water"}\nPipetting from vial stock, amount: 0.050 mL\nPipetting into vial dest, amount: 0.050 mL\n')
             dialog = LiquidReviewDialog(root, {'log_file': str(log)})
             self.assertEqual(dialog.tabs.count(), 1)
-            self.assertEqual(dialog.tabs.widget(0).pages.count(), 6)
-            self.assertEqual([dialog.tabs.widget(0).pages.tabText(i) for i in range(6)],
-                             ['Calibration Summary', 'Coverage', 'Past Calibration Results', 'Overvolume Validation',
-                              'Environment', 'Recommendations'])
+            self.assertEqual(dialog.tabs.widget(0).pages.count(), 7)
+            self.assertEqual([dialog.tabs.widget(0).pages.tabText(i) for i in range(7)],
+                             ['Summary', 'Past Validation Results', 'Past Calibration Results', 'Overvolume Changes',
+                              'Environmental Analysis', 'Workflow Coverage', 'Workflow Recommendations'])
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
             summary = dialog.tabs.widget(0).pages.widget(0)
             axes = [canvas.figure.axes[0] for canvas in summary.findChildren(FigureCanvasQTAgg)]
@@ -169,7 +251,7 @@ class LiquidReviewTests(unittest.TestCase):
             self.assertEqual(axes[1].get_ylabel(), 'Measured V_M (µL)')
             from PySide6.QtWidgets import QTableWidget, QTextEdit
             self.assertEqual(len(summary.findChildren(QTableWidget)), 0)
-            coverage_page = dialog.tabs.widget(0).pages.widget(1)
+            coverage_page = dialog.tabs.widget(0).pages.widget(5)
             self.assertEqual(coverage_page.findChildren(QTableWidget)[0].rowCount(), 1)
             self.assertIn('Log references', coverage_page.findChildren(QTextEdit)[0].toPlainText())
             dialog.close()

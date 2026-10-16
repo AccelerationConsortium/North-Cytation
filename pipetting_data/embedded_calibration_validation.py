@@ -49,6 +49,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 import uuid
+from pipetting_data.validation_decisions import annotate, append_csv, DECISION_COLUMNS, tolerance_ul as decision_tolerance_ul
 
 
 # Environmental data tracking 
@@ -143,25 +144,12 @@ def _calculate_volume_tolerance_ul(target_volume_ml: float) -> float:
     Returns:
         float: Accuracy tolerance in uL
     """
-    volume_ul = target_volume_ml * 1000
-    
-    # V2 calibration tolerance ranges
-    if 200 <= volume_ul <= 1000:
-        tolerance_pct = 1.0
-    elif 60 <= volume_ul <= 199:
-        tolerance_pct = 2.0  
-    elif 20 <= volume_ul <= 59:
-        tolerance_pct = 3.0
-    elif 2.5 <= volume_ul <= 19:
-        tolerance_pct = 5.0
-    else:  # 0-2.5uL
-        tolerance_pct = 10.0
-        
-    return volume_ul * tolerance_pct / 100
+    return decision_tolerance_ul(target_volume_ml)
+
 
 def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml: float, 
                              old_overaspirate: float, new_overaspirate: float, 
-                             validation_type: str, session_id: str, lash_e=None):
+                             validation_type: str, session_id: str, lash_e=None, within_tolerance=None):
     """Log parameter corrections for tracking and analysis.
     
     Args:
@@ -200,14 +188,24 @@ def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml
             'pressure_pa': env_data['pressure_pa'] if env_data else None
         }
         
+        import re
+        stage_match = re.search(r"stage([123])", validation_type)
+        if stage_match:
+            rejected = validation_type.endswith("_rejected")
+            correction_record.update({
+                "optimization_stage": int(stage_match[1]),
+                "accepted": not rejected,
+                "selected_stage": 1 if rejected else int(stage_match[1]),
+                "adaptive_correction": True,
+                "decision_reason": "baseline_retained" if rejected else "best_stage_selected",
+                "decision_source": "recorded",
+                "within_tolerance": within_tolerance,
+                "tolerance_ul": decision_tolerance_ul(target_volume_ml),
+            })
         df_new = pd.DataFrame([correction_record])
         
-        if os.path.exists(PARAMETER_CORRECTIONS_LOG):
-            df_new.to_csv(PARAMETER_CORRECTIONS_LOG, mode='a', header=False, index=False)
-        else:
-            os.makedirs(os.path.dirname(PARAMETER_CORRECTIONS_LOG), exist_ok=True)
-            df_new.to_csv(PARAMETER_CORRECTIONS_LOG, index=False)
-        
+        append_csv(df_new, PARAMETER_CORRECTIONS_LOG)
+
         # Log success with environmental info
         env_info = ""
         if env_data and (env_data['temp_c'] is not None or env_data['humidity_pct'] is not None):
@@ -536,21 +534,17 @@ def _append_to_master_measurements(measurements_data, validation_type="pipetting
         measurements_data: List of dict, each containing one measurement record
         validation_type: "pipetting" or "reservoir" to determine which database to use
     """
+    if os.environ.get('ROBOT_SIMULATION_MODE') == 'TRUE':
+        print(f"    SIMULATION: Would add {len(measurements_data)} measurements to {validation_type} database")
+        return
     try:
         df_new = pd.DataFrame(measurements_data)
         
         # Select appropriate database file
         db_file = MASTER_PIPETTING_MEASUREMENTS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_MEASUREMENTS_DB
         
-        # Check if master file exists
-        if os.path.exists(db_file):
-            # Append to existing file
-            df_new.to_csv(db_file, mode='a', header=False, index=False)
-        else:
-            # Create new file with headers
-            os.makedirs(os.path.dirname(db_file), exist_ok=True)
-            df_new.to_csv(db_file, index=False)
-        
+        append_csv(df_new, db_file)
+
         print(f"    ✓ Added {len(measurements_data)} measurements to {validation_type} database")
         
     except Exception as e:
@@ -563,21 +557,17 @@ def _append_to_master_sessions(session_data, validation_type="pipetting"):
         session_data: Dict containing session summary record
         validation_type: "pipetting" or "reservoir" to determine which database to use
     """
+    if os.environ.get('ROBOT_SIMULATION_MODE') == 'TRUE':
+        print(f"    SIMULATION: Would add session to {validation_type} database")
+        return
     try:
         df_new = pd.DataFrame([session_data])
         
         # Select appropriate database file
         db_file = MASTER_PIPETTING_SESSIONS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_SESSIONS_DB
         
-        # Check if master file exists
-        if os.path.exists(db_file):
-            # Append to existing file
-            df_new.to_csv(db_file, mode='a', header=False, index=False)
-        else:
-            # Create new file with headers  
-            os.makedirs(os.path.dirname(db_file), exist_ok=True)
-            df_new.to_csv(db_file, index=False)
-        
+        append_csv(df_new, db_file)
+
         print(f"    ✓ Added session to {validation_type} database")
         
     except Exception as e:
@@ -766,6 +756,8 @@ def validate_pipetting_accuracy(
     
     # === DATA COLLECTION ===
     all_results = []
+    failed_optimization_volumes = set()
+    completed_selection_volumes = set()
     
     # Pre-position destination vial in clamp before starting pipetting
     lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
@@ -788,6 +780,8 @@ def validate_pipetting_accuracy(
             smooth_overvolume=smooth_overvolume
         )
         stage1_param_values = _get_parameter_values(stage1_resolved_params, "pipetting")
+        env = _get_latest_environmental_data() or {}
+        env_fields = {k: env.get(k) for k in ('temp_c', 'humidity_pct', 'pressure_pa')}
         
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
@@ -888,6 +882,8 @@ def validate_pipetting_accuracy(
                 'stability_info': stability_info,
                 'volume_index': volume_idx,  # Track which volume in the list
                 'optimization_stage': 1,  # Mark initial measurements as Stage 1
+                'measurement_acceptable': measurement_acceptable,
+                **env_fields,
                 **stage1_param_values  # Parameters actually resolved for this volume
             }
             all_results.append(result)
@@ -966,6 +962,7 @@ def validate_pipetting_accuracy(
                     stage2_volumes = []
                     for rep in range(replicates):
                         print(f"      Stage 2 replicate {rep + 1}/{replicates}...")
+                        stop_stage = False
                         
                         stage2_result = lash_e.nr_robot.dispense_from_vial_into_vial(
                             source_vial_name=source_vial,
@@ -1014,8 +1011,7 @@ def validate_pipetting_accuracy(
                                     f"Continuing — best stage logic will fall back to Stage 1 if needed."
                                 )
                                 lash_e.logger.warning(warn_msg)
-                                stage2_volumes.append(stage2_mass / density)
-                                break
+                                stop_stage = True
                         
                         stage2_volume = stage2_mass / density
                         stage2_volumes.append(stage2_volume)
@@ -1036,9 +1032,12 @@ def validate_pipetting_accuracy(
                             'stability_info': None,
                             'volume_index': volume_idx,
                             'optimization_stage': 2,
+                            **env_fields,
                             **_get_parameter_values(stage2_params, "pipetting")  # Params actually used for Stage 2
                         }
                         all_results.append(stage2_result_dict)
+                        if stop_stage:
+                            break
                         
                         print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 2: {stage2_volume*1000:.1f} uL (Error: {((stage2_volume-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
                     
@@ -1076,6 +1075,7 @@ def validate_pipetting_accuracy(
                     stage3_volumes = []
                     for rep in range(replicates):
                         print(f"      Stage 3 replicate {rep + 1}/{replicates}...")
+                        stop_stage = False
                         
                         stage3_result = lash_e.nr_robot.dispense_from_vial_into_vial(
                             source_vial_name=source_vial,
@@ -1124,8 +1124,7 @@ def validate_pipetting_accuracy(
                                     f"Continuing — best stage logic will fall back to Stage 1 or 2 if needed."
                                 )
                                 lash_e.logger.warning(warn_msg)
-                                stage3_volumes.append(stage3_mass / density)
-                                break
+                                stop_stage = True
                         
                         stage3_volume = stage3_mass / density
                         stage3_volumes.append(stage3_volume)
@@ -1146,9 +1145,12 @@ def validate_pipetting_accuracy(
                             'stability_info': None,
                             'volume_index': volume_idx,
                             'optimization_stage': 3,
+                            **env_fields,
                             **_get_parameter_values(stage3_params, "pipetting")  # Params actually used for Stage 3
                         }
                         all_results.append(stage3_result_dict)
+                        if stop_stage:
+                            break
                         
                         print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 3: {stage3_volume*1000:.1f} uL (Error: {((stage3_volume-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
                     
@@ -1177,6 +1179,7 @@ def validate_pipetting_accuracy(
                     # Smart update logic: only save if best stage meets tolerance OR improves over original
                     should_update = (best_error_ul <= tolerance_ul) or (best_error_ul < stage1_error_ul and best_stage != 1)
                     
+                    completed_selection_volumes.add(volume_ml)
                     if should_update:
                         print(f"    ✅ Stage {best_stage} has best accuracy ({best_error_ul:.1f}uL)")
                         print(f"    📋 Updating calibration CSV with Stage {best_stage} parameters and fresh measurements")
@@ -1185,7 +1188,8 @@ def validate_pipetting_accuracy(
                         _log_parameter_correction(
                             timestamp, liquid_type, volume_ml,
                             initial_overaspirate, best_overaspirate,
-                            f"iterative_optimization_stage{best_stage}", session_id, lash_e
+                            f"iterative_optimization_stage{best_stage}", session_id, lash_e,
+                            within_tolerance=best_error_ul <= tolerance_ul
                         )
 
                         # Persist the best overaspirate AND fresh measurement data back to the calibration CSV
@@ -1205,7 +1209,8 @@ def validate_pipetting_accuracy(
                         _log_parameter_correction(
                             timestamp, liquid_type, volume_ml,
                             initial_overaspirate, best_overaspirate,
-                            f"iterative_optimization_stage{best_stage}_rejected", session_id, lash_e
+                            f"iterative_optimization_stage{best_stage}_rejected", session_id, lash_e,
+                            within_tolerance=best_error_ul <= tolerance_ul
                         )
                     
                     # Send Slack notification about optimization (skip in simulation)  
@@ -1257,6 +1262,8 @@ def validate_pipetting_accuracy(
                     print(f"    ✅ 3-stage iterative optimization completed")
                     
                 except Exception as e:
+                    if volume_ml not in completed_selection_volumes:
+                        failed_optimization_volumes.add(volume_ml)
                     print(f"    Warning: Iterative optimization failed: {e}")
                     print(f"    Continuing with Stage 1 measurements...")
                     # Mark failed optimization attempts
@@ -1269,35 +1276,24 @@ def validate_pipetting_accuracy(
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)
     
-    # === STAGE-FILTERED ANALYSIS FOR ADAPTIVE CORRECTION ===
-    if adaptive_correction:
-        # For adaptive correction, use only the highest stage results for each volume
-        final_results = []
-        for volume in volumes_ml:
-            volume_results = df[df['target_volume_ml'] == volume]
-            
-            if 'optimization_stage' in volume_results.columns:
-                # Find the highest stage for this volume
-                max_stage = volume_results['optimization_stage'].max()
-                final_stage_results = volume_results[volume_results['optimization_stage'] == max_stage]
-                final_results.extend(final_stage_results.to_dict('records'))
-                
-                stage_count = len(final_stage_results)
-                print(f"    Volume {volume*1000:.1f}uL: Using Stage {max_stage} results ({stage_count} measurements)")
-            else:
-                # Fallback if no stage info
-                final_results.extend(volume_results.to_dict('records'))
-        
-        df_analysis = pd.DataFrame(final_results)
-        print(f"    Final validation analysis based on {len(df_analysis)} optimized measurements")
-    else:
-        # For non-adaptive correction, use all results
-        df_analysis = df
-        print(f"    Standard validation analysis based on {len(df_analysis)} measurements")
-    
-    # Per-volume parameters actually reflected in df_analysis (the highest stage reached
-    # for adaptive correction, or the only stage otherwise) - never a stale snapshot from
-    # an unrelated volume in this sweep.
+    # Record the final selected stage, not merely the highest attempted stage.
+    annotated_groups = []
+    decisions_by_volume = {}
+    for volume in volumes_ml:
+        subset = df[df['target_volume_ml'] == volume]
+        annotated, decision = annotate(
+            subset, adaptive_correction,
+            failed=volume in failed_optimization_volumes,
+        )
+        annotated_groups.append(annotated)
+        decisions_by_volume[volume] = decision
+    df = pd.concat(annotated_groups, ignore_index=True)
+    df_analysis = pd.concat([
+        df[(df['target_volume_ml'] == volume) &
+           (df['optimization_stage'] == decisions_by_volume[volume]['optimization_stage'])]
+        for volume in volumes_ml
+    ], ignore_index=True)
+    # Failure fallback measurements remain visible but carry accepted=False.
     PIPETTING_PARAM_FIELD_NAMES = list(_get_parameter_values(None, "pipetting").keys())
     params_by_volume = {}
     for volume in volumes_ml:
@@ -1347,7 +1343,8 @@ def validate_pipetting_accuracy(
             'measured_std_ul': measured_std * 1000,
             'accuracy_pct': accuracy_pct,
             'precision_cv_pct': precision_cv_pct,
-            'n_replicates': len(subset)
+            'n_replicates': len(subset),
+            **decisions_by_volume[volume]
         }
         stats_per_volume.append(stats)
     
@@ -1478,7 +1475,15 @@ def validate_pipetting_accuracy(
             'volume_index': row['volume_index'],
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            **row_param_values  # Add parameter columns actually used for THIS row
+            'mass_difference_g': row['mass_difference_g'],
+            'retry_count': row['retry_count'],
+            'measurement_acceptable': row['measurement_acceptable'],
+            'measured_at': row['timestamp'],
+            'temp_c': row['temp_c'],
+            'humidity_pct': row['humidity_pct'],
+            'pressure_pa': row['pressure_pa'],
+            **row_param_values,
+            **{key: row[key] for key in DECISION_COLUMNS}
         }
         measurements_data.append(measurement_record)
     
@@ -1504,7 +1509,8 @@ def validate_pipetting_accuracy(
             'output_folder_path': calib_folder,
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            **params_by_volume.get(volume_stat['target_volume_ml'], {})  # Params for THIS volume
+            **params_by_volume.get(volume_stat['target_volume_ml'], {}),
+            **decisions_by_volume[volume_stat['target_volume_ml']]
         }
         
         _append_to_master_sessions(session_record, "pipetting")
