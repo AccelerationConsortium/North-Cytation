@@ -44,6 +44,49 @@ master_pipetting_sessions.csv, and new per-session raw_measurements.csv and
 volume_statistics.csv files. Correction attempts also record explicit decision fields.
 CSV appends align columns by name and extend old headers safely.
 
+## Recording guarantees, 2026-10-16
+
+Vial-to-vial validation resolves the baseline parameters separately for each target
+volume and passes that resolved object to the transfer. Stages 2 and 3 preserve
+those settings except for their explicitly adjusted overaspirate. Each raw and
+master measurement records its own stage's complete pipetting parameters:
+aspirate/dispense/retract/blowout speeds, aspirate/dispense/post-retract waits,
+overaspirate, pre/post-aspiration air volumes, blowout volume, and mixing cycles.
+Missing attributes are errors, not substitutes from a hardcoded parameter snapshot.
+The documented optional blowout-speed fallback is the aspirate speed.
+
+Master session summaries and saved volume statistics carry the selected stage's
+parameters, not baseline parameters or the last stage attempted. Raw records also
+carry session ID and explicit simulation status. Master measurements preserve
+measurement timestamp (`measured_at`), mass, retry count, stability information,
+quality result, and output folder. Stage 2/3 stability information is retained when
+the controller supplies it. A legacy controller returning mass only has no stability
+information; no balance trace is fabricated.
+
+With raw saving enabled, each completed measurement is checkpointed using an
+atomic file replacement before the next transfer or calibration update. Final raw
+output adds the stage-selection decisions. An interrupted checkpoint may therefore
+lack final decision columns and must not be interpreted as a completed validation.
+Raw/correction/master write failures propagate to the caller instead of returning
+`success=True`. Writes to the different files are not a single transaction: a
+failure can leave raw data or one master updated without the other. Do not blindly
+rerun a failed append; reconcile using session ID and the preserved raw file.
+
+Simulation still executes every automation step but writes no raw, statistics,
+plots, corrections, or master records, and disables controller mass-trace saving.
+Both master writers require the caller's explicit confirmed simulation flag;
+they do not use the process-global simulation environment variable.
+`save_raw_data=False` or `output_folder=None` explicitly disables local raw/plot
+output for real runs, but does not disable real master recording.
+
+Reservoir validation likewise records its resolved reservoir parameters per
+volume in raw measurements and both reservoir masters, with explicit simulation
+isolation and propagating write failures.
+
+These guarantees apply to new recordings only. Existing CSV headers are extended
+by name on the next successful append; historical values are not backfilled,
+verified, or repaired by running a new validation.
+
 ## Historical backfill, 2026-10-16
 
 Backup: `pipetting_data/backups/acceptance_20261016_104525/`.

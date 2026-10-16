@@ -49,7 +49,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 import uuid
-from pipetting_data.validation_decisions import annotate, append_csv, DECISION_COLUMNS, tolerance_ul as decision_tolerance_ul
+from pipetting_data.validation_decisions import annotate, append_csv, write_csv, DECISION_COLUMNS, tolerance_ul as decision_tolerance_ul
 
 
 # Environmental data tracking 
@@ -220,8 +220,8 @@ def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml
         
         print(f"    ✓ Logged parameter correction: {old_overaspirate:.4f} → {new_overaspirate:.4f} mL{env_info}")
         
-    except Exception as e:
-        print(f"    ⚠ Warning: Could not log parameter correction: {e}")
+    except Exception as exc:
+        raise OSError(f"Could not save parameter correction to {PARAMETER_CORRECTIONS_LOG}") from exc
 
 
 def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float, 
@@ -516,10 +516,8 @@ def _get_parameter_values(parameters, param_type="pipetting"):
     
     if parameters is not None:
         # Update defaults with provided parameters
-        for key, default_value in defaults.items():
-            if hasattr(parameters, key):
-                param_value = getattr(parameters, key)
-                defaults[key] = param_value if param_value is not None else default_value
+        for key in defaults:
+            defaults[key] = getattr(parameters, key)
     
     # Handle blowout_speed special case for pipetting
     if param_type == "pipetting" and defaults['blowout_speed'] is None:
@@ -527,51 +525,43 @@ def _get_parameter_values(parameters, param_type="pipetting"):
     
     return defaults
 
-def _append_to_master_measurements(measurements_data, validation_type="pipetting"):
+def _record_measurement(results, measurement, *, session_id, simulate, calib_folder):
+    """Checkpoint completed measurements before optimization or subsequent transfers."""
+    measurement.update(session_id=session_id, simulate=simulate)
+    results.append(measurement)
+    if calib_folder is not None and not simulate:
+        raw_file = os.path.join(calib_folder, "raw_measurements.csv")
+        try:
+            write_csv(pd.DataFrame(results), raw_file)
+        except Exception as exc:
+            raise OSError(f"Could not checkpoint raw measurements to {raw_file}") from exc
+
+
+def _append_to_master_measurements(measurements_data, validation_type="pipetting", *, simulate):
     """Append individual measurements to appropriate master measurements database.
     
     Args:
         measurements_data: List of dict, each containing one measurement record
         validation_type: "pipetting" or "reservoir" to determine which database to use
     """
-    if os.environ.get('ROBOT_SIMULATION_MODE') == 'TRUE':
-        print(f"    SIMULATION: Would add {len(measurements_data)} measurements to {validation_type} database")
+    if simulate:
         return
-    try:
-        df_new = pd.DataFrame(measurements_data)
-        
-        # Select appropriate database file
-        db_file = MASTER_PIPETTING_MEASUREMENTS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_MEASUREMENTS_DB
-        
-        append_csv(df_new, db_file)
+    df_new = pd.DataFrame(measurements_data)
+    db_file = MASTER_PIPETTING_MEASUREMENTS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_MEASUREMENTS_DB
+    append_csv(df_new, db_file)
 
-        print(f"    ✓ Added {len(measurements_data)} measurements to {validation_type} database")
-        
-    except Exception as e:
-        print(f"    ⚠ Warning: Could not update {validation_type} measurements database: {e}")
-
-def _append_to_master_sessions(session_data, validation_type="pipetting"):
+def _append_to_master_sessions(session_data, validation_type="pipetting", *, simulate):
     """Append session summary to appropriate master sessions database.
     
     Args:
         session_data: Dict containing session summary record
         validation_type: "pipetting" or "reservoir" to determine which database to use
     """
-    if os.environ.get('ROBOT_SIMULATION_MODE') == 'TRUE':
-        print(f"    SIMULATION: Would add session to {validation_type} database")
+    if simulate:
         return
-    try:
-        df_new = pd.DataFrame([session_data])
-        
-        # Select appropriate database file
-        db_file = MASTER_PIPETTING_SESSIONS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_SESSIONS_DB
-        
-        append_csv(df_new, db_file)
-
-        print(f"    ✓ Added session to {validation_type} database")
-        
-    except Exception as e:
-        print(f"    ⚠ Warning: Could not update {validation_type} sessions database: {e}")
+    df_new = pd.DataFrame([session_data])
+    db_file = MASTER_PIPETTING_SESSIONS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_SESSIONS_DB
+    append_csv(df_new, db_file)
 
 def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:
     """Evaluate if a measurement is acceptable based on stability criteria.
@@ -712,7 +702,8 @@ def validate_pipetting_accuracy(
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Handle None output_folder for simulation mode
-    if output_folder is not None:
+    save_raw_data = save_raw_data and not lash_e.simulate
+    if output_folder is not None and save_raw_data:
         calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{liquid_type}_{source_vial}_{timestamp}")
         # Only create directories and prepare file operations in non-simulation mode
         if save_raw_data:
@@ -780,6 +771,7 @@ def validate_pipetting_accuracy(
             smooth_overvolume=smooth_overvolume
         )
         stage1_param_values = _get_parameter_values(stage1_resolved_params, "pipetting")
+        stage1_resolved_params = PipettingParameters(**stage1_param_values)
         env = _get_latest_environmental_data() or {}
         env_fields = {k: env.get(k) for k in ('temp_c', 'humidity_pct', 'pressure_pa')}
         
@@ -800,7 +792,7 @@ def validate_pipetting_accuracy(
                     source_vial_name=source_vial,
                     dest_vial_name=destination_vial,
                     volume=volume_ml,
-                    parameters=parameters,  # Pass through custom parameters if provided
+                    parameters=stage1_resolved_params,
                     liquid=liquid_type,
                     remove_tip=switch_pipet,  # Use built-in pipet removal control
                     use_safe_location=False,
@@ -809,7 +801,7 @@ def validate_pipetting_accuracy(
                     smooth_overvolume=smooth_overvolume,
                     measure_weight=True,  # Enable mass measurement with continuous monitoring
                     continuous_mass_monitoring=True, 
-                    save_mass_data=True
+                    save_mass_data=not lash_e.simulate
                     
                 )
                 
@@ -886,7 +878,8 @@ def validate_pipetting_accuracy(
                 **env_fields,
                 **stage1_param_values  # Parameters actually resolved for this volume
             }
-            all_results.append(result)
+            _record_measurement(all_results, result, session_id=session_id,
+                                simulate=lash_e.simulate, calib_folder=calib_folder)
             
             print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)")
         
@@ -910,8 +903,6 @@ def validate_pipetting_accuracy(
                 print(f"    Stage 1 outside tolerance - proceeding to iterative optimization")
                 
                 try:
-                    from pipetting_data.pipetting_parameters import PipettingParameters
-                    
                     # Reuse the parameters already resolved for this exact volume at the
                     # top of the loop - same call, same volume, avoids a redundant wizard lookup.
                     base_params = stage1_resolved_params
@@ -977,13 +968,14 @@ def validate_pipetting_accuracy(
                             smooth_overvolume=smooth_overvolume,
                             measure_weight=True,
                             continuous_mass_monitoring=True,
-                            save_mass_data=True
+                            save_mass_data=not lash_e.simulate
                         )
                         
                         if isinstance(stage2_result, tuple):
-                            stage2_mass, _ = stage2_result
+                            stage2_mass, stage2_stability = stage2_result
                         else:
                             stage2_mass = stage2_result
+                            stage2_stability = None
                         
                         # Handle simulation mode with safety checks
                         if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
@@ -1029,13 +1021,18 @@ def validate_pipetting_accuracy(
                             'destination_vial': destination_vial,
                             'switch_pipet': switch_pipet,
                             'retry_count': 0,
-                            'stability_info': None,
+                            'stability_info': stage2_stability,
+                            'measurement_acceptable': (
+                                _evaluate_measurement(stage2_stability, current_threshold)
+                                if stage2_stability is not None else True
+                            ),
                             'volume_index': volume_idx,
                             'optimization_stage': 2,
                             **env_fields,
                             **_get_parameter_values(stage2_params, "pipetting")  # Params actually used for Stage 2
                         }
-                        all_results.append(stage2_result_dict)
+                        _record_measurement(all_results, stage2_result_dict, session_id=session_id,
+                                            simulate=lash_e.simulate, calib_folder=calib_folder)
                         if stop_stage:
                             break
                         
@@ -1090,13 +1087,14 @@ def validate_pipetting_accuracy(
                             smooth_overvolume=smooth_overvolume,
                             measure_weight=True,
                             continuous_mass_monitoring=True,
-                            save_mass_data=True
+                            save_mass_data=not lash_e.simulate
                         )
                         
                         if isinstance(stage3_result, tuple):
-                            stage3_mass, _ = stage3_result
+                            stage3_mass, stage3_stability = stage3_result
                         else:
                             stage3_mass = stage3_result
+                            stage3_stability = None
                         
                         # Handle simulation mode with safety checks
                         if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
@@ -1142,13 +1140,18 @@ def validate_pipetting_accuracy(
                             'destination_vial': destination_vial,
                             'switch_pipet': switch_pipet,
                             'retry_count': 0,
-                            'stability_info': None,
+                            'stability_info': stage3_stability,
+                            'measurement_acceptable': (
+                                _evaluate_measurement(stage3_stability, current_threshold)
+                                if stage3_stability is not None else True
+                            ),
                             'volume_index': volume_idx,
                             'optimization_stage': 3,
                             **env_fields,
                             **_get_parameter_values(stage3_params, "pipetting")  # Params actually used for Stage 3
                         }
-                        all_results.append(stage3_result_dict)
+                        _record_measurement(all_results, stage3_result_dict, session_id=session_id,
+                                            simulate=lash_e.simulate, calib_folder=calib_folder)
                         if stop_stage:
                             break
                         
@@ -1261,6 +1264,8 @@ def validate_pipetting_accuracy(
                     
                     print(f"    ✅ 3-stage iterative optimization completed")
                     
+                except OSError:
+                    raise
                 except Exception as e:
                     if volume_ml not in completed_selection_volumes:
                         failed_optimization_volumes.add(volume_ml)
@@ -1275,6 +1280,8 @@ def validate_pipetting_accuracy(
     
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)
+    df['session_id'] = session_id
+    df['simulate'] = lash_e.simulate
     
     # Record the final selected stage, not merely the highest attempted stage.
     annotated_groups = []
@@ -1298,10 +1305,7 @@ def validate_pipetting_accuracy(
     params_by_volume = {}
     for volume in volumes_ml:
         subset = df_analysis[df_analysis['target_volume_ml'] == volume]
-        if len(subset) > 0:
-            params_by_volume[volume] = {k: subset.iloc[0][k] for k in PIPETTING_PARAM_FIELD_NAMES if k in subset.columns}
-        else:
-            params_by_volume[volume] = {}
+        params_by_volume[volume] = {k: subset.iloc[0][k] for k in PIPETTING_PARAM_FIELD_NAMES}
     
     # === ZERO-VOLUME DETECTION ===
     # Check if all measurements are significantly below target (< 10%)  
@@ -1344,6 +1348,9 @@ def validate_pipetting_accuracy(
             'accuracy_pct': accuracy_pct,
             'precision_cv_pct': precision_cv_pct,
             'n_replicates': len(subset),
+            'session_id': session_id,
+            'simulate': lash_e.simulate,
+            **params_by_volume[volume],
             **decisions_by_volume[volume]
         }
         stats_per_volume.append(stats)
@@ -1376,20 +1383,17 @@ def validate_pipetting_accuracy(
     }
     
     # === GENERATE PLOTS ===
-    try:
-        plot_file = _create_validation_plots(
-            df_analysis=df_analysis,  # Filtered data for calculations
-            df_raw=df,               # Raw data for multi-stage visualization 
-            stats_df=stats_df, 
-            overall_stats=overall_stats, 
-            output_folder=calib_folder, 
-            plot_title=plot_title, 
-            liquid_type=liquid_type,
-            adaptive_correction=adaptive_correction  # Pass adaptive flag for plotting logic
-        )
-    except Exception as e:
-        print(f"Warning: Could not create validation plots: {e}")
-        plot_file = None
+    plot_file = None
+    if save_raw_data:
+        try:
+            plot_file = _create_validation_plots(
+                df_analysis=df_analysis, df_raw=df, stats_df=stats_df,
+                overall_stats=overall_stats, output_folder=calib_folder,
+                plot_title=plot_title, liquid_type=liquid_type,
+                adaptive_correction=adaptive_correction,
+            )
+        except Exception as e:
+            lash_e.logger.warning("Could not create validation plots: %s", e)
     
     # === SAVE DATA ===
     data_files = {}
@@ -1398,7 +1402,7 @@ def validate_pipetting_accuracy(
         try:
             # Raw data
             raw_file = os.path.join(calib_folder, "raw_measurements.csv")
-            df.to_csv(raw_file, index=False)
+            write_csv(df, raw_file)
             data_files['raw_data'] = raw_file
             
             # Statistics summary
@@ -1411,8 +1415,8 @@ def validate_pipetting_accuracy(
             with open(summary_file, 'w') as f:
                 json.dump(overall_stats, f, indent=2)
             data_files['summary'] = summary_file
-        except Exception as e:
-            print(f"Warning: Could not save some data files: {e}")
+        except Exception as exc:
+            raise OSError(f"Could not save validation data to {calib_folder}") from exc
     
     # === PREPARE RETURN DATA ===
     results = {
@@ -1460,11 +1464,12 @@ def validate_pipetting_accuracy(
         
         # Use THIS row's own resolved parameters (captured at dispense time for its
         # specific stage), not a single session-wide snapshot - volume order no longer matters.
-        row_param_values = {k: row[k] for k in PIPETTING_PARAM_FIELD_NAMES if k in row}
+        row_param_values = {k: row[k] for k in PIPETTING_PARAM_FIELD_NAMES}
         
         measurement_record = {
             'timestamp': timestamp,
             'session_id': session_id,
+            'simulate': lash_e.simulate,
             'validation_type': 'vial_to_vial',
             'liquid_type': liquid_type,
             'density_used': density,
@@ -1479,6 +1484,9 @@ def validate_pipetting_accuracy(
             'retry_count': row['retry_count'],
             'measurement_acceptable': row['measurement_acceptable'],
             'measured_at': row['timestamp'],
+            'stability_info': row['stability_info'],
+            'switch_pipet': row['switch_pipet'],
+            'output_folder_path': calib_folder,
             'temp_c': row['temp_c'],
             'humidity_pct': row['humidity_pct'],
             'pressure_pa': row['pressure_pa'],
@@ -1487,13 +1495,14 @@ def validate_pipetting_accuracy(
         }
         measurements_data.append(measurement_record)
     
-    _append_to_master_measurements(measurements_data, "pipetting")
+    _append_to_master_measurements(measurements_data, "pipetting", simulate=lash_e.simulate)
     
     # Prepare session summary data - separate records for each volume
     for idx, volume_stat in enumerate(stats_per_volume):
         session_record = {
             'timestamp': timestamp,
             'session_id': session_id,
+            'simulate': lash_e.simulate,
             'validation_type': 'vial_to_vial',
             'liquid_type': liquid_type,
             'density_used': density,
@@ -1509,11 +1518,14 @@ def validate_pipetting_accuracy(
             'output_folder_path': calib_folder,
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            **params_by_volume.get(volume_stat['target_volume_ml'], {}),
+            **params_by_volume[volume_stat['target_volume_ml']],
+            **{field: df_analysis.loc[
+                df_analysis['target_volume_ml'] == volume_stat['target_volume_ml'], field
+            ].iloc[0] for field in ('temp_c', 'humidity_pct', 'pressure_pa')},
             **decisions_by_volume[volume_stat['target_volume_ml']]
         }
         
-        _append_to_master_sessions(session_record, "pipetting")
+        _append_to_master_sessions(session_record, "pipetting", simulate=lash_e.simulate)
     
     # === CLEANUP ===
     # Return destination vial to home position at the very end
@@ -1588,8 +1600,11 @@ def validate_reservoir_accuracy(
     # Generate unique session ID
     session_id = str(uuid.uuid4())[:8]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    calib_folder = os.path.join(output_folder, "reservoir_validation", f"validation_{timestamp}")
-    os.makedirs(calib_folder, exist_ok=True)
+    save_raw_data = save_raw_data and output_folder is not None and not lash_e.simulate
+    calib_folder = None
+    if save_raw_data:
+        calib_folder = os.path.join(output_folder, "reservoir_validation", f"validation_{timestamp}")
+        os.makedirs(calib_folder, exist_ok=True)
     
     print(f"\\n=== Reservoir Validation ===\\nSession ID: {session_id}")
     print(f"Reservoir index: {reservoir_index}")
@@ -1602,8 +1617,10 @@ def validate_reservoir_accuracy(
     # === DATA COLLECTION ===
     all_results = []
     
-    for volume_ml in volumes_ml:
+    for volume_idx, volume_ml in enumerate(volumes_ml):
         print(f"\\nTesting volume: {volume_ml:.3f} mL ({replicates} replicates)")
+        reservoir_params = lash_e.nr_robot._get_optimized_reservoir_parameters(volume_ml, liquid_type)
+        reservoir_param_values = _get_parameter_values(reservoir_params, "reservoir")
         
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
@@ -1619,9 +1636,11 @@ def validate_reservoir_accuracy(
                     reservoir_index=reservoir_index,
                     vial_index=target_vial,
                     volume=volume_ml,
+                    reservoir_params=reservoir_params,
+                    liquid=liquid_type,
                     measure_weight=True,
                     continuous_mass_monitoring=True,
-                    save_mass_data=True
+                    save_mass_data=not lash_e.simulate
                 )
                 
                 # Handle new return format with quality control
@@ -1673,9 +1692,12 @@ def validate_reservoir_accuracy(
                 'target_vial': target_vial,
                 'retry_count': retry_count,
                 'stability_info': stability_info,
-                'volume_index': volume_idx  # Track which volume in the list
+                'volume_index': volume_idx,
+                'measurement_acceptable': measurement_acceptable,
+                **reservoir_param_values,
             }
-            all_results.append(result)
+            _record_measurement(all_results, result, session_id=session_id,
+                                simulate=lash_e.simulate, calib_folder=calib_folder)
             
             print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
         
@@ -1706,8 +1728,8 @@ def validate_reservoir_accuracy(
                         0.0,  # Would need pump flow rate correction
                         "reservoir", session_id, lash_e
                     )
-                except Exception as e:
-                    print(f"    Warning: Could not log reservoir correction: {e}")
+                except OSError:
+                    raise
             else:
                 print(f"    Checkmark: Measurements within tolerance - no correction needed")
     
@@ -1786,20 +1808,16 @@ def validate_reservoir_accuracy(
     }
     
     # === GENERATE PLOTS ===
-    try:
-        plot_file = _create_validation_plots(
-            df_analysis=df,      # No filtering for reservoir validation
-            df_raw=df,          # Same data for both
-            stats_df=stats_df, 
-            overall_stats=overall_stats, 
-            output_folder=calib_folder, 
-            plot_title=plot_title, 
-            liquid_type=liquid_type,
-            adaptive_correction=False  # Reservoir validation doesn't use adaptive correction
-        )
-    except Exception as e:
-        print(f"Warning: Could not create validation plots: {e}")
-        plot_file = None
+    plot_file = None
+    if save_raw_data:
+        try:
+            plot_file = _create_validation_plots(
+                df_analysis=df, df_raw=df, stats_df=stats_df,
+                overall_stats=overall_stats, output_folder=calib_folder,
+                plot_title=plot_title, liquid_type=liquid_type, adaptive_correction=False,
+            )
+        except Exception as e:
+            lash_e.logger.warning("Could not create validation plots: %s", e)
     
     # === SAVE DATA ===
     data_files = {}
@@ -1808,7 +1826,7 @@ def validate_reservoir_accuracy(
         try:
             # Raw data
             raw_file = os.path.join(calib_folder, "raw_measurements.csv")
-            df.to_csv(raw_file, index=False)
+            write_csv(df, raw_file)
             data_files['raw_data'] = raw_file
             
             # Statistics summary
@@ -1821,8 +1839,8 @@ def validate_reservoir_accuracy(
             with open(summary_file, 'w') as f:
                 json.dump(overall_stats, f, indent=2)
             data_files['summary'] = summary_file
-        except Exception as e:
-            print(f"Warning: Could not save some data files: {e}")
+        except Exception as exc:
+            raise OSError(f"Could not save reservoir validation data to {calib_folder}") from exc
     
     # === PREPARE RETURN DATA ===
     results = {
@@ -1857,8 +1875,7 @@ def validate_reservoir_accuracy(
     # === UPDATE MASTER DATABASES ===
     print("\n=== Updating Master Databases ===")
     
-    # Get reservoir parameter defaults (ReservoirParameters)
-    reservoir_param_values = _get_parameter_values(None, "reservoir")  # Always use defaults for reservoir
+    reservoir_param_names = list(_get_parameter_values(None, "reservoir"))
     
     # Prepare individual measurements data
     measurements_data = []
@@ -1873,6 +1890,7 @@ def validate_reservoir_accuracy(
             'timestamp': timestamp,
             'session_id': session_id,
             'validation_type': 'reservoir_dispensing',
+            'simulate': lash_e.simulate,
             'liquid_type': liquid_type,
             'density_used': density,
             'target_volume_ml': row['target_volume_ml'],
@@ -1883,11 +1901,17 @@ def validate_reservoir_accuracy(
             'source_vial': None,
             'destination_vial': target_vial,
             'reservoir_index': reservoir_index,
-            **reservoir_param_values  # Add all reservoir parameter columns
+            'mass_difference_g': row['mass_difference_g'],
+            'measured_at': row['timestamp'],
+            'retry_count': row['retry_count'],
+            'measurement_acceptable': row['measurement_acceptable'],
+            'stability_info': row['stability_info'],
+            'output_folder_path': calib_folder,
+            **{name: row[name] for name in reservoir_param_names},
         }
         measurements_data.append(measurement_record)
     
-    _append_to_master_measurements(measurements_data, "reservoir")
+    _append_to_master_measurements(measurements_data, "reservoir", simulate=lash_e.simulate)
     
     # Prepare session summary data - separate records for each volume
     for idx, volume_stat in enumerate(stats_per_volume):
@@ -1895,6 +1919,7 @@ def validate_reservoir_accuracy(
             'timestamp': timestamp,
             'session_id': session_id,
             'validation_type': 'reservoir_dispensing',
+            'simulate': lash_e.simulate,
             'liquid_type': liquid_type,
             'density_used': density,
             'target_volume_ml': volume_stat['target_volume_ml'],
@@ -1910,10 +1935,11 @@ def validate_reservoir_accuracy(
             'source_vial': None,
             'destination_vial': target_vial,
             'reservoir_index': reservoir_index,
-            **reservoir_param_values  # Add all reservoir parameter columns
+            **{name: df.loc[df.target_volume_ml == volume_stat['target_volume_ml'], name].iloc[0]
+               for name in reservoir_param_names},
         }
         
-        _append_to_master_sessions(session_record, "reservoir")
+        _append_to_master_sessions(session_record, "reservoir", simulate=lash_e.simulate)
     
     # === CLEANUP ===
     # Return target vial to home position at the very end

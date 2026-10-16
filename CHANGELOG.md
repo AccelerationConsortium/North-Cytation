@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026-10-16] - Embedded Validation Recording Reliability
+
+- FIXED: Raw measurements and master CSVs retain per-volume, per-stage pipetting
+  parameters and overaspirate; summaries and saved statistics use the selected
+  stage's parameters. Later-stage balance stability data is preserved.
+- FIXED: Confirmed simulation mode suppresses validation output and master writes
+  independently of filenames and process-global simulation flags.
+- FIXED: Completed raw measurements are atomically checkpointed before subsequent
+  transfers; raw, correction and master write failures no longer return success.
+- FIXED: Reservoir validation records resolved parameters rather than a default
+  snapshot and correctly assigns volume indices.
+- ADDED: Hardware-free CSV round-trip, simulation isolation, selected-stage,
+  schema-extension, interruption and write-failure regression tests.
+
 ## [2026-10-16] - Fluorescence Preparation-Only Mode
 
 - ADDED: `PREPARE_ONLY` prepares all fluorescence substock batches and runs
