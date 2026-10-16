@@ -513,9 +513,11 @@ class Lash_E:
         self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True, preparation_protocol=None):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
+        An optional preparation_protocol runs once after loading, before all reads,
+        using a single well selection so a whole-plate shake is not repeated by row.
         Each replicate includes all protocols, e.g.:
             rep1: fluorescence, absorbance
             rep2: fluorescence, absorbance
@@ -537,6 +539,11 @@ class Lash_E:
         
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement)
+
+        # A shake acts on the whole plate. Selecting one well prevents the reader
+        # wrapper from repeating it for every row/group in wells_to_measure.
+        if preparation_protocol is not None and not self.simulate:
+            self.cytation.run_protocol(preparation_protocol, [0], plate_type=cytation_plate_type)
 
         all_data = []
 

@@ -760,7 +760,8 @@ class SchedulerWindow(QMainWindow):
                     "input_hashes": {path: digest for path, digest in self.approved_simulation_inputs["files"].items()
                                      if path not in set(vial_files) | {
                                          str((REPO_ROOT / "robot_state" / "robot_status.yaml").resolve()),
-                                         str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve())
+                                         str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve()),
+                                         str((REPO_ROOT / "robot_state" / "fluorescence_plate.yaml").resolve())
                                      } or (vial_path is not None and path == str(vial_path))},
                     "state_root": str(REPO_ROOT / "robot_state"), "vial_files": vial_files,
                 }), encoding="utf-8")
@@ -869,6 +870,8 @@ class SchedulerWindow(QMainWindow):
                 snapshot = root / "end_states" / f"{reused - 1:03d}"
                 for name in ("robot_status.yaml", "track_status.yaml"):
                     shutil.copy2(snapshot / name, root / name)
+                marker = snapshot / "fluorescence_plate.yaml"
+                (root / marker.name).write_text(marker.read_text() if marker.exists() else "null\n")
                 for vial in (snapshot / "vials").iterdir():
                     shutil.copy2(vial, root / "vials" / vial.name)
             else:

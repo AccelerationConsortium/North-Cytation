@@ -46,6 +46,90 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_robot.get_vial_in_location.return_value = None
         return lash
 
+    def test_optional_shake_runs_before_first_read_at_each_timepoint(self):
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled):
+                lash = self.fake_coordinator(simulate=True)
+                config = {**self.config, "SHAKE_BEFORE_MEASUREMENT": enabled,
+                          "MEASUREMENT_SCHEDULE_MIN": [0, 10], "MEASUREMENT_REPLICATES": 2}
+                lash.workflow_config = config
+                lash.measure_wellplate.return_value = None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=MagicMock())
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(workflow, "plot_calibration"):
+                    execute(config, show_gui=False)
+                protocol = workflow._PROTOCOLS["pyrene"][0]
+                self.assertEqual([call.args[0] for call in lash.measure_wellplate.call_args_list],
+                                 [protocol] * 4)
+                first = config["SHAKE_PROTOCOL_FILE"] if enabled else None
+                self.assertEqual([call.kwargs.get("preparation_protocol") for call in lash.measure_wellplate.call_args_list],
+                                 [first, None, first, None])
+
+    def test_enabled_shake_requires_protocol(self):
+        with self.assertRaisesRegex(ValueError, "Set SHAKE_PROTOCOL_FILE"):
+            build_plan({**self.config, "SHAKE_BEFORE_MEASUREMENT": True, "SHAKE_PROTOCOL_FILE": ""})
+
+    def test_two_runs_share_plate_across_reloaded_state_then_third_loads_new(self):
+        state_file = self.root / "track_status.yaml"
+        state_file.write_text(yaml.safe_dump({"position": None, "source": 2, "waste": 0}))
+        loaded, discarded, measured = [], [], []
+        for run in range(3):
+            lash = self.fake_coordinator(simulate=True)
+            track = lash.nr_track
+            saved = yaml.safe_load(state_file.read_text())
+            track.ACTIVE_WELLPLATE_POSITION = saved["position"]
+            track.NUM_SOURCE = saved["source"]
+            track.NUM_WASTE = saved["waste"]
+            track.TRACK_STATUS_FILE = str(state_file)
+            track._scheduler_state_root = str(self.root)
+            def save():
+                state_file.write_text(yaml.safe_dump({"position": track.ACTIVE_WELLPLATE_POSITION,
+                    "waste": track.NUM_WASTE, "source": track.NUM_SOURCE}))
+            def grab():
+                loaded.append(run)
+                track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
+                track.NUM_SOURCE -= 1
+            def discard():
+                discarded.append(run)
+                track.ACTIVE_WELLPLATE_POSITION = None
+                track.NUM_WASTE += 1
+                save()
+            track.save_track_status.side_effect = save
+            lash.grab_new_wellplate.side_effect = grab
+            lash.discard_used_wellplate.side_effect = discard
+            lash.measure_wellplate.return_value = None
+            config = {**self.config, "TWO_RUNS_PER_PLATE": True}
+            lash.workflow_config = config
+            coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash), flatten_cytation_data=MagicMock())
+            with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                    patch.object(workflow, "plot_calibration"), patch.object(workflow, "plot_kinetics"), \
+                    patch("scheduler.simulation_state.can_save", return_value=True):
+                output = execute(config, show_gui=False)
+            save()
+            indices = lash.measure_wellplate.call_args.args[1]
+            measured.append(indices)
+            self.assertEqual(pd.read_csv(output / "well_plan.csv").well_index.tolist(), indices)
+            dispensed = {index for call in lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
+                         for index in call.args[0].index}
+            self.assertEqual(dispensed, set(indices))
+        self.assertEqual(loaded, [0, 2])
+        self.assertEqual(discarded, [1])
+        self.assertEqual(measured, [list(range(45)), list(range(48, 93)), list(range(45))])
+
+    def test_two_run_plate_blocks_unfinished_run_before_dispensing(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.nr_track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
+        lash.nr_track.TRACK_STATUS_FILE = str(self.root / "track_status.yaml")
+        (self.root / "fluorescence_plate.yaml").write_text(yaml.safe_dump(
+            {"status": "in_progress", "plate_type": "96 WELL PLATE"}))
+        lash.workflow_config = {**self.config, "TWO_RUNS_PER_PLATE": True}
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash), flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            with self.assertRaisesRegex(ValueError, "unfinished run"):
+                execute(lash.workflow_config, show_gui=False)
+        lash.grab_new_wellplate.assert_not_called()
+        lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
+
     def test_constant_solvent_and_concentration(self):
         plan, recipes = build_plan({**self.config, "STOCK_CONCENTRATION_UM": 100})
         self.assertEqual(len(plan), 45)

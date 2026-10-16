@@ -59,6 +59,9 @@ SURFACTANT_LIQUID = "SDS"
 VORTEX_SECONDS = 5
 PROTOCOL_FILE = None
 RAW_CHANNELS = None
+SHAKE_BEFORE_MEASUREMENT = False
+SHAKE_PROTOCOL_FILE = r"C:\Protocols\shake_5.prt"
+TWO_RUNS_PER_PLATE = False
 
 # Names of the constants above; used to snapshot them into a plain config dict.
 _CONFIG_KEYS = [
@@ -71,6 +74,8 @@ _CONFIG_KEYS = [
     "TEST_WATER", "TEST_SURFACTANT", "TEST_SOLVENT",
     "SURFACTANT_NAME", "SURFACTANT_CONCENTRATION_MM", "SURFACTANT_CMC_MM",
     "SURFACTANT_LIQUID", "VORTEX_SECONDS", "PROTOCOL_FILE", "RAW_CHANNELS",
+    "SHAKE_BEFORE_MEASUREMENT", "SHAKE_PROTOCOL_FILE",
+    "TWO_RUNS_PER_PLATE",
 ]
 
 # Leading underscore keeps these lookup tables out of ConfigManager's
@@ -108,6 +113,12 @@ def substock_vial_name(pair_id, batch, level, fresh_substocks):
 def build_plan(config):
     """Return well map and direct-from-parent substock recipes, without hardware."""
     c = config
+    if type(c["SHAKE_BEFORE_MEASUREMENT"]) is not bool:
+        raise ValueError("SHAKE_BEFORE_MEASUREMENT must be true or false")
+    if c["SHAKE_BEFORE_MEASUREMENT"] and (
+        not isinstance(c["SHAKE_PROTOCOL_FILE"], str) or not c["SHAKE_PROTOCOL_FILE"].strip()
+    ):
+        raise ValueError("Set SHAKE_PROTOCOL_FILE when SHAKE_BEFORE_MEASUREMENT is enabled")
     pair_id, dye, solvent = selected_pair(c)
     if c["WELLPLATE_TYPE"] not in _PLATES:
         raise ValueError("Only configured 48/96-well plates are supported; 24 needs robot geometry")
@@ -317,6 +328,17 @@ def execute(config=None, show_gui=True):
     try:
         c = lash.workflow_config
         plan, recipes = build_plan(c)
+        from workflows import two_run_plate
+        half = None
+        if c.get("TWO_RUNS_PER_PLATE", False):
+            capacity, columns = _PLATES[c["WELLPLATE_TYPE"]]
+            if c["REPETITIONS"] != 1 or len(plan) > capacity // 2:
+                raise ValueError("TWO_RUNS_PER_PLATE requires one repetition fitting in half a plate")
+            half = two_run_plate.next_half(lash)
+            plan["well_index"] += half * (capacity // 2)
+            plan["well_position"] = plan.well_index.map(
+                lambda index: f"{chr(65 + index // columns)}{index % columns + 1}")
+            plan["plate_half"] = half + 1
         pair_id, dye, solvent = selected_pair(c)
         protocol, channels = _PROTOCOLS[dye]
         protocol = c["PROTOCOL_FILE"] or protocol
@@ -334,6 +356,8 @@ def execute(config=None, show_gui=True):
         # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
         if not c["SIMULATE"] and not Path(protocol).is_file():
             raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
+        if c["SHAKE_BEFORE_MEASUREMENT"] and not c["SIMULATE"] and not Path(c["SHAKE_PROTOCOL_FILE"]).is_file():
+            raise ValueError(f"Set an existing, plate-matched shake protocol: {c['SHAKE_PROTOCOL_FILE']}")
         if not c["SIMULATE"]:
             slack_agent.send_slack_message(
                 f"Fluorescence calibration workflow started: {pair_id} in {', '.join(plan.medium.unique())}")
@@ -357,7 +381,7 @@ def execute(config=None, show_gui=True):
         plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
         if c["TOTAL_VOLUME_UL"] / 1000 > plate_config["max_volume_per_well"]:
             raise ValueError("Total volume exceeds plate capacity")
-        if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
+        if lash.nr_track.NUM_SOURCE < (0 if half == 1 else plan.plate.nunique()):
             raise ValueError("Load enough plates for the complete experiment")
         output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
         output.mkdir(parents=True)
@@ -381,7 +405,10 @@ def execute(config=None, show_gui=True):
                     lash.nr_robot.vortex_vial(recipe.vial, c["VORTEX_SECONDS"])
                     lash.nr_robot.return_vial_home(recipe.vial)
                 prepared.add(batch)
-            lash.grab_new_wellplate()
+            if half is None:
+                lash.grab_new_wellplate()
+            else:
+                two_run_plate.begin(lash, half, str(output))
             for component in c["DISPENSE_ORDER"]:
                 source_column = "medium" if component == "medium" else "dye_source"
                 volume_column = f"{component}_volume_ul"
@@ -399,7 +426,7 @@ def execute(config=None, show_gui=True):
                     # Large vials are aspirated in place, with no staging move.
                     lash.nr_robot.dispense_from_vials_into_wellplate(
                         volumes, liquid=liquid, strategy="serial", well_plate_type=c["WELLPLATE_TYPE"])
-            # Shake/wait removed; measure as-prepared, then again per MEASUREMENT_SCHEDULE_MIN.
+            # Schedule starts after dispensing; optional shaking adds to actual read time.
             t0 = time.monotonic()
             for timepoint_min in c["MEASUREMENT_SCHEDULE_MIN"]:
                 target = t0 + timepoint_min * 60
@@ -407,7 +434,10 @@ def execute(config=None, show_gui=True):
                 if wait > 0 and not lash.simulate:
                     time.sleep(wait)
                 for read in range(1, c["MEASUREMENT_REPLICATES"] + 1):
-                    raw = lash.measure_wellplate(protocol, wells.well_index.tolist(), plate_type=c["WELLPLATE_TYPE"])
+                    read_options = {}
+                    if c["SHAKE_BEFORE_MEASUREMENT"] and read == 1:
+                        read_options["preparation_protocol"] = c["SHAKE_PROTOCOL_FILE"]
+                    raw = lash.measure_wellplate(protocol, wells.well_index.tolist(), plate_type=c["WELLPLATE_TYPE"], **read_options)
                     if raw is None:
                         if not lash.simulate:
                             raise RuntimeError(f"No fluorescence data for plate {plate}, t={timepoint_min}min, read {read}")
@@ -430,7 +460,10 @@ def execute(config=None, show_gui=True):
                     pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
                 if not c["SIMULATE"]:
                     slack_agent.send_slack_message(f"Fluorescence calibration: plate {plate}, t={timepoint_min} min measured")
-            lash.discard_used_wellplate()
+            if half is None:
+                lash.discard_used_wellplate()
+            else:
+                two_run_plate.finish(lash, half)
         combined = pd.concat(measurements)
         summary = summarize(combined, channels)
         effective_stock = c["STOCK_CONCENTRATION_UM"] or _STOCK_CONCENTRATIONS_UM[dye]
