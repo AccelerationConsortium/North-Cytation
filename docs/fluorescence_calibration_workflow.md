@@ -6,6 +6,21 @@ Run from the repository root:
 python -m workflows.fluorescence_calibration_workflow
 ```
 
+Set `TWO_RUNS_PER_PLATE: true` to use exactly two runs per plate. Each run must
+have one repetition and fit in half the plate (48 wells on a 96-well plate).
+The first run uses the top half and leaves the plate at the pipetting area;
+the second uses the bottom half and discards it. With 45 wells per run this is
+A1–D9, then E1–H9. Each run keeps its own measurement schedule.
+The separate `robot_state/fluorescence_plate.yaml` marker file survives
+process restarts. Scheduler simulations carry it in their private state copies,
+without changing live state. An interrupted dispensing/measurement run is marked
+`in_progress` and cannot automatically reuse the plate: retire that plate first.
+Do not manually swap a retained plate without updating track state. Other
+workflows do not consume the second half; retire the plate before switching to
+one of those workflows. The default is false; the local preset enables it.
+Already queued scheduler rows have private settings: reload the updated preset
+or set `TWO_RUNS_PER_PLATE: true` in both rows before running them.
+
 The first run creates `workflow_configs/fluorescence_calibration_workflow.yaml`.
 The default `SIMULATE: true` writes plans only, without importing hardware drivers
 or fabricating fluorescence measurements. Config files follow the repository's
@@ -64,8 +79,12 @@ for each repetition; otherwise all repetitions share substocks.
 `MEASUREMENT_SCHEDULE_MIN` lists elapsed minutes (since the plate is ready) at
 which to read it for kinetics, e.g. `[0, 10, 20]`; it must start at 0 and each
 gap must be at least `MIN_SCHEDULE_GAP_MIN` minutes. `MEASUREMENT_REPLICATES`
-repeats reads back-to-back at each scheduled timepoint. There is no shake/wait
-step between dispensing and the first read; add one back if needed. The parent
+repeats reads back-to-back at each scheduled timepoint. Set
+`SHAKE_BEFORE_MEASUREMENT: true` to run `SHAKE_PROTOCOL_FILE` once before the
+first read at every timepoint, in the same reader visit. It defaults to `false`.
+Replicate reads do not repeat shaking. The schedule still starts when dispensing
+finishes; shake/wait duration adds to the actual read time recorded in the results.
+Choose schedule gaps that accommodate shaking and all reads. The parent
 stock remains shared even when fresh dilutions are prepared. `RANDOMIZED_ORDER`
 randomizes well assignment reproducibly with `RANDOMIZATION_SEED`. Dispensing is
 grouped by source; this option does not randomize chronological pipetting order.
@@ -123,7 +142,13 @@ Coumarin-6 (485 +/-20 / 528 +/-20 nm) and Nile Red (550 / 648 nm) are placeholde
 from the requested experiment. To enable either, supply `PROTOCOL_FILE` and
 `RAW_CHANNELS` matching actual Cytation output. The workflow accepts additional
 intensity channels for exported spectra. Set `SHAKE_PROTOCOL_FILE` to a matching
-mix/equilibration protocol; its default is Ailsa's `shake_5_wait_5.prt`.
+shake-only protocol; its default is `shake_5.prt` (described by the existing
+kinetics workflow as a five-second shake). Verify its settings on the Cytation PC.
+Each scheduled time starts a cycle: transfer, one shake, then measurement.
+Targets stay relative to the end of dispensing, so a cycle at 0 minutes does
+not push the 10-minute target later. If a cycle overruns the next target, the
+next cycle starts immediately. `elapsed_actual_min` records completion after
+the plate returns, not the precise acquisition time.
 
 Outputs include the config, well map, dilution recipes, raw reader exports,
 per-well intensities, and mean/SD/count summaries with medium-specific blank

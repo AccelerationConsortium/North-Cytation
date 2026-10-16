@@ -51,7 +51,8 @@ def live_state_issues(job):
     if volume is not None and float(volume) != 0:
         issues.append("Liquid remains in the pipet")
     position = track["active_wellplate_position"]
-    if position is not None and position != "None":
+    from workflows.two_run_plate import ready_for_second_run, read_marker
+    if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
     occupied = set()
     for filename in set(job["vial_files"]):

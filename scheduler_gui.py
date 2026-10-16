@@ -755,6 +755,10 @@ class SchedulerWindow(QMainWindow):
                 str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve()),
             }
             approved_files = self.approved_simulation_inputs["files"]
+            fluorescence_plate_state = str(
+                (REPO_ROOT / "robot_state" / "fluorescence_plate.yaml").resolve())
+            if fluorescence_plate_state in approved_files:
+                state_paths.add(fluorescence_plate_state)
             for row, name, config_path, config, vial_path in jobs:
                 config["SIMULATE"] = False
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
@@ -872,6 +876,8 @@ class SchedulerWindow(QMainWindow):
                 snapshot = root / "end_states" / f"{reused - 1:03d}"
                 for name in ("robot_status.yaml", "track_status.yaml"):
                     shutil.copy2(snapshot / name, root / name)
+                marker = snapshot / "fluorescence_plate.yaml"
+                (root / marker.name).write_text(marker.read_text() if marker.exists() else "null\n")
                 for vial in (snapshot / "vials").iterdir():
                     shutil.copy2(vial, root / "vials" / vial.name)
             else:

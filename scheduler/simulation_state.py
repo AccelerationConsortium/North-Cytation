@@ -104,6 +104,8 @@ def create_session(vial_files):
     try:
         for path in state_files:
             shutil.copy2(path, root / path.name)
+        marker = REPO_ROOT / "robot_state" / "fluorescence_plate.yaml"
+        (root / marker.name).write_text(marker.read_text() if marker.exists() else "null\n")
         (root / "vials").mkdir()
         mapping = {}
         for index, source in enumerate(sorted(sources)):
@@ -163,7 +165,7 @@ def workflow_state(root, job_id):
                 session = _session_root()
                 snapshot = session / "end_states" / job_id
                 snapshot.mkdir(parents=True, exist_ok=False)
-                for name in ("robot_status.yaml", "track_status.yaml"):
+                for name in ("robot_status.yaml", "track_status.yaml", "fluorescence_plate.yaml"):
                     shutil.copy2(session / name, snapshot / name)
                 shutil.copytree(session / "vials", snapshot / "vials")
                 (snapshot / "result.json").write_text(

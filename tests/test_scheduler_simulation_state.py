@@ -80,6 +80,30 @@ class SimulationStateTests(unittest.TestCase):
         for path, before in self.original.items():
             self.assertEqual(path.read_bytes(), before)
 
+    def test_retained_plate_marker_is_saved_and_loaded_in_private_state(self):
+        from workflows import two_run_plate
+        config = state.simulated_config(self.root, {"INPUT_VIAL_STATUS_FILE": str(self.vials[0])})
+        with state.workflow_state(self.root, "first_half"):
+            coordinator = self.controllers(config["INPUT_VIAL_STATUS_FILE"], 3, 8)
+            coordinator.simulate = True
+            coordinator.grab_new_wellplate = Mock()
+            coordinator.nr_track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
+            two_run_plate.begin(coordinator, 0, "first")
+            two_run_plate.finish(coordinator, 0)
+            state.register_coordinator(coordinator)
+        with state.workflow_state(self.root, "second_half"):
+            coordinator = self.controllers(config["INPUT_VIAL_STATUS_FILE"], 3, 8)
+            coordinator.simulate = True
+            track = coordinator.nr_track
+            track.logger = Mock()
+            track._load_yaml_file = lambda path, *args, **kwargs: yaml.safe_load(Path(path).read_text())
+            track.get_track_status()
+            self.assertEqual(two_run_plate.next_half(coordinator), 1)
+            self.assertNotIn("fluorescence_plate", yaml.safe_load(Path(track.TRACK_STATUS_FILE).read_text()))
+            self.assertEqual(track.ACTIVE_WELLPLATE_POSITION, "pipetting_area")
+        self.assertFalse((self.repo / "robot_state" / "fluorescence_plate.yaml").exists())
+        self.assert_live_unchanged()
+
     def test_end_state_carries_to_next_job_with_separate_vial_files(self):
         first = state.simulated_config(self.root, {"SIMULATE": False, "INPUT_VIAL_STATUS_FILE": str(self.vials[0])})
         second = state.simulated_config(self.root, {"SIMULATE": False, "INPUT_VIAL_STATUS_FILE": str(self.vials[1])})

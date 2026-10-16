@@ -39,6 +39,22 @@ class LiveRunnerTests(unittest.TestCase):
     def save_job(self):
         (self.root / "input.json").write_text(json.dumps(self.job))
 
+    def test_only_ready_retained_plate_passes_live_and_simulated_handoff(self):
+        from scheduler.simulation_runner import handoff_issues
+        for status, position, allowed in (
+            ("second_half_ready", "pipetting_area", True),
+            ("in_progress", "pipetting_area", False),
+            ("second_half_ready", "cytation_tray", False),
+        ):
+            with self.subTest(status=status, position=position):
+                (self.root / "track_status.yaml").write_text(yaml.safe_dump({
+                    "active_wellplate_position": position, "wellplate_type": "96 WELL PLATE",
+                }))
+                (self.root / "fluorescence_plate.yaml").write_text(yaml.safe_dump(
+                    {"status": status, "plate_type": "96 WELL PLATE"}))
+                self.assertEqual(not runner.live_state_issues(self.job), allowed)
+                self.assertEqual(not handoff_issues(self.root), allowed)
+
     def test_successful_no_gui_live_call(self):
         execute = Mock()
         with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):

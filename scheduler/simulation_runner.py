@@ -42,7 +42,8 @@ def handoff_issues(root):
     if robot["pipet_fluid_volume"] is not None and float(robot["pipet_fluid_volume"]) != 0:
         issues.append("Liquid remains in the pipet")
     position = track["active_wellplate_position"]
-    if position is not None and position != "None":
+    from workflows.two_run_plate import ready_for_second_run, read_marker
+    if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
     occupied = {}
     for path in sorted((root / "vials").glob("*.csv")):
