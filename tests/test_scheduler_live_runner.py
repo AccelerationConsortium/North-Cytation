@@ -70,6 +70,21 @@ class LiveRunnerTests(unittest.TestCase):
         self.assertFalse(result["completed"])
         self.assertIn("workflow failed", result["exception"])
 
+    def test_keyboard_interrupt_is_reported_separately_from_failure(self):
+        execute = Mock(side_effect=KeyboardInterrupt())
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            result = runner.run_job(self.root)
+        self.assertFalse(result["completed"])
+        self.assertTrue(result["interrupted"])
+        self.assertIn("KeyboardInterrupt", result["exception"])
+
+    def test_main_preserves_keyboard_interrupt_for_run_logger(self):
+        result = {"exception": "KeyboardInterrupt traceback", "interrupted": True}
+        with patch.object(sys, "argv", ["live_runner", "--job-folder", str(self.root)]), \
+                patch.object(runner, "run_job", return_value=result):
+            with self.assertRaises(KeyboardInterrupt):
+                runner.main()
+
     def test_changed_inputs_or_simulation_context_block_import(self):
         self.source.write_text("changed")
         with patch.object(runner.importlib, "import_module") as importer:

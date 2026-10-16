@@ -12,6 +12,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirPa
 from pipetting_data.pipetting_wizard import PipettingWizard
 import matplotlib.patches as patches
 import threading
+import json
 
 class North_Base:
     """Base class for North robot components with shared functionality"""
@@ -1878,6 +1879,9 @@ class North_Robot(North_Base):
                             setattr(optimized, param_name, user_value)
                             self.logger.debug(f"Applied object param {param_name}={user_value}")
                         
+        self.logger.debug("Liquid review context: " + json.dumps({
+            "liquid": liquid, "target_volume_ml": volume,
+        }))
         return optimized
     
     def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):

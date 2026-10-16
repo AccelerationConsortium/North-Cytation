@@ -16,6 +16,7 @@ import yaml
 
 from scheduler.simulation_runner import Diagnostics
 from scheduler.simulation_state import SESSION_ENV
+from scheduler.interrupt import watch_for_interrupt
 
 
 def fingerprint(paths):
@@ -97,7 +98,7 @@ class Capture(logging.Filter):
 
 def run_job(folder):
     folder = Path(folder)
-    result = {"completed": False, "handoff_ok": False, "records": [], "exception": None}
+    result = {"completed": False, "handoff_ok": False, "records": [], "exception": None, "interrupted": False}
     diagnostics = Diagnostics()
     logger = logging.getLogger("my_logger")
     capture = Capture(diagnostics)
@@ -127,7 +128,8 @@ def run_job(folder):
             if issues:
                 raise ValueError("Live starting state requires review: " + "; ".join(issues))
             module = importlib.import_module(f"workflows.{name}")
-            module.execute(config=config, show_gui=False)
+            with watch_for_interrupt(folder):
+                module.execute(config=config, show_gui=False)
             issues = live_state_issues(job)
             if fingerprint(job["input_hashes"]) != job["input_hashes"]:
                 raise ValueError("Reviewed inputs changed during the live job; simulate again before running.")
@@ -140,7 +142,8 @@ def run_job(folder):
         for handler in logger.handlers:
             if isinstance(handler, logging.FileHandler):
                 result["log_file"] = handler.baseFilename
-    except (Exception, KeyboardInterrupt, SystemExit):
+    except (Exception, KeyboardInterrupt, SystemExit) as error:
+        result["interrupted"] = isinstance(error, KeyboardInterrupt)
         result["exception"] = traceback.format_exc()
         result["records"].append({"level": "ERROR", "message": result["exception"]})
     finally:
@@ -159,6 +162,9 @@ def main():
     args = parser.parse_args()
     result = run_job(args.job_folder)
     if result["exception"]:
+        if result["interrupted"]:
+            # Preserve Ctrl+C classification in experiment_run_logger's atexit hook.
+            raise KeyboardInterrupt(result["exception"])
         # Re-raise so this becomes a genuinely unhandled exception in this process -
         # run_job() caught it to still write result.json, but experiment_run_logger's
         # atexit hook needs an unhandled exception to tag the run "failed" instead of "completed".

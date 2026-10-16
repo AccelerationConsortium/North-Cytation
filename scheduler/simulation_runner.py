@@ -14,6 +14,7 @@ from unittest.mock import patch
 import yaml
 
 from scheduler import simulation_state as state
+from scheduler.interrupt import watch_for_interrupt
 
 
 class Diagnostics(logging.Handler):
@@ -82,7 +83,8 @@ def run_job(root, job_id):
                         result["records"].append({"level": "WARNING", "message": f"Simulation test override: {issue}"})
             module = importlib.import_module(f"workflows.{name}")
             config = state.simulated_config(root, specification["config"])
-            module.execute(config=config, show_gui=False)
+            with watch_for_interrupt(job):
+                module.execute(config=config, show_gui=False)
             if len(state._controllers) != 1:
                 raise RuntimeError("Workflow did not initialize exactly one simulation coordinator")
             coordinator = state._controllers[0]

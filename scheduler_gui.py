@@ -346,8 +346,8 @@ class SchedulerWindow(QMainWindow):
         toolbar.addWidget(self.count_label)
         queue_layout.addLayout(toolbar)
 
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Workflow", "Setup", "Status", "Notes", "Estimated Time", "Actual Time"])
+        self.table = QTableWidget(0, 7)
+        self.table.setHorizontalHeaderLabels(["Workflow", "Setup", "Status", "Notes", "Estimated Time", "Actual Time", "Liquids"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -368,6 +368,10 @@ class SchedulerWindow(QMainWindow):
         self.stop_button.setEnabled(False)
         self.stop_button.clicked.connect(self.stop_after_current)
         footer.addWidget(self.stop_button)
+        self.interrupt_button = QPushButton("Interrupt Current")
+        self.interrupt_button.setEnabled(False)
+        self.interrupt_button.clicked.connect(self.interrupt_current)
+        footer.addWidget(self.interrupt_button)
         for label, icon in (
             ("Simulate", QStyle.SP_MediaPlay),
             ("Run", QStyle.SP_DialogApplyButton),
@@ -522,6 +526,10 @@ class SchedulerWindow(QMainWindow):
         self.update_runtime_estimate(selector, estimate)
         actual = QTableWidgetItem("")
         self.table.setItem(row, 5, actual)
+        liquids = QPushButton("Review liquids")
+        liquids.setToolTip("Review dispensing operations from this row's simulation log")
+        liquids.clicked.connect(lambda: self.show_liquid_review(notes))
+        self.table.setCellWidget(row, 6, liquids)
         if selected_workflow in self.workflow_names:
             self.initialize_row_config(selector, status, notes)
 
@@ -652,6 +660,7 @@ class SchedulerWindow(QMainWindow):
                 widget.setEnabled(not busy)
         self.simulate_button.setEnabled(not busy and self.shared_state_ready() and bool(self.simulation_rows))
         self.stop_button.setEnabled(self._execution_busy)
+        self.interrupt_button.setEnabled(self._execution_busy)
         self.run_button.setEnabled(False)
 
     def queue_input_fingerprint(self):
@@ -913,6 +922,8 @@ class SchedulerWindow(QMainWindow):
             self.finish_simulation_queue()
             return
         row = self.simulation_rows[self.simulation_index]
+        from scheduler.liquid_review import fingerprint
+        self.liquid_calibration_snapshot = fingerprint(REPO_ROOT)
         folder = self.simulation_session / "jobs" / f"{self.simulation_index:03d}"
         process = QProcess(self)
         process.setWorkingDirectory(str(REPO_ROOT))
@@ -966,6 +977,7 @@ class SchedulerWindow(QMainWindow):
                                           "Needs attention" if okay and errors else "Simulated" if okay else "Simulation incomplete")
             self.table.item(row, 3).setText(f"{errors} errors, {warnings} warnings")
             result["console_log"] = str(folder / "console.log")
+            result["liquid_calibration_fingerprint"] = self.liquid_calibration_snapshot
             if not live:
                 result["end_state"] = str(self.simulation_session / "end_states" / folder.name)
             self.table.item(row, 3).setData(Qt.UserRole, result)
@@ -1001,6 +1013,7 @@ class SchedulerWindow(QMainWindow):
             self.reload_shared_state(self.robot_status_widget, self.robot_status_widget._load_robot_status, confirm=False)
             self.reload_shared_state(self.track_status_widget, self.track_status_widget._load_track_status, confirm=False)
         self.stop_button.setEnabled(False)
+        self.interrupt_button.setEnabled(False)
         self.refresh_vial_layout()
         label = "Run" if live else "Simulation"
         self.statusBar().showMessage(f"{label} {'stopped' if self.stop_simulation_requested else 'finished'} | {self.simulation_session}")
@@ -1009,6 +1022,30 @@ class SchedulerWindow(QMainWindow):
         self.stop_simulation_requested = True
         self.stop_button.setEnabled(False)
         self.statusBar().showMessage("Stopping after the current workflow; child will not be terminated")
+
+    def interrupt_current(self):
+        if self.simulation_process is None or not self._execution_busy:
+            return
+        from scheduler.interrupt import STOP_FILE
+        folder = self.simulation_session / "jobs" / f"{self.simulation_index:03d}"
+        try:
+            (folder / STOP_FILE).touch()
+        except OSError as error:
+            QMessageBox.warning(self, "Cannot Interrupt Workflow", str(error))
+            return
+        self.stop_simulation_requested = True
+        self.stop_button.setEnabled(False)
+        self.interrupt_button.setEnabled(False)
+        self.statusBar().showMessage("Interrupt requested; waiting for workflow cleanup")
+
+    def show_liquid_review(self, notes):
+        result = notes.data(Qt.UserRole)
+        if not result:
+            QMessageBox.information(self, "Liquid Review", "Run Simulate for this workflow first.")
+            return
+        from scheduler.liquid_review_gui import LiquidReviewDialog
+        dialog = LiquidReviewDialog(REPO_ROOT, result, self)
+        dialog.exec()
 
     def show_simulation_notes(self, row, column):
         if column in (4, 5):
