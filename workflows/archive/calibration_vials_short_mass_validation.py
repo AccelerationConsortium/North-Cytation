@@ -27,7 +27,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 SIMULATE = False
 TARGET_VOLUME_ML = 0.05
 REPLICATES = 3
-OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "output" / "calibration_vials_short_mass_validation"
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "sdl_pipette_calibration" / "experiment_config.yaml"
 HARDWARE_CONFIG_FILE = Path(__file__).resolve().parent.parent / "sdl_pipette_calibration" / "protocols" / "north_robot_hardware.yaml"
 VIAL_STATUS_FILE = Path(__file__).resolve().parent.parent / "status" / "calibration_vials_short.csv"

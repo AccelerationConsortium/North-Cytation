@@ -1,5 +1,34 @@
 # Changelog
 
+## [2026-10-16] - Fluorescence Preparation-Only Mode
+
+- ADDED: `PREPARE_ONLY` prepares all fluorescence substock batches and runs
+  existing startup refills without plate dispensing, measurement waits or
+  analysis; normal measurement runs remain the default.
+- CHANGED: Substocks are reused when recorded volume is strictly greater than
+  1 mL, with the same threshold used for bulk-solvent demand validation.
+- UNCHANGED: Working-solvent, water and surfactant refill behavior.
+
+## [2026-10-16] - Active Workflow Output Folders
+
+- CHANGED: Degradation results now use `output/Degradation_serena/<EXPERIMENT_NAME>`
+  instead of an operator-specific Desktop directory; surfactant backup files
+  without an experiment name stay under `output/surfactant_grid/measurement_backups`.
+- ADDED: The workflow template creates a unique run directory under
+  `output/<workflow_name>` in simulation and live mode, with a timestamp,
+  `SIMULATION`/`LIVE` tag and GUI-confirmed well count in its readable name.
+
+## [2026-10-16] - Shared Liquid Registry
+
+- ADDED: `robot_state/liquids.yaml` and a validated shared loader for calibration
+  and embedded gravimetric validation, including operator-supplied ethyl acetate
+  density (0.902 g/mL, tip reuse).
+- CHANGED: North, heated, reservoir, embedded validation, and the archived base
+  calibration use shared properties instead of independent tables. Heptane is
+  standardized to the operator-selected 0.680 g/mL; SDS reuses tips.
+- FIXED: Unknown calibration liquids fail before calibration actions in both
+  simulation and real runs with instructions naming the YAML and required fields.
+
 ## [2026-07-13] - Grid Array Generator: Preserve Tool Orientation + Sim Support
 
 ### workflows/enhanced_SP_arm_position_program_v1.1_xy_coordinate_system.py

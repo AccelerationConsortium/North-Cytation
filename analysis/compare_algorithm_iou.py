@@ -45,7 +45,7 @@ from workflows.surfactant_grid_adaptive_concentrations import SURFACTANT_LIBRARY
 # ---------------------------------------------------------------------------
 
 SURFACTANTS = ['SDS', 'TTAB', 'DTAB']
-BASE = 'output/simulated_surfactant_grid'
+BASE = 'output/surfactant_grid/simulated'
 OUT_DIR = os.path.join('output', 'algorithm_comparison')
 
 ALGORITHMS = ['bayesian', 'gradient', 'levelset', 'triangle', 'sobol']

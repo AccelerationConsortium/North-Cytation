@@ -100,6 +100,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         robot = lash.nr_robot
         rows = robot.VIAL_DF
         rows.loc[[0, 4], "cap_type"] = "closed"
+        original_homes = [int(rows.at[index, "home_location_index"]) for index in (0, 4)]
         robot.normalize_vial_index.side_effect = lambda vial: (
             int(rows.loc[rows.vial_name == vial, "vial_index"].iloc[0])
             if isinstance(vial, str) else vial)
@@ -137,9 +138,9 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             workflow.dispense_vial_to_vial(lash, "pyrene_DMSO_stock", "pyrene_DMSO_s1", 2.5, "DMSO")
         self.assertGreater(robot.aspirate_from_vial.call_count, 1)
         self.assertTrue(all(slot in (0, 1) for slot, _ in returns[:-2]))
-        self.assertEqual([slot for slot, _ in returns[-2:]], [6, 9])
-        self.assertEqual(robot.get_vial_info("pyrene_DMSO_stock", "location_index"), 6)
-        self.assertEqual(robot.get_vial_info("pyrene_DMSO_s1", "location_index"), 9)
+        self.assertEqual([slot for slot, _ in returns[-2:]], original_homes)
+        self.assertEqual(robot.get_vial_info("pyrene_DMSO_stock", "location_index"), original_homes[0])
+        self.assertEqual(robot.get_vial_info("pyrene_DMSO_s1", "location_index"), original_homes[1])
 
     def test_occupied_staging_slot_fails_before_movements(self):
         lash = self.fake_coordinator(simulate=True)
@@ -245,6 +246,114 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 execute(lash.workflow_config, show_gui=False)
         cleanup.assert_called_once_with(lash)
         pd.testing.assert_frame_equal(original, lash.nr_robot.VIAL_DF[original.columns])
+
+    def test_queued_run_refills_depleted_water_before_plate_dispensing(self):
+        lash = self.fake_coordinator(simulate=True)
+        robot = lash.nr_robot
+        robot.VIAL_DF.loc[robot.VIAL_DF.vial_name == "water", "vial_volume"] = 3.325
+        lash.workflow_config = {**self.config, "SIMULATE": True, "TOTAL_VOLUME_UL": 250.0,
+                                "TEST_SOLVENT": False}
+        lash.measure_wellplate.return_value = None
+        def refill(reservoir, vial, volume, **kwargs):
+            index = robot.VIAL_DF.index[robot.VIAL_DF.vial_name == vial][0]
+            robot.VIAL_DF.at[index, "vial_volume"] += volume
+        robot.dispense_into_vial_from_reservoir.side_effect = refill
+        def dispense(volumes, **kwargs):
+            if "water" in volumes.columns:
+                required = volumes.water.sum()
+                available = robot.get_vial_info("water", "vial_volume")
+                self.assertGreaterEqual(available, required,
+                                        f"Not enough solution in vial water: need {required:.3f} mL, have {available:.3f} mL")
+        robot.dispense_from_vials_into_wellplate.side_effect = dispense
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            execute(lash.workflow_config, show_gui=False)
+        robot.dispense_into_vial_from_reservoir.assert_called_once_with(1, "water", 4.675)
+        calls = robot.method_calls
+        refill_index = next(i for i, call in enumerate(calls) if call[0] == "dispense_into_vial_from_reservoir")
+        self.assertEqual(calls[refill_index - 1][0], "remove_pipet")
+        first_plate_index = next(i for i, call in enumerate(calls) if call[0] == "dispense_from_vials_into_wellplate")
+        self.assertLess(refill_index, first_plate_index)
+
+    def test_water_refill_skips_full_vial_and_disabled_water_medium(self):
+        for enabled, volume in ((True, 8.0), (True, 7.95), (False, 3.325)):
+            with self.subTest(enabled=enabled, volume=volume):
+                lash = self.fake_coordinator(simulate=True)
+                robot = lash.nr_robot
+                robot.VIAL_DF.loc[robot.VIAL_DF.vial_name == "water", "vial_volume"] = volume
+                lash.workflow_config = {**self.config, "SIMULATE": True, "TEST_WATER": enabled}
+                lash.measure_wellplate.return_value = None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=MagicMock())
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+                    execute(lash.workflow_config, show_gui=False)
+                robot.dispense_into_vial_from_reservoir.assert_not_called()
+
+    def test_startup_refills_depleted_surfactant_from_large_vial(self):
+        lash = self.fake_coordinator(simulate=True)
+        robot = lash.nr_robot
+        rows = robot.VIAL_DF
+        rows.loc[rows.vial_name == "surfactant", "vial_volume"] = 0.55
+        lash.workflow_config = {**self.config, "SIMULATE": True, "TOTAL_VOLUME_UL": 250.0,
+                                "TEST_SOLVENT": False, "SURFACTANT_LIQUID": "water"}
+        lash.measure_wellplate.return_value = None
+        def transfer(source, destination, volume, **kwargs):
+            if destination == "surfactant":
+                rows.loc[rows.vial_name == source, "vial_volume"] -= volume
+                rows.loc[rows.vial_name == destination, "vial_volume"] += volume
+        robot.dispense_from_vial_into_vial.side_effect = transfer
+        def dispense(volumes, **kwargs):
+            if "surfactant" in volumes.columns:
+                self.assertGreaterEqual(robot.get_vial_info("surfactant", "vial_volume"),
+                                        volumes.surfactant.sum())
+        robot.dispense_from_vials_into_wellplate.side_effect = dispense
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            execute(lash.workflow_config, show_gui=False)
+        refill = [call for call in robot.dispense_from_vial_into_vial.call_args_list
+                  if call.args[1] == "surfactant"]
+        self.assertEqual(len(refill), 1)
+        self.assertEqual(refill[0].args[:2], ("surfactant_refill", "surfactant"))
+        self.assertAlmostEqual(refill[0].args[2], 6.95)
+        self.assertEqual(refill[0].kwargs["liquid"], "water")
+        self.assertAlmostEqual(robot.get_vial_info("surfactant", "vial_volume"), 7.5)
+        self.assertAlmostEqual(robot.get_vial_info("surfactant_refill", "vial_volume"), 12.95)
+        calls = robot.method_calls
+        refill_index = next(i for i, call in enumerate(calls) if call[0] == "dispense_from_vial_into_vial"
+                            and call.args[1] == "surfactant")
+        plate_index = next(i for i, call in enumerate(calls) if call[0] == "dispense_from_vials_into_wellplate")
+        self.assertLess(refill_index, plate_index)
+
+    def test_surfactant_refill_skips_full_vial_and_disabled_medium(self):
+        for enabled, volume in ((True, 7.5), (True, 7.45), (False, 0.55)):
+            with self.subTest(enabled=enabled, volume=volume):
+                lash = self.fake_coordinator(simulate=True)
+                robot = lash.nr_robot
+                robot.VIAL_DF.loc[robot.VIAL_DF.vial_name == "surfactant", "vial_volume"] = volume
+                lash.workflow_config = {**self.config, "SIMULATE": True, "TEST_SURFACTANT": enabled}
+                lash.measure_wellplate.return_value = None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=MagicMock())
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+                    execute(lash.workflow_config, show_gui=False)
+                self.assertTrue(all(call.args[1] != "surfactant" for call in
+                                    robot.dispense_from_vial_into_vial.call_args_list))
+
+    def test_insufficient_surfactant_refill_stops_before_transfers(self):
+        lash = self.fake_coordinator(simulate=True)
+        robot = lash.nr_robot
+        robot.VIAL_DF.loc[robot.VIAL_DF.vial_name == "surfactant", "vial_volume"] = 0.55
+        robot.VIAL_DF.loc[robot.VIAL_DF.vial_name == "surfactant_refill", "vial_volume"] = 1.0
+        lash.workflow_config = {**self.config, "SIMULATE": True}
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), self.assertRaisesRegex(
+                ValueError, "Insufficient surfactant_refill"):
+            execute(lash.workflow_config, show_gui=False)
+        robot.dispense_from_vial_into_vial.assert_not_called()
+        robot.dispense_into_vial_from_reservoir.assert_not_called()
 
     def test_missing_generated_vials_are_reported_before_dispensing(self):
         inventory = pd.read_csv(self.vial_file)

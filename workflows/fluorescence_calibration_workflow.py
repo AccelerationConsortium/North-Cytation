@@ -39,6 +39,7 @@ SUBSTOCK_VOLUME_ML = 6.0
 REPLICATES = 3
 REPETITIONS = 1
 FRESH_SUBSTOCKS = False
+PREPARE_ONLY = False
 MEASUREMENT_REPLICATES = 1
 # Elapsed minutes (since the plate is ready) at which to read it; must start at 0.
 MEASUREMENT_SCHEDULE_MIN = [0, 10, 30, 60, 120, 240, 360]
@@ -65,7 +66,7 @@ _CONFIG_KEYS = [
     "SIMULATE", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
     "STOCK_CONCENTRATION_UM", "DILUTION_FACTORS", "DYE_VOLUME_UL",
     "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
-    "FRESH_SUBSTOCKS", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
+    "FRESH_SUBSTOCKS", "PREPARE_ONLY", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
     "MIN_SCHEDULE_GAP_MIN", "RANDOMIZED_ORDER",
     "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "DISPENSE_ORDER",
     "TEST_WATER", "TEST_SURFACTANT", "TEST_SOLVENT",
@@ -109,6 +110,8 @@ def build_plan(config):
     """Return well map and direct-from-parent substock recipes, without hardware."""
     c = config
     pair_id, dye, solvent = selected_pair(c)
+    if type(c["PREPARE_ONLY"]) is not bool:
+        raise ValueError("PREPARE_ONLY must be true or false")
     if c["WELLPLATE_TYPE"] not in _PLATES:
         raise ValueError("Only configured 48/96-well plates are supported; 24 needs robot geometry")
     for key in ("REPLICATES", "REPETITIONS", "MEASUREMENT_REPLICATES"):
@@ -363,19 +366,21 @@ def execute(config=None, show_gui=True):
         protocol, channels = _PROTOCOLS[dye]
         protocol = c["PROTOCOL_FILE"] or protocol
         channels = c["RAW_CHANNELS"] or channels
-        suffix = "_simulate" if c["SIMULATE"] else ""
-        output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + suffix)
+        sim_suffix = "_simulate" if c["SIMULATE"] else ""
+        name_suffix = "_" + c["DYE"] + "_" + c["DYE_SOLVENT"]
+        output = Path("output") / "fluorescence_calibration" / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + sim_suffix + name_suffix)
         output.mkdir(parents=True)
         plan.to_csv(output / "well_plan.csv", index=False)
         recipes.to_csv(output / "substock_recipes.csv", index=False)
         (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
-        if not protocol or not channels:
-            raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
-        if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
-            raise ValueError("Set a fluorescence protocol matching the selected plate format")
-        # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
-        if not c["SIMULATE"] and not Path(protocol).is_file():
-            raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
+        if not c["PREPARE_ONLY"]:
+            if not protocol or not channels:
+                raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
+            if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
+                raise ValueError("Set a fluorescence protocol matching the selected plate format")
+            # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
+            if not c["SIMULATE"] and not Path(protocol).is_file():
+                raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
         if not c["SIMULATE"]:
             slack_agent.send_slack_message(
                 f"Fluorescence calibration workflow started: {pair_id} in {', '.join(plan.medium.unique())}")
@@ -384,7 +389,7 @@ def execute(config=None, show_gui=True):
         if c["TEST_WATER"]:
             required_vials.add("water")
         if c["TEST_SURFACTANT"]:
-            required_vials.add("surfactant")
+            required_vials.update(("surfactant", "surfactant_refill"))
         missing_vials = sorted(required_vials - set(inventory.index))
         if missing_vials:
             raise ValueError(f"Missing vials for {pair_id}: {', '.join(missing_vials)}")
@@ -394,13 +399,14 @@ def execute(config=None, show_gui=True):
         for location, index in (("location", "location_index"), ("home_location", "home_location_index")):
             if ((inventory[location] == "clamp") & (inventory[index] == 0)).any():
                 raise ValueError("Keep clamp[0] free for plate-dispensing staging")
-        if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
-            raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
-        plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
-        if c["TOTAL_VOLUME_UL"] / 1000 > plate_config["max_volume_per_well"]:
-            raise ValueError("Total volume exceeds plate capacity")
-        if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
-            raise ValueError("Load enough plates for the complete experiment")
+        if not c["PREPARE_ONLY"]:
+            if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
+                raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
+            plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
+            if c["TOTAL_VOLUME_UL"] / 1000 > plate_config["max_volume_per_well"]:
+                raise ValueError("Total volume exceeds plate capacity")
+            if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
+                raise ValueError("Load enough plates for the complete experiment")
         working = inventory.loc[working_vial]
         if working.vial_type != "8_mL" or working.cap_type != "closed":
             raise ValueError(f"{working_vial} must be a closed-cap 8 mL vial")
@@ -412,15 +418,30 @@ def execute(config=None, show_gui=True):
         if working_required + 0.1 > working.vial_volume + working_fill:
             raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
         pending_solvent = sum(recipe.solvent_ml for recipe in recipes.itertuples()
-                              if inventory.loc[recipe.vial, "vial_volume"] + 1.0
-                              < recipe.solvent_ml + recipe.stock_ml)
+                              if inventory.loc[recipe.vial, "vial_volume"] <= 1.0)
         if inventory.loc[solvent, "vial_volume"] < pending_solvent + working_fill + 0.1:
             raise ValueError("Insufficient bulk solvent for substocks and the 6 mL working vial")
-        output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+        surfactant_fill = 0.0
+        if c["TEST_SURFACTANT"]:
+            # Match the surfactant workflow's 7.5 mL working-vial target.
+            surfactant_fill = max(0.0, 7.5 - lash.nr_robot.get_vial_info("surfactant", "vial_volume"))
+            if surfactant_fill > 0.1 and lash.nr_robot.get_vial_info("surfactant_refill", "vial_volume") < surfactant_fill:
+                raise ValueError("Insufficient surfactant_refill volume to top up surfactant to 7.5 mL")
+        output = Path("output") / "fluorescence_calibration" / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
         output.mkdir(parents=True)
         plan.to_csv(output / "well_plan.csv", index=False)
         recipes.to_csv(output / "substock_recipes.csv", index=False)
         (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
+        if c["TEST_WATER"]:
+            water_fill = 8.0 - lash.nr_robot.get_vial_info("water", "vial_volume")
+            if water_fill > 0.1:
+                lash.logger.info(f"Refilling water to 8 mL from reservoir 1 (adding {water_fill:.3f} mL)")
+                lash.nr_robot.remove_pipet()
+                lash.nr_robot.dispense_into_vial_from_reservoir(1, "water", water_fill)
+        if surfactant_fill > 0.1:
+            lash.logger.info(f"Refilling surfactant to 7.5 mL (adding {surfactant_fill:.3f} mL)")
+            dispense_vial_to_vial(lash, "surfactant_refill", "surfactant", surfactant_fill,
+                                 liquid=c["SURFACTANT_LIQUID"])
         if working_fill > 0:
             dispense_vial_to_vial(lash, solvent, working_vial, working_fill, liquid=solvent)
         prepared, measurements = set(), []
@@ -428,10 +449,9 @@ def execute(config=None, show_gui=True):
             batch = int(wells.substock_batch.iloc[0])
             if batch not in prepared:
                 for recipe in recipes[recipes.batch == batch].itertuples():
-                    target_ml = recipe.solvent_ml + recipe.stock_ml
-                    # Resuming an interrupted run: a substock already filled to its
-                    # target volume was prepared before the crash, so skip it.
-                    if inventory.loc[recipe.vial, "vial_volume"] + 1.0 >= target_ml:
+                    # Loaded destinations are either empty or prepared; volume is
+                    # the reuse marker, not a check of concentration or recipe.
+                    if inventory.loc[recipe.vial, "vial_volume"] > 1.0:
                         lash.logger.info(f"Skipping already-prepared substock {recipe.vial}")
                         continue
                     for source, volume in ((solvent, recipe.solvent_ml), (f"{pair_id}_stock", recipe.stock_ml)):
@@ -439,6 +459,8 @@ def execute(config=None, show_gui=True):
                     lash.nr_robot.vortex_vial(recipe.vial, c["VORTEX_SECONDS"])
                     lash.nr_robot.return_vial_home(recipe.vial)
                 prepared.add(batch)
+            if c["PREPARE_ONLY"]:
+                continue
             lash.grab_new_wellplate()
             for component in c["DISPENSE_ORDER"]:
                 source_column = "medium" if component == "medium" else "dye_source"
@@ -489,6 +511,13 @@ def execute(config=None, show_gui=True):
                 if not c["SIMULATE"]:
                     slack_agent.send_slack_message(f"Fluorescence calibration: plate {plate}, t={timepoint_min} min measured")
             lash.discard_used_wellplate()
+        if c["PREPARE_ONLY"]:
+            lash.nr_robot.remove_pipet()
+            lash.nr_robot.save_robot_status()
+            lash.logger.info(f"Fluorescence solution preparation complete; plans saved to {output}")
+            if not lash.simulate:
+                slack_agent.send_slack_message(f"Fluorescence solution preparation complete: {pair_id}")
+            return output
         combined = pd.concat(measurements)
         summary = summarize(combined, channels)
         effective_stock = c["STOCK_CONCENTRATION_UM"] or _STOCK_CONCENTRATIONS_UM[dye]

@@ -26,18 +26,9 @@ except ImportError as e:
     analyzer = None
     ANALYZER_AVAILABLE = False
 
-LIQUIDS = {
-    "water": {"density": 1.00, "refill_pipets": False},
-    "ethanol": {"density": 0.789, "refill_pipets": False},
-    "toluene": {"density": 0.867, "refill_pipets": False},
-    "2MeTHF": {"density": 0.852, "refill_pipets": False},
-    "isopropanol": {"density": 0.789, "refill_pipets": False},
-    "DMSO": {"density": 1.1, "refill_pipets": False},
-    "acetone": {"density": 0.79, "refill_pipets": False},
-    "glycerol": {"density": 1.26, "refill_pipets": True},
-    "PEG_Water": {"density": 1.05, "refill_pipets": True},
-    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
-}
+from pipetting_data.liquid_registry import load_liquids
+
+LIQUIDS = load_liquids()
 
 # --- Utility Functions ---
 def normalize_parameters(params):

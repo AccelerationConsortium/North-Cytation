@@ -12,6 +12,7 @@ from uuid import uuid4
 import yaml
 
 from master_usdl_coordinator import Lash_E
+from pipetting_data.liquid_registry import get_liquid
 
 _WORKFLOW_NAME = Path(__file__).stem
 _ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ _PROTOCOL_NAME = "calibration_protocol_northrobot"
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 TARGET_VIAL = "acetone"
-CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config.yaml"
+CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config_workflow.yaml"
 LIQUID = "acetone"
 VOLUME_TARGETS_ML = [0.02, 0.01, 0.005]
 RANDOM_SEED = 30
@@ -325,6 +326,7 @@ def execute(config=None, show_gui=True):
     failed = True
     try:
         validate_experiment(confirmed, lash_e)
+        get_liquid(confirmed["LIQUID"])
         from sdl_pipette_calibration.config_manager import ExperimentConfig
         from sdl_pipette_calibration.experiment import CalibrationExperiment
         from sdl_pipette_calibration.protocol_loader import load_hardware_protocol
@@ -336,9 +338,6 @@ def execute(config=None, show_gui=True):
         base_path = base_path.resolve(strict=True)
         raw = _effective_config(confirmed, base_path)
         protocol = load_hardware_protocol(_PROTOCOL_NAME)
-        liquids = importlib.import_module(_PROTOCOL_NAME).LIQUIDS
-        if confirmed["LIQUID"] not in liquids:
-            raise ValueError(f"Unknown calibration liquid: {confirmed['LIQUID']}")
         output = _base_path(raw["output"]["base_directory"], base_path) / (
             "pc_" + uuid4().hex[:12])
         output.mkdir(parents=True, exist_ok=False)

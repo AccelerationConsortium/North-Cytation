@@ -42,6 +42,22 @@ solvent-only medium and blank wells remain available through `TEST_SOLVENT`.
 The example vial CSV contains both pairs in one inventory. Queue separate rows
 with different `DYE` and `DYE_SOLVENT` values and the same CSV to run both pairs in order.
 
+Set `PREPARE_ONLY: true` to run the existing startup solution refills and prepare
+all required substock batches, including every repetition when
+`FRESH_SUBSTOCKS: true`. Vials are returned home using the normal cap-handling
+path and inventory is saved in live mode. No plates are acquired or dispensed,
+no measurement waits or reads occur, and no fluorescence analysis is generated.
+Preparation does not require loaded plates or an available Cytation protocol;
+the config, well plan and recipes are still saved.
+Queue preparation-only runs for each pair first, then run the same configurations
+with `PREPARE_ONLY: false` (the default), using the same vial inventory.
+Substocks with recorded volume strictly greater than 1 mL are reused in either
+mode; 1 mL or less triggers the full preparation recipe. This assumes destinations
+are empty or already correctly prepared, not partially filled, and does not verify
+concentration. Keep recipes and vial identities unchanged between passes.
+Working-solvent, water and surfactant refill behavior is unchanged in both modes;
+a later measurement run can still require bulk solvent.
+
 `REPLICATES` counts independently dispensed wells. `REPETITIONS` repeats the
 whole experiment on new plates. `FRESH_SUBSTOCKS` creates distinct dilution vials
 for each repetition; otherwise all repetitions share substocks.
@@ -62,7 +78,16 @@ Before hardware execution, update the example vial status CSV to the actual
 loaded rack positions and volumes, including empty destinations named in the
 generated substock recipes. The workflow checks that all generated vial names
 exist before dispensing. Extra levels and fresh batches require extra vials.
-Source requirements include a 0.1 mL reserve; there is no automatic refill.
+When `TEST_WATER` is enabled, startup tops the water vial up to 8 mL from
+reservoir 1, matching the surfactant workflow. It skips water already within
+0.1 mL of full. This also replenishes water between queued workflow runs.
+Bulk and working solvent requirements include a 0.1 mL reserve.
+When `TEST_SURFACTANT` is enabled, startup tops the `surfactant` vial up to
+7.5 mL from `surfactant_refill`, skipping it when within 0.1 mL of that target.
+Load the same premixed surfactant solution in this 20 mL source vial at
+`large_vial_rack[2]`; the example starting volume is 19.9 mL. The workflow checks
+the refill source has enough liquid before starting any transfers and uses
+`SURFACTANT_LIQUID` for the refill's pipetting parameters.
 The example inventory supplies both dye/solvent pairs with 19.9 mL in each bulk
 solvent vial. Each solvent has an additional empty closed-cap 8 mL working vial:
 `DMSO_working` at `main_8mL_rack[27]` and `acetone_working` at `[28]`.

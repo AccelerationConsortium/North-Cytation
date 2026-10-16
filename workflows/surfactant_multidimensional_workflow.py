@@ -2060,7 +2060,7 @@ def setup_experiment_folder(lash_e):
     surf_tag = "_".join(SURFACTANTS)
     name = f"multidim_{n_surfactants}D_{surf_tag}_{RECOMMENDER_TYPE}_{INIT_STRATEGY}_{EXPERIMENT_TAG}_{timestamp}"
     lash_e.current_experiment_name = name
-    sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+    sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
     base = os.path.join("output", sim_folder, name)
     os.makedirs(base, exist_ok=True)
     os.makedirs(os.path.join(base, "measurement_backups"), exist_ok=True)
@@ -2656,7 +2656,7 @@ def execute(config=None, show_gui=True):
 
         if VALIDATE_LIQUIDS:
             validation_folder = os.path.join(
-                "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "output", "surfactant_grid", "validation", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             )
             os.makedirs(validation_folder, exist_ok=True)
             validate_pipetting_system(

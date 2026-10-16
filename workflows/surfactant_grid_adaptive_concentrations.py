@@ -14,8 +14,8 @@ VALIDATION MODES:
 - Both modes save validation results to experiment_name/calibration_validation/
 
 DATA PROTECTION FEATURES:
-- Raw Cytation data is immediately backed up to output/cytation_raw_backups/ (preserves complete original data)
-- Processed measurement data is backed up to output/measurement_backups/ after each interval
+- Raw Cytation data is immediately backed up under output/surfactant_grid/ (preserves complete original data)
+- Processed measurement data is backed up under output/surfactant_grid/ after each interval
 - If processing fails, use recover_raw_cytation_data() and recover_from_measurement_backups() functions
 
 RECOVERY USAGE:
@@ -914,10 +914,10 @@ def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measu
     try:
         # Create backup directory within experiment folder
         if experiment_name:
-            sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+            sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
             backup_dir = os.path.join("output", sim_folder, experiment_name, "measurement_backups")
         else:
-            backup_dir = os.path.join("output", "measurement_backups")  # Fallback
+            backup_dir = os.path.join("output", "surfactant_grid", "measurement_backups")
         os.makedirs(backup_dir, exist_ok=True)
         
         # Create unique backup filename
@@ -2659,7 +2659,7 @@ def create_experiment_folder_structure(experiment_name, simulate=None):
         dict: Paths to all created subdirectories
     """
     is_simulated = SIMULATE if simulate is None else simulate
-    base_folder = os.path.join("output", "simulated_surfactant_grid" if is_simulated else "experimental_surfactant_grid", experiment_name)
+    base_folder = os.path.join("output", "surfactant_grid/simulated" if is_simulated else "surfactant_grid/experimental", experiment_name)
     
     subfolders = {
         'base': base_folder,
@@ -2990,7 +2990,7 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     }
     
     # Step 7: Export to experiment folder (always save planning CSVs, even in simulation)
-    experiment_output_folder = os.path.join("output", "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid", experiment_name)
+    experiment_output_folder = os.path.join("output", "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental", experiment_name)
     os.makedirs(experiment_output_folder, exist_ok=True)
     
     # Save well recipes to CSV - directly in experiment folder  
@@ -3201,7 +3201,7 @@ def measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
                 experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
                 turbidity_filename = f"turbidity_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-                sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+                sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
                 turbidity_path = os.path.join("output", sim_folder, experiment_name, "measurement_backups", turbidity_filename)
                 
                 # Ensure directory exists
@@ -3325,7 +3325,7 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
                 experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
                 fluorescence_filename = f"fluorescence_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-                sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+                sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
                 fluorescence_path = os.path.join("output", sim_folder, experiment_name, "measurement_backups", fluorescence_filename)
                 
                 # Ensure directory exists
@@ -5161,7 +5161,7 @@ def execute(config=None, show_gui=True):
             elif WORKFLOW_TYPE == 'double_iterative':
                 # For double_iterative, validate only the first surfactant A in the queue
                 import time
-                validation_output_folder = f"output/validation_{int(time.time())}"
+                validation_output_folder = f"output/surfactant_grid/validation/validation_{int(time.time())}"
                 os.makedirs(validation_output_folder, exist_ok=True)
 
                 pairing_queue = PAIRING_QUEUE if isinstance(PAIRING_QUEUE, list) else []
@@ -5459,4 +5459,3 @@ def execute(config=None, show_gui=True):
 
 if __name__ == "__main__":
     execute()
-

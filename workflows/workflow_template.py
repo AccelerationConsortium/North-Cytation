@@ -14,10 +14,13 @@ Simulation runs every automation step, but may return no instrument data.
 Tasks without vial operations may set INPUT_VIAL_STATUS_FILE=None explicitly;
 this disables vial tracking, not shared robot/track state or config review.
 Live runs send best-effort Slack lifecycle updates; simulation never sends Slack.
+Run outputs belong in output/<workflow_name>/<timestamp>_<mode>_wells-<PARAM2>.
+Create the run folder in both modes using confirmed configuration, not globals.
 """
 import sys
 sys.path.append("../utoronto_demo")  # Always first, before any local imports
 
+from datetime import datetime
 from pathlib import Path
 
 from master_usdl_coordinator import Lash_E
@@ -111,6 +114,13 @@ def execute(config=None, show_gui=True):
 
     try:
         validate_experiment(c, lash_e)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        mode_tag = "SIMULATION" if lash_e.simulate else "LIVE"
+        run_name = f"{timestamp}_{mode_tag}_wells-{c['PARAM2']}"
+        output_dir = Path(__file__).resolve().parents[1] / "output" / _WORKFLOW_NAME / run_name
+        output_dir.mkdir(parents=True, exist_ok=False)
+        logger.info(f"Run output directory: {output_dir}")
+        # Save experiment artifacts here, e.g. data.to_csv(output_dir / "measurements.csv").
         logger.info(f"Starting {_WORKFLOW_NAME} workflow")
         logger.info(f"Parameters: param1={c['PARAM1']}, param2={c['PARAM2']}, simulate={lash_e.simulate}")
         _send_workflow_slack(

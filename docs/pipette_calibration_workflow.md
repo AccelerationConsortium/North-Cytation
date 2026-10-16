@@ -10,6 +10,31 @@ Single-vial pipette calibration followed by independent validation, without
 automatically promoting the calibration result into shared use. Launch goes
 through `execute(config=None, show_gui=True)`.
 
+## Adding liquids
+
+The shared registry is [robot_state/liquids.yaml](../robot_state/liquids.yaml).
+Add an entry under `liquids`, using the exact identifier selected as `LIQUID`:
+
+```yaml
+  ethyl_acetate:
+    density_g_ml: 0.902
+    refill_pipets: false
+```
+
+Density must be finite, positive, in g/mL, and appropriate to the actual
+composition and measurement temperature. `refill_pipets` must be a YAML boolean:
+`true` removes the tip after each calibration measurement and skips startup tip
+conditioning; `false` reuses the tip and enables conditioning. Entry order does
+not matter. `TARGET_VIAL` selects the physical vial in the inventory CSV; adding
+a vial does not register its liquid properties.
+
+North, heated, reservoir, and embedded gravimetric validation use this registry.
+Unknown liquids fail in simulation and real runs with the registry path and
+required fields. Properties are loaded when modules are imported; restart a
+running calibration process after editing the registry. No density is inferred
+or substituted. Existing values were migrated as-is except heptane, standardized
+to 0.680 g/mL; ethyl acetate uses the operator-supplied 0.902 g/mL.
+
 Set `LIQUID`/`TARGET_VIAL` for the liquid and source vial, and
 `VOLUME_TARGETS_ML` for the calibration volumes (default `[0.02, 0.01, 0.005]`
 mL). `CALIBRATION_CONFIG_FILE` points at the shared

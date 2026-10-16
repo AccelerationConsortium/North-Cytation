@@ -120,28 +120,10 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
 if "../utoronto_demo" not in sys.path:
     sys.path.append("../utoronto_demo")
 
-# Liquid density database - expandable as needed
-LIQUID_DENSITIES = {
-    "water": 1.00,
-    "ethanol": 0.789,
-    "toluene": 0.867,
-    "2MeTHF": 0.852,
-    "isopropanol": 0.789,
-    "DMSO": 1.1,
-    "acetone": 0.79,
-    "glycerol": 1.26,
-    "PEG_Water": 1.05,
-    "4%_hyaluronic_acid_water": 1.01,
-    "SDS": 1.00,
-    "6M_HCl": 1.10,
-    "TFA": 1.49,
-    "heptane": 0.684,
-    "6M_TFA": 1.25,
-    "6M_p_TSA": 1.25, 
-    "6M_Citric_Acid":1.27, 
-    "6M_H2SO4": 1.34,
-    "6M_H3PO4": 1.35, 
-}
+from pipetting_data.liquid_registry import get_liquid, load_liquids
+
+LIQUIDS = load_liquids()
+LIQUID_DENSITIES = {name: properties["density"] for name, properties in LIQUIDS.items()}
 
 # === MASTER DATABASE PATHS ===
 MASTER_PIPETTING_MEASUREMENTS_DB = os.path.join("pipetting_data", "master_pipetting_measurements.csv")
@@ -713,11 +695,7 @@ def validate_pipetting_accuracy(
     """
     
     # === VALIDATION ===
-    if liquid_type not in LIQUID_DENSITIES:
-        available = list(LIQUID_DENSITIES.keys())
-        raise ValueError(f"Unknown liquid_type '{liquid_type}'. Available: {available}")
-    
-    density = LIQUID_DENSITIES[liquid_type]
+    density = get_liquid(liquid_type, LIQUIDS)['density']
     
     # === SIMULATION SAFETY SETUP ===
     # Set simulation environment flag if in simulation mode
@@ -1588,11 +1566,7 @@ def validate_reservoir_accuracy(
     """
     
     # === VALIDATION ===
-    if liquid_type not in LIQUID_DENSITIES:
-        available = list(LIQUID_DENSITIES.keys())
-        raise ValueError(f"Unknown liquid_type '{liquid_type}'. Available: {available}")
-    
-    density = LIQUID_DENSITIES[liquid_type]
+    density = get_liquid(liquid_type, LIQUIDS)['density']
     
     # Generate unique session ID
     session_id = str(uuid.uuid4())[:8]

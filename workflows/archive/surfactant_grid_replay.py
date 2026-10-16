@@ -70,7 +70,7 @@ from workflows.surfactant_grid_adaptive_concentrations import (
 
 # Source CSVs (override at __main__ entry point if desired)
 SOURCE_EXPERIMENT_FOLDER = (
-    "output/surfactant_grid_DTAB_TTAB_Apr_22_Experiment_20260423_033959"
+    "output/surfactant_grid/legacy/surfactant_grid_DTAB_TTAB_Apr_22_Experiment_20260423_033959"
 )
 RECIPES_CSV = "iterative_experiment_results.csv"
 STOCKS_CSV = "experiment_plan_stock_solutions.csv"

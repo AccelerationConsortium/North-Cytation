@@ -673,7 +673,10 @@ def execute(config=None, show_gui=True):
 
         if not SIMULATE:
             import slack_agent
-            output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME
+            output_dir = (
+                Path(__file__).resolve().parents[1] / "output" / "Degradation_serena"
+                / lash_e.workflow_config["EXPERIMENT_NAME"]
+            )
             output_dir.mkdir(parents=True, exist_ok=True)
             lash_e.logger.info("Output directory created at: %s", output_dir)
             slack_agent.send_slack_message("Degradation workflow started!")
@@ -700,5 +703,4 @@ def execute(config=None, show_gui=True):
 
 if __name__ == "__main__":
     execute()
-
 
