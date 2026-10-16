@@ -76,6 +76,15 @@ class SimulationGuiTests(unittest.TestCase):
         selector.setCurrentIndex(selector.findData("first"))
         self.window.add_row("second")
 
+    def test_liquid_button_opens_its_rows_simulation_log(self):
+        from PySide6.QtCore import Qt
+        result = {"log_file": str(self.root / "workflow.log"), "records": []}
+        self.window.table.item(0, 3).setData(Qt.UserRole, result)
+        with patch("scheduler.liquid_review_gui.LiquidReviewDialog") as dialog:
+            self.window.table.cellWidget(0, 6).click()
+            dialog.assert_called_once_with(self.root, result, self.window)
+            dialog.return_value.exec.assert_called_once()
+
     def wait_for_queue(self):
         if self.window.simulation_process is None:
             return
@@ -249,6 +258,21 @@ class SimulationGuiTests(unittest.TestCase):
         self.wait_for_queue()
         self.assertEqual(len(HarmlessProcess.launches), 1)
         self.assertEqual(self.window.table.item(0, 2).text(), "Simulated")
+        self.assertEqual(self.window.table.item(1, 2).text(), "Not simulated")
+
+    def test_interrupt_current_requests_keyboard_interrupt_and_stops_queue(self):
+        config_path = self.root / "workflow_configs" / "first.yaml"
+        config = yaml.safe_load(config_path.read_text())
+        config["TEST_OUTPUT_DELAY"] = 0.5
+        config_path.write_text(yaml.safe_dump(config))
+        self.window.start_simulation()
+        self.assertTrue(self.window.interrupt_button.isEnabled())
+        self.window.interrupt_current()
+        request = self.window.simulation_session / "jobs" / "000" / "interrupt.requested"
+        self.assertTrue(request.exists())
+        self.assertFalse(self.window.interrupt_button.isEnabled())
+        self.wait_for_queue()
+        self.assertEqual(len(HarmlessProcess.launches), 1)
         self.assertEqual(self.window.table.item(1, 2).text(), "Not simulated")
 
     def test_conflict_requires_confirmation_and_can_be_simulated(self):
@@ -428,7 +452,8 @@ class SimulationGuiTests(unittest.TestCase):
         self.window.set_row_config(third, source)
         self.assertEqual(first_path.read_bytes(), before)
         self.assertEqual(yaml.safe_load(third_path.read_text())["VOLUME_TARGETS_ML"], [0.2])
-        self.assertEqual(self.window.table.columnCount(), 6)
+        self.assertEqual(self.window.table.columnCount(), 7)
+        self.assertEqual(self.window.table.cellWidget(0, 6).text(), "Review liquids")
 
     def test_snapshot_edit_invalidates_approval_but_source_edit_does_not(self):
         alternate = self.root / "workflow_configs" / "first_extra.yaml"
