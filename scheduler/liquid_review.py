@@ -168,37 +168,117 @@ def matching_measurements(root, liquid, calibration):
     return data.loc[accepted].copy(), excluded
 
 
-def estimate_optimum(group):
-    """Local zero-error regression; session bootstrap preserves replicate dependence."""
-    grouped = group.groupby(["session_id", "overaspirate_vol"], as_index=False).agg(
-        measured_volume_ml=("measured_volume_ml", "mean"), target_volume_ml=("target_volume_ml", "first"))
-    x = grouped.overaspirate_vol.to_numpy() * 1000
-    y = (grouped.measured_volume_ml - grouped.target_volume_ml).to_numpy() * 1000
-    if len(np.unique(x)) < 2:
-        return None, "One tested V_OA: observed performance available; optimum not identifiable"
-    slope, intercept = np.polyfit(x, y, 1)
-    if slope <= 1e-6:
-        return None, "No reliable positive response to V_OA"
-    optimum = -intercept / slope
-    if not min(x) <= optimum <= max(x):
-        return None, "Zero-error estimate is outside tested V_OA values"
-    sessions = grouped.session_id.unique()
-    if len(sessions) < 3:
-        return (optimum, None), "Too few independent sessions for an uncertainty interval"
-    rng = np.random.default_rng(42)
-    roots = []
-    session_indices = [np.flatnonzero(grouped.session_id.to_numpy() == session) for session in sessions]
-    for _ in range(300):
-        indices = np.concatenate([session_indices[i] for i in rng.integers(0, len(sessions), len(sessions))])
-        sx, sy = x[indices], y[indices]
-        if np.ptp(sx) < 1e-8:
+def filter_dates(data, start=None, end=None):
+    """Keep rows whose timestamp is in [start, end); rows with unreadable timestamps are dropped."""
+    when = pd.to_datetime(data.timestamp, format="%Y%m%d_%H%M%S", errors="coerce")
+    keep = when.notna()
+    if start is not None:
+        keep &= when >= start
+    if end is not None:
+        keep &= when < end
+    return data[keep].copy(), int((~keep).sum())
+
+
+# Physical response of delivered volume to overaspirate is ~1 uL/uL; outside this range the line fit is noise.
+MIN_RESPONSE, MAX_RESPONSE = 0.3, 3.0
+
+UNRECORDED = "Stage V_OA not recorded (older validation saved the stage 1 value on every stage)"
+NO_STAGES = "Fewer than three stages recorded (V_OA response unknowable)"
+
+
+def session_overaspirate_estimates(data, start=None, end=None):
+    """Per session and target: the V_OA where a line through the stage means (V_OA, V_M - V_T) crosses zero.
+
+    Every stage is used, not only the accepted one, because the tested V_OA values are what reveal the response."""
+    counts = {}
+    columns = ["session_id", "target_ul", "when", "oa_ul", "slope", "points"]
+    if data.empty:
+        return pd.DataFrame(columns=columns), counts
+    data = data.copy()
+    if "simulation_mode" in data:
+        simulated = data.simulation_mode.astype(str).str.casefold().eq("true")
+        counts["Simulated measurements"] = int(simulated.sum())
+        data = data[~simulated]
+    data = data[data.session_id.notna() & data.session_id.astype(str).str.strip().ne("")]
+    data, outside = filter_dates(data, start, end)
+    if outside:
+        counts["Outside date range"] = outside
+    rows = []
+    for (session, volume), group in data.groupby(["session_id", "target_volume_ml"]):
+        when = pd.to_datetime(group.timestamp, format="%Y%m%d_%H%M%S", errors="coerce").max()
+        points = group.assign(oa=group.overaspirate_vol.round(9)).groupby("oa").measured_volume_ml.mean()
+        if len(points) < 2:
+            key = NO_STAGES if set(group.optimization_stage.dropna().astype(int)) != {1, 2, 3} else UNRECORDED
+            counts[key] = counts.get(key, 0) + 1
             continue
-        a, b = np.polyfit(sx, sy, 1)
-        if a > 1e-6:
-            roots.append(-b / a)
-    if len(roots) < 270:
-        return (optimum, None), "Unstable response; uncertainty not identifiable"
-    return (optimum, tuple(np.percentile(roots, [2.5, 97.5]))), "Exploratory 95% session-bootstrap interval"
+        x = points.index.to_numpy() * 1000
+        y = (points.to_numpy() - volume) * 1000
+        slope, intercept = np.polyfit(x, y, 1)
+        if not MIN_RESPONSE <= slope <= MAX_RESPONSE:
+            counts["Implausible response to V_OA"] = counts.get("Implausible response to V_OA", 0) + 1
+            continue
+        rows.append(dict(session_id=session, target_ul=volume * 1000, when=when, oa_ul=-intercept / slope,
+                         slope=slope, points=len(points)))
+    return pd.DataFrame(rows, columns=columns), counts
+
+
+def summarize_overaspirate(estimates, current_oa_ul):
+    """Per target: mean of session estimates (equal session weight) with a t interval, versus the current V_OA."""
+    from scipy.stats import t
+
+    rows = []
+    for volume, group in estimates.groupby("target_ul", sort=True):
+        values = group.oa_ul
+        n = len(values)
+        mean = values.mean()
+        margin = float(t.ppf(.975, n - 1) * values.std(ddof=1) / np.sqrt(n)) if n > 1 else np.nan
+        rows.append(dict(target_ul=volume, current_ul=current_oa_ul.get(volume, np.nan), sessions=n, mean_ul=mean,
+                         sd_ul=values.std(ddof=1) if n > 1 else np.nan,
+                         ci_low_ul=mean - margin, ci_high_ul=mean + margin, last_validation=group.when.max()))
+    return pd.DataFrame(rows)
+
+
+def summarize_past_validation(matched, excluded=None, start=None, end=None):
+    """Accepted outcomes; equal session weighting with a t interval for the mean.
+
+    start (inclusive) and end (exclusive) bound the validation timestamp."""
+    from scipy.stats import t
+
+    counts = dict(excluded or {})
+    if matched.empty:
+        return matched.copy(), pd.DataFrame(), counts
+    data = matched.copy()
+    if "accepted" not in data:
+        counts["Acceptance unresolved"] = len(data)
+        return data.iloc[:0], pd.DataFrame(), counts
+    accepted = data.accepted.astype(str).str.casefold()
+    counts["Stage not accepted"] = int(accepted.eq("false").sum())
+    counts["Acceptance unresolved"] = int((~accepted.isin(["true", "false"])).sum())
+    data = data[accepted.eq("true")].copy()
+    if "simulation_mode" in data:
+        simulated = data.simulation_mode.astype(str).str.casefold().eq("true")
+        counts["Simulated measurements"] = int(simulated.sum())
+        data = data[~simulated]
+    missing_session = data.session_id.isna() | data.session_id.astype(str).str.strip().eq("")
+    counts["Missing session identity"] = int(missing_session.sum())
+    data = data[~missing_session].copy()
+    if start is not None or end is not None:
+        data, counts["Outside date range"] = filter_dates(data, start, end)
+    if data.empty:
+        return data, pd.DataFrame(), {k: v for k, v in counts.items() if v}
+    rows = []
+    for volume, group in data.groupby("target_volume_ml", sort=True):
+        session_means = group.groupby("session_id").measured_volume_ml.mean() * 1000
+        n = len(session_means)
+        mean = session_means.mean()
+        margin = float(t.ppf(.975, n - 1) * session_means.std(ddof=1) / np.sqrt(n)) if n > 1 else np.nan
+        dates = pd.to_datetime(group.timestamp, format="%Y%m%d_%H%M%S", errors="coerce")
+        last = dates.max()
+        rows.append(dict(target_ul=volume * 1000, mean_ul=mean, error_ul=mean - volume * 1000,
+                         ci_low_ul=mean - margin, ci_high_ul=mean + margin,
+                         sessions=n, measurements=len(group),
+                         last_validation=last.strftime("%Y-%m-%d") if pd.notna(last) else "Unknown"))
+    return data, pd.DataFrame(rows), {k: v for k, v in counts.items() if v}
 
 
 def environmental_history(root):
