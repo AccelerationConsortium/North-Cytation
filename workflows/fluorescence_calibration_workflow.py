@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # workflow_configs/fluorescence_calibration_workflow.yaml (standard pattern:
 # module-level UPPERCASE constants + workflow_globals=globals() at Lash_E init).
 SIMULATE = True
+_SAVE_FILES_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
@@ -343,12 +344,6 @@ def execute(config=None, show_gui=True):
         protocol, channels = _PROTOCOLS[dye]
         protocol = c["PROTOCOL_FILE"] or protocol
         channels = c["RAW_CHANNELS"] or channels
-        suffix = "_simulate" if c["SIMULATE"] else ""
-        output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + suffix)
-        output.mkdir(parents=True)
-        plan.to_csv(output / "well_plan.csv", index=False)
-        recipes.to_csv(output / "substock_recipes.csv", index=False)
-        (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
         if not protocol or not channels:
             raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
         if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
@@ -383,11 +378,16 @@ def execute(config=None, show_gui=True):
             raise ValueError("Total volume exceeds plate capacity")
         if lash.nr_track.NUM_SOURCE < (0 if half == 1 else plan.plate.nunique()):
             raise ValueError("Load enough plates for the complete experiment")
-        output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-        output.mkdir(parents=True)
-        plan.to_csv(output / "well_plan.csv", index=False)
-        recipes.to_csv(output / "substock_recipes.csv", index=False)
-        (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
+        output = None
+        if not lash.simulate or _SAVE_FILES_ON_SIMULATE:
+            suffix = "_simulate" if lash.simulate else ""
+            output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + suffix)
+            output.mkdir(parents=True)
+            plan.to_csv(output / "well_plan.csv", index=False)
+            recipes.to_csv(output / "substock_recipes.csv", index=False)
+            (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
+        else:
+            lash.logger.info("Simulation file output disabled; results remain in memory.")
         prepared, measurements = set(), []
         for plate, wells in plan.groupby("plate", sort=True):
             batch = int(wells.substock_batch.iloc[0])
@@ -408,7 +408,7 @@ def execute(config=None, show_gui=True):
             if half is None:
                 lash.grab_new_wellplate()
             else:
-                two_run_plate.begin(lash, half, str(output))
+                two_run_plate.begin(lash, half, str(output) if output is not None else None)
             for component in c["DISPENSE_ORDER"]:
                 source_column = "medium" if component == "medium" else "dye_source"
                 volume_column = f"{component}_volume_ul"
@@ -443,7 +443,8 @@ def execute(config=None, show_gui=True):
                             raise RuntimeError(f"No fluorescence data for plate {plate}, t={timepoint_min}min, read {read}")
                         data = simulate_fluorescence_readout(wells, channels)
                     else:
-                        raw.to_csv(output / f"raw_plate_{plate}_t{timepoint_min}_rep{read}.csv")
+                        if output is not None:
+                            raw.to_csv(output / f"raw_plate_{plate}_t{timepoint_min}_rep{read}.csv")
                         data = flatten_cytation_data(raw, "fluorescence")
                         if not set(["well_position", *channels]).issubset(data.columns):
                             raise ValueError(f"Unexpected Cytation channels: {list(data.columns)}")
@@ -457,7 +458,8 @@ def execute(config=None, show_gui=True):
                     merged["elapsed_actual_min"] = (time.monotonic() - t0) / 60
                     merged["measurement_replicate"] = read
                     measurements.append(merged)
-                    pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
+                    if output is not None:
+                        pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
                 if not c["SIMULATE"]:
                     slack_agent.send_slack_message(f"Fluorescence calibration: plate {plate}, t={timepoint_min} min measured")
             if half is None:
@@ -468,14 +470,17 @@ def execute(config=None, show_gui=True):
         summary = summarize(combined, channels)
         effective_stock = c["STOCK_CONCENTRATION_UM"] or _STOCK_CONCENTRATIONS_UM[dye]
         summary["concentration_um"] = summary["concentration_relative"] * effective_stock
-        summary.to_csv(output / "calibration_summary.csv", index=False)
-        fit_calibration(summary, channels, effective_stock).to_csv(
-            output / "calibration_fits.csv", index=False)
+        fits = fit_calibration(summary, channels, effective_stock)
         wells = per_well_means(combined, channels)
         wells["concentration_um"] = wells["concentration_relative"] * effective_stock
-        plot_calibration(wells, summary, channels, output)
-        plot_kinetics(wells, channels, output)
-        lash.logger.info(f"Calibration measurements saved to {output}")
+        if output is not None:
+            summary.to_csv(output / "calibration_summary.csv", index=False)
+            fits.to_csv(output / "calibration_fits.csv", index=False)
+            plot_calibration(wells, summary, channels, output)
+            plot_kinetics(wells, channels, output)
+            lash.logger.info(f"Calibration measurements saved to {output}")
+        else:
+            lash.logger.info("Fluorescence calibration complete; no experiment files saved.")
         if not c["SIMULATE"]:
             slack_agent.send_slack_message(f"Fluorescence calibration workflow complete! Results saved to {output}")
         return output

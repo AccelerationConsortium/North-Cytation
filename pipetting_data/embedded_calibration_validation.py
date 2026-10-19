@@ -1397,22 +1397,25 @@ def validate_pipetting_accuracy(
         'total_measurements': len(df_analysis)
     }
     
-    # === GENERATE PLOTS ===
-    try:
-        plot_file = _create_validation_plots(
-            df_analysis=df_analysis,  # Filtered data for calculations
-            df_raw=df,               # Raw data for multi-stage visualization 
-            stats_df=stats_df, 
-            overall_stats=overall_stats, 
-            output_folder=calib_folder, 
-            plot_title=plot_title, 
-            liquid_type=liquid_type,
-            adaptive_correction=adaptive_correction  # Pass adaptive flag for plotting logic
-        )
-    except Exception as e:
-        print(f"Warning: Could not create validation plots: {e}")
-        plot_file = None
-    
+    # A missing output folder explicitly disables validation artifacts.
+    plot_file = None
+    if calib_folder is not None:
+        # === GENERATE PLOTS ===
+        try:
+            plot_file = _create_validation_plots(
+                df_analysis=df_analysis,  # Filtered data for calculations
+                df_raw=df,               # Raw data for multi-stage visualization
+                stats_df=stats_df,
+                overall_stats=overall_stats,
+                output_folder=calib_folder,
+                plot_title=plot_title,
+                liquid_type=liquid_type,
+                adaptive_correction=adaptive_correction  # Pass adaptive flag for plotting logic
+            )
+        except Exception as e:
+            print(f"Warning: Could not create validation plots: {e}")
+            plot_file = None
+
     # === SAVE DATA ===
     data_files = {}
     

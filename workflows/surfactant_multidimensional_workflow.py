@@ -72,6 +72,9 @@ SURFACTANTS = ["TTAB", "DTAB", "SDS"]
 
 EXPERIMENT_TAG = "multidim_v1"
 SIMULATE = True
+# Internal development switch: excluded from GUI/YAML configuration.
+# Hardware runs always save; enable this to inspect simulation CSVs and plots.
+_SAVE_FILES_ON_SIMULATE = False
 VALIDATE_LIQUIDS = False
 
 # Recommender selection
@@ -2060,6 +2063,9 @@ def setup_experiment_folder(lash_e):
     surf_tag = "_".join(SURFACTANTS)
     name = f"multidim_{n_surfactants}D_{surf_tag}_{RECOMMENDER_TYPE}_{INIT_STRATEGY}_{EXPERIMENT_TAG}_{timestamp}"
     lash_e.current_experiment_name = name
+    if lash_e.simulate and not _SAVE_FILES_ON_SIMULATE:
+        lash_e.logger.info("Simulation file output disabled; results remain in memory.")
+        return None, name
     sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
     base = os.path.join("output", sim_folder, name)
     os.makedirs(base, exist_ok=True)
@@ -2070,6 +2076,9 @@ def setup_experiment_folder(lash_e):
 
 
 def save_results(experiment_df, output_folder, label="results"):
+    """Save a snapshot when an output folder is enabled; otherwise return None."""
+    if output_folder is None:
+        return None
     path = os.path.join(output_folder, f"{label}.csv")
     experiment_df.to_csv(path, index=False)
     return path
@@ -2241,9 +2250,10 @@ def run_multidim_workflow(lash_e):
         f"  Dropped init candidates: {len(dropped_init_points)} "
         f"(boundary={n_dropped_boundary}, sobol={n_dropped_sobol})"
     )
-    dropped_csv = os.path.join(output_folder, "dropped_init_candidates.csv")
-    pd.DataFrame(dropped_init_points).to_csv(dropped_csv, index=False)
-    lash_e.logger.info(f"  Dropped init candidates saved: {dropped_csv}")
+    if output_folder is not None:
+        dropped_csv = os.path.join(output_folder, "dropped_init_candidates.csv")
+        pd.DataFrame(dropped_init_points).to_csv(dropped_csv, index=False)
+        lash_e.logger.info(f"  Dropped init candidates saved: {dropped_csv}")
 
     # Build controls first so well indices are contiguous on the plate.
     controls_df = build_control_wells_df(plans, starting_well_index=0)
@@ -2335,65 +2345,45 @@ def run_multidim_workflow(lash_e):
 
     save_results(well_recipes_df, output_folder, "results_after_initial_grid")
 
-    # Plot initial grid so it can be compared against the final distribution.
-    try:
-        from analysis.multidim_visualizer import plot_pairwise_maps, plot_pairwise_feasible_overlay
-        from analysis.plot_3d_interactive import plot_init_feasible_overlay_3d
-        init_plot_folder = os.path.join(output_folder, "plots_initial_grid")
-        os.makedirs(init_plot_folder, exist_ok=True)
-        # Only plot experiment wells for the initial grid view.
-        init_exp_measured = well_recipes_df[well_recipes_df['well_type'] == 'experiment']
-        saved = plot_pairwise_maps(init_exp_measured, SURFACTANTS, init_plot_folder)
-        for k, p in saved.items():
-            lash_e.logger.info(f"  Initial grid plot saved: {p}")
+    if output_folder is not None:
+        # Plot initial grid so it can be compared against the final distribution.
+        try:
+            from analysis.multidim_visualizer import plot_pairwise_maps, plot_pairwise_feasible_overlay
+            from analysis.plot_3d_interactive import plot_init_feasible_overlay_3d
+            init_plot_folder = os.path.join(output_folder, "plots_initial_grid")
+            os.makedirs(init_plot_folder, exist_ok=True)
+            # Only plot experiment wells for the initial grid view.
+            init_exp_measured = well_recipes_df[well_recipes_df['well_type'] == 'experiment']
+            saved = plot_pairwise_maps(init_exp_measured, SURFACTANTS, init_plot_folder)
+            for k, p in saved.items():
+                lash_e.logger.info(f"  Initial grid plot saved: {p}")
 
-        if INIT_STRATEGY == 'simplex':
-            # 2D overlay should only show actual init picks (no extra boundary artifact series).
-            feasible_boundary_points = None
-            # 3D overlay needs boundary points to render the envelope mesh.
-            feasible_boundary_points_3d = [pt for pt in grid_points if pt.get('_init_source_type') == 'boundary']
-        else:
-            feasible_boundary_points = generate_log_grid(GRID_POINTS_PER_AXIS)
-            feasible_boundary_points_3d = feasible_boundary_points
+            if INIT_STRATEGY == 'simplex':
+                # 2D overlay should only show actual init picks (no extra boundary artifact series).
+                feasible_boundary_points = None
+                # 3D overlay needs boundary points to render the envelope mesh.
+                feasible_boundary_points_3d = [pt for pt in grid_points if pt.get('_init_source_type') == 'boundary']
+            else:
+                feasible_boundary_points = generate_log_grid(GRID_POINTS_PER_AXIS)
+                feasible_boundary_points_3d = feasible_boundary_points
 
-        # Wrap achievable_fn to log white dot diagnostics on first few failures
-        white_dot_log_count = [0]  # mutable counter in closure
-        MAX_WHITE_DOT_DIAGNOSTICS = 5  # Log details for first 5 white dots per panel
+            # Wrap achievable_fn to log white dot diagnostics on first few failures
+            white_dot_log_count = [0]  # mutable counter in closure
+            MAX_WHITE_DOT_DIAGNOSTICS = 5  # Log details for first 5 white dots per panel
         
-        def achievable_with_diagnostics(pt):
-            is_achievable = len(filter_points_by_actual_volumes([pt], plans)) == 1
-            if not is_achievable and white_dot_log_count[0] < MAX_WHITE_DOT_DIAGNOSTICS:
-                white_dot_log_count[0] += 1
-                diagnose_white_dot(pt, plans, logger=lash_e.logger)
-            return is_achievable
+            def achievable_with_diagnostics(pt):
+                is_achievable = len(filter_points_by_actual_volumes([pt], plans)) == 1
+                if not is_achievable and white_dot_log_count[0] < MAX_WHITE_DOT_DIAGNOSTICS:
+                    white_dot_log_count[0] += 1
+                    diagnose_white_dot(pt, plans, logger=lash_e.logger)
+                return is_achievable
         
-        p_overlay_2d = plot_pairwise_feasible_overlay(
-            init_exp_measured,
-            SURFACTANTS,
-            feasible_boundary_points,
-            init_plot_folder,
-            show_all_experiment=False,
-            feasible_config={
-                "stock_concs": {s: SURFACTANT_LIBRARY[s]["stock_conc"] for s in SURFACTANTS},
-                "well_volume_ul": WELL_VOLUME_UL,
-                "surfactant_budget_ul": SURFACTANT_BUDGET_UL,
-                "min_conc_mm": MIN_CONC_MM,
-                "max_conc_multiplier": FEASIBLE_MAX_CONC_MULTIPLIER,
-            },
-            achievable_fn=achievable_with_diagnostics,
-            grid_n=FEASIBLE_DIAGNOSTIC_GRID_N,
-            logger=lash_e.logger,
-            dropped_points=dropped_init_points,
-        )
-        if p_overlay_2d:
-            lash_e.logger.info(f"  Initial feasible-overlay 2D plot saved: {p_overlay_2d}")
-
-        if len(SURFACTANTS) == 3:
-            p_overlay_3d = plot_init_feasible_overlay_3d(
+            p_overlay_2d = plot_pairwise_feasible_overlay(
                 init_exp_measured,
                 SURFACTANTS,
-                feasible_boundary_points_3d,
-                output_dir=init_plot_folder,
+                feasible_boundary_points,
+                init_plot_folder,
+                show_all_experiment=False,
                 feasible_config={
                     "stock_concs": {s: SURFACTANT_LIBRARY[s]["stock_conc"] for s in SURFACTANTS},
                     "well_volume_ul": WELL_VOLUME_UL,
@@ -2401,12 +2391,33 @@ def run_multidim_workflow(lash_e):
                     "min_conc_mm": MIN_CONC_MM,
                     "max_conc_multiplier": FEASIBLE_MAX_CONC_MULTIPLIER,
                 },
+                achievable_fn=achievable_with_diagnostics,
+                grid_n=FEASIBLE_DIAGNOSTIC_GRID_N,
+                logger=lash_e.logger,
                 dropped_points=dropped_init_points,
             )
-            if p_overlay_3d:
-                lash_e.logger.info(f"  Initial feasible-overlay 3D plot saved: {p_overlay_3d}")
-    except Exception as e:
-        lash_e.logger.warning(f"Initial grid plotting failed (non-fatal): {e}")
+            if p_overlay_2d:
+                lash_e.logger.info(f"  Initial feasible-overlay 2D plot saved: {p_overlay_2d}")
+
+            if len(SURFACTANTS) == 3:
+                p_overlay_3d = plot_init_feasible_overlay_3d(
+                    init_exp_measured,
+                    SURFACTANTS,
+                    feasible_boundary_points_3d,
+                    output_dir=init_plot_folder,
+                    feasible_config={
+                        "stock_concs": {s: SURFACTANT_LIBRARY[s]["stock_conc"] for s in SURFACTANTS},
+                        "well_volume_ul": WELL_VOLUME_UL,
+                        "surfactant_budget_ul": SURFACTANT_BUDGET_UL,
+                        "min_conc_mm": MIN_CONC_MM,
+                        "max_conc_multiplier": FEASIBLE_MAX_CONC_MULTIPLIER,
+                    },
+                    dropped_points=dropped_init_points,
+                )
+                if p_overlay_3d:
+                    lash_e.logger.info(f"  Initial feasible-overlay 3D plot saved: {p_overlay_3d}")
+        except Exception as e:
+            lash_e.logger.warning(f"Initial grid plotting failed (non-fatal): {e}")
 
     n_exp_wells = len(init_exp_df)
     lash_e.logger.info(
@@ -2416,13 +2427,14 @@ def run_multidim_workflow(lash_e):
         f"{len(well_recipes_df)}/{TARGET_TOTAL_WELLS} total budget used)."
     )
 
-    # Plot 1D CMC controls immediately after first measurement round.
-    try:
-        cmc_plot_path = plot_1d_cmc_controls(well_recipes_df, output_folder, lash_e.logger)
-        if cmc_plot_path:
-            lash_e.logger.info(f"  1D CMC control plot saved: {cmc_plot_path}")
-    except Exception as e:
-        lash_e.logger.warning(f"1D CMC control plot failed (non-fatal): {e}")
+    if output_folder is not None:
+        # Plot 1D CMC controls immediately after first measurement round.
+        try:
+            cmc_plot_path = plot_1d_cmc_controls(well_recipes_df, output_folder, lash_e.logger)
+            if cmc_plot_path:
+                lash_e.logger.info(f"  1D CMC control plot saved: {cmc_plot_path}")
+        except Exception as e:
+            lash_e.logger.warning(f"1D CMC control plot failed (non-fatal): {e}")
 
     # 5. Bayesian iterations
     iteration = 1
@@ -2495,7 +2507,7 @@ def run_multidim_workflow(lash_e):
             points = points[:max_this_iter]
 
         # Intermediate diagnostic plots — 2D only (3D+ uses end-of-run HTML plots instead)
-        if len(SURFACTANTS) == 2:
+        if output_folder is not None and len(SURFACTANTS) == 2:
             if RECOMMENDER_TYPE in ('delaunay', 'triangle') and viz_state is not None:
                 try:
                     path = _plot_delaunay_decisions(
@@ -2569,43 +2581,44 @@ def run_multidim_workflow(lash_e):
     lash_e.discard_used_wellplate()
     final_path = save_results(well_recipes_df, output_folder, "results_final")
 
-    # Generate pairwise marginal maps
-    try:
-        from analysis.multidim_visualizer import plot_pairwise_maps
-        lash_e.logger.info("Generating pairwise contour maps...")
-        saved = plot_pairwise_maps(well_recipes_df, SURFACTANTS, output_folder)
-        for k, p in saved.items():
-            lash_e.logger.info(f"  Plot saved: {p}")
-    except Exception as e:
-        lash_e.logger.warning(f"Plotting failed (non-fatal): {e}")
-
-    # Generate interactive 3D HTML scatter plots (only for 3D spaces)
-    if len(SURFACTANTS) == 3:
+    if output_folder is not None:
+        # Generate pairwise marginal maps
         try:
-            from analysis.plot_3d_interactive import plot_3d_interactive, plot_isosurface, plot_ratio_phases
-            lash_e.logger.info("Generating interactive 3D scatter plots...")
-            p_turb, p_ratio = plot_3d_interactive(final_path, output_dir=output_folder)
-            lash_e.logger.info(f"  3D turbidity plot: {p_turb}")
-            lash_e.logger.info(f"  3D ratio plot: {p_ratio}")
-            lash_e.logger.info("Generating turbidity cloud plot...")
-            p_iso = plot_isosurface(final_path, threshold=TURBIDITY_PLOT_THRESHOLD, output_dir=output_folder)
-            lash_e.logger.info(f"  Turbidity cloud: {p_iso}")
-            lash_e.logger.info("Generating ratio phase map...")
-            p_phases = plot_ratio_phases(final_path, output_dir=output_folder)
-            lash_e.logger.info(f"  Ratio phase map: {p_phases}")
+            from analysis.multidim_visualizer import plot_pairwise_maps
+            lash_e.logger.info("Generating pairwise contour maps...")
+            saved = plot_pairwise_maps(well_recipes_df, SURFACTANTS, output_folder)
+            for k, p in saved.items():
+                lash_e.logger.info(f"  Plot saved: {p}")
         except Exception as e:
-            lash_e.logger.warning(f"Interactive 3D plot failed (non-fatal): {e}")
+            lash_e.logger.warning(f"Plotting failed (non-fatal): {e}")
 
-    if len(SURFACTANTS) == 3:
-        try:
-            from analysis.iteration_metrics import compute_iteration_metrics, save_iteration_metrics
-            lash_e.logger.info("Computing per-iteration metrics...")
-            iter_metrics = compute_iteration_metrics(final_path, SURFACTANTS, output_folder)
-            csv_m, png_m = save_iteration_metrics(iter_metrics, output_folder)
-            lash_e.logger.info(f"  Iteration metrics CSV: {csv_m}")
-            lash_e.logger.info(f"  Iteration metrics plot: {png_m}")
-        except Exception as e:
-            lash_e.logger.warning(f"Iteration metrics failed (non-fatal): {e}")
+        # Generate interactive 3D HTML scatter plots (only for 3D spaces)
+        if len(SURFACTANTS) == 3:
+            try:
+                from analysis.plot_3d_interactive import plot_3d_interactive, plot_isosurface, plot_ratio_phases
+                lash_e.logger.info("Generating interactive 3D scatter plots...")
+                p_turb, p_ratio = plot_3d_interactive(final_path, output_dir=output_folder)
+                lash_e.logger.info(f"  3D turbidity plot: {p_turb}")
+                lash_e.logger.info(f"  3D ratio plot: {p_ratio}")
+                lash_e.logger.info("Generating turbidity cloud plot...")
+                p_iso = plot_isosurface(final_path, threshold=TURBIDITY_PLOT_THRESHOLD, output_dir=output_folder)
+                lash_e.logger.info(f"  Turbidity cloud: {p_iso}")
+                lash_e.logger.info("Generating ratio phase map...")
+                p_phases = plot_ratio_phases(final_path, output_dir=output_folder)
+                lash_e.logger.info(f"  Ratio phase map: {p_phases}")
+            except Exception as e:
+                lash_e.logger.warning(f"Interactive 3D plot failed (non-fatal): {e}")
+
+        if len(SURFACTANTS) == 3:
+            try:
+                from analysis.iteration_metrics import compute_iteration_metrics, save_iteration_metrics
+                lash_e.logger.info("Computing per-iteration metrics...")
+                iter_metrics = compute_iteration_metrics(final_path, SURFACTANTS, output_folder)
+                csv_m, png_m = save_iteration_metrics(iter_metrics, output_folder)
+                lash_e.logger.info(f"  Iteration metrics CSV: {csv_m}")
+                lash_e.logger.info(f"  Iteration metrics plot: {png_m}")
+            except Exception as e:
+                lash_e.logger.warning(f"Iteration metrics failed (non-fatal): {e}")
 
     lash_e.logger.info("=" * 80)
     lash_e.logger.info("N-D WORKFLOW COMPLETE")
@@ -2613,7 +2626,7 @@ def run_multidim_workflow(lash_e):
     n_ctrl_final = len(well_recipes_df[well_recipes_df['well_type'] == 'control'])
     lash_e.logger.info(f"  Total wells: {len(well_recipes_df)} ({n_exp_final} experiment + {n_ctrl_final} control)")
     lash_e.logger.info(f"  Iterations: {iteration - 1}")
-    lash_e.logger.info(f"  Output: {final_path}")
+    lash_e.logger.info(f"  Output: {final_path or 'in-memory results only'}")
     lash_e.logger.info("=" * 80)
 
     _send_workflow_slack(
@@ -2655,10 +2668,12 @@ def execute(config=None, show_gui=True):
         fill_water_vial(lash_e, "water_2")
 
         if VALIDATE_LIQUIDS:
-            validation_folder = os.path.join(
-                "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            )
-            os.makedirs(validation_folder, exist_ok=True)
+            validation_folder = None
+            if not lash_e.simulate or _SAVE_FILES_ON_SIMULATE:
+                validation_folder = os.path.join(
+                    "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                )
+                os.makedirs(validation_folder, exist_ok=True)
             validate_pipetting_system(
                 lash_e, validation_folder, surfactant_names=[SURFACTANTS[0]],
             )

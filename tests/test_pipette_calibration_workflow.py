@@ -436,7 +436,21 @@ class WorkflowExecutionTests(unittest.TestCase):
             self.assert_real_run(None, show_gui=True)
         self.assertEqual(loader.call_count, 2)
 
-    def assert_real_run(self, config, show_gui):
+    def test_internal_simulation_switches_stay_out_of_gui_config(self):
+        from workflow_config_manager import ConfigManager
+        before = ConfigManager.workflow_constants(vars(self.workflow))
+        with patch.object(self.workflow, '_SAVE_FILES_ON_SIMULATE', True), \
+                patch.object(self.workflow, '_USE_BAYES_OPT_ON_SIMULATE', True):
+            self.assertEqual(ConfigManager.workflow_constants(vars(self.workflow)), before)
+        self.assertNotIn('_SAVE_FILES_ON_SIMULATE', before)
+        self.assertNotIn('_USE_BAYES_OPT_ON_SIMULATE', before)
+
+    def test_file_free_simulation_runs_calibration_and_validation(self):
+        self.config.update(VOLUME_TARGETS_ML=[0.02, 0.01],
+                           VALIDATION_VOLUMES_ML=[0.015, 0.008], MAX_TOTAL_MEASUREMENTS=24)
+        self.assert_real_run(deepcopy(self.config), show_gui=False, save_files=False)
+
+    def assert_real_run(self, config, show_gui, save_files=True):
         from sdl_pipette_calibration import experiment as engine
         from sdl_pipette_calibration import run_validation as validation
         from sdl_pipette_calibration.protocol_loader import load_hardware_protocol
@@ -472,8 +486,8 @@ class WorkflowExecutionTests(unittest.TestCase):
             self.experiments.append(instance)
             return instance
 
-        def validator(config, config_path):
-            instance = validation_type(config, config_path)
+        def validator(config, config_path, **kwargs):
+            instance = validation_type(config, config_path, **kwargs)
             self.validators.append(instance)
             return instance
 
@@ -481,6 +495,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.addCleanup(random.setstate, random_state)
         random.seed(self.config['RANDOM_SEED'])
         with ExitStack() as stack:
+            stack.enter_context(patch.object(self.workflow, "_SAVE_FILES_ON_SIMULATE", save_files))
             stack.enter_context(patch.object(self.workflow, 'Lash_E', side_effect=self.fake_lash))
             stack.enter_context(patch.object(protocol_module, 'Lash_E', side_effect=AssertionError('Second coordinator')))
             stack.enter_context(patch.object(ConfigManager, '_load_config_file', side_effect=AssertionError('Workflow YAML load')))
@@ -517,8 +532,9 @@ class WorkflowExecutionTests(unittest.TestCase):
             self.assertEqual(state['max_retries_per_measurement'], 0)
             self.assertTrue(state['physical_cleanup_done'])
         self.assertGreater(experiment.total_measurements, 0)
-        self.assertLessEqual(experiment.total_measurements, 12)
-        self.assertEqual(len(echoes), experiment.total_measurements + 1)
+        self.assertLessEqual(experiment.total_measurements, self.config["MAX_TOTAL_MEASUREMENTS"])
+        validation_count = len(self.config["VALIDATION_VOLUMES_ML"]) * self.config["REPLICATES_PER_VOLUME"]
+        self.assertEqual(len(echoes), experiment.total_measurements + validation_count)
         for state, parameters, echo in echoes:
             hardware = parameters['parameters'] if 'parameters' in parameters else parameters
             for name in self.workflow._HARDWARE_PARAMETERS:
@@ -527,22 +543,33 @@ class WorkflowExecutionTests(unittest.TestCase):
                 self.assertEqual(echo[name], expected)
             self.assertEqual(echo['overaspirate_vol'], parameters['overaspirate_vol'])
             self.assertEqual(echo['measurement_budget_consumed'], 1)
-        artifact = Path(experiment.output_dir).resolve() / 'optimal_conditions_water.csv'
-        self.assertTrue(artifact.is_file())
-        self.assertEqual(result['optimal_conditions_file'], str(artifact))
-        self.assertEqual(validator.config._config['validation']['optimal_conditions_file'], str(artifact))
-        self.assertEqual(validator.config._config['experiment']['volume_targets_ml'],
-                 self.config['VALIDATION_VOLUMES_ML'])
-        self.assertEqual([item['volume_target_ml'] for item in
-                  result['validation_results']['validation_results']],
-                 self.config['VALIDATION_VOLUMES_ML'])
-        output = Path(result['output_dir'])
-        for filename in ['calibration_effective_config.yaml', 'validation_effective_config.yaml',
-                         'workflow_confirmed_config.yaml']:
-            self.assertTrue((output / filename).is_file())
-        self.assertTrue(output.is_relative_to(self.directory))
-        confirmed = yaml.safe_load((output / 'workflow_confirmed_config.yaml').read_text(encoding='utf-8'))
-        self.assertEqual(confirmed, self.config)
+        if save_files:
+            artifact = Path(experiment.output_dir).resolve() / 'optimal_conditions_water.csv'
+            self.assertTrue(artifact.is_file())
+            self.assertEqual(result['optimal_conditions_file'], str(artifact))
+            self.assertEqual(validator.config._config['validation']['optimal_conditions_file'], str(artifact))
+            self.assertEqual(validator.config._config['experiment']['volume_targets_ml'],
+                     self.config['VALIDATION_VOLUMES_ML'])
+            self.assertEqual([item['volume_target_ml'] for item in
+                      result['validation_results']['validation_results']],
+                     self.config['VALIDATION_VOLUMES_ML'])
+            output = Path(result['output_dir'])
+            for filename in ['calibration_effective_config.yaml', 'validation_effective_config.yaml',
+                             'workflow_confirmed_config.yaml']:
+                self.assertTrue((output / filename).is_file())
+            self.assertTrue(output.is_relative_to(self.directory))
+            confirmed = yaml.safe_load((output / 'workflow_confirmed_config.yaml').read_text(encoding='utf-8'))
+            self.assertEqual(confirmed, self.config)
+        else:
+            self.assertEqual(len(experiment.volume_results), len(self.config["VOLUME_TARGETS_ML"]))
+            self.assertIsNone(experiment.output_dir)
+            self.assertIsNone(validator.output_dir)
+            self.assertIsNone(result['output_dir'])
+            self.assertIsNone(result['optimal_conditions_file'])
+            self.assertEqual(list(self.directory.iterdir()), [self.base_path])
+            self.assertEqual(len(result['validation_results']['validation_results']),
+                             len(self.config['VALIDATION_VOLUMES_ML']))
+            self.assertFalse(experiment.config.use_bayesian_optimization())
         calibration = experiment.config._config
         self.assertEqual(calibration['experiment']['volume_targets_ml'], self.config['VOLUME_TARGETS_ML'])
         for key in ['RANDOM_SEED', 'MAX_TOTAL_MEASUREMENTS', 'MAX_MEASUREMENTS_FIRST_VOLUME',

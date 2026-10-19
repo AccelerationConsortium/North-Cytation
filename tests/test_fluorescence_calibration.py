@@ -46,6 +46,61 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_robot.get_vial_in_location.return_value = None
         return lash
 
+    def test_simulation_keeps_automation_and_analysis_without_saving(self):
+        for reader_has_data in (False, True):
+            with self.subTest(reader_has_data=reader_has_data):
+                lash = self.fake_coordinator(simulate=True)
+                lash.workflow_config = self.config
+                plan, _ = build_plan(self.config)
+                raw = pd.DataFrame({"well_position": plan.well_position,
+                                    "334_373": 10 + plan.concentration_relative * 100,
+                                    "334_384": 20 + plan.concentration_relative * 200})
+                lash.measure_wellplate.return_value = raw if reader_has_data else None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=lambda data, _: data)
+                before = set(self.root.rglob("*"))
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                        patch.object(pd.DataFrame, "to_csv", side_effect=AssertionError("Unexpected CSV write")), \
+                        patch.object(Path, "write_text", side_effect=AssertionError("Unexpected text write")), \
+                        patch.object(workflow, "fit_calibration", wraps=fit_calibration) as fit, \
+                        patch.object(workflow, "plot_calibration") as calibration_plot, \
+                        patch.object(workflow, "plot_kinetics") as kinetics_plot:
+                    self.assertIsNone(execute(self.config, show_gui=False))
+                self.assertEqual(set(self.root.rglob("*")), before)
+                fit.assert_called_once()
+                calibration_plot.assert_not_called()
+                kinetics_plot.assert_not_called()
+                lash.nr_robot.dispense_from_vial_into_vial.assert_called()
+                lash.nr_robot.dispense_from_vials_into_wellplate.assert_called()
+                lash.measure_wellplate.assert_called_once()
+                lash.grab_new_wellplate.assert_called_once()
+                lash.discard_used_wellplate.assert_called_once()
+
+    def test_simulation_saving_can_be_reenabled(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = self.config
+        lash.measure_wellplate.return_value = None
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True), \
+                patch.object(workflow, "plot_calibration") as calibration_plot, \
+                patch.object(workflow, "plot_kinetics") as kinetics_plot:
+            output = execute(self.config, show_gui=False)
+        self.assertEqual(list((self.root / "output").iterdir()), [output.resolve()])
+        self.assertTrue(output.name.endswith("_simulate"))
+        for name in ("well_plan.csv", "substock_recipes.csv", "config.yaml",
+                     "fluorescence_results.csv", "calibration_summary.csv", "calibration_fits.csv"):
+            self.assertTrue((output / name).is_file(), name)
+        calibration_plot.assert_called_once()
+        kinetics_plot.assert_called_once()
+
+    def test_simulation_save_switch_is_private_and_disabled(self):
+        from workflow_config_manager import ConfigManager
+        self.assertIs(workflow._SAVE_FILES_ON_SIMULATE, False)
+        self.assertNotIn("_SAVE_FILES_ON_SIMULATE", workflow._CONFIG_KEYS)
+        self.assertNotIn("_SAVE_FILES_ON_SIMULATE", ConfigManager.workflow_constants(vars(workflow)))
+
     def test_optional_shake_runs_before_first_read_at_each_timepoint(self):
         for enabled in (False, True):
             with self.subTest(enabled=enabled):
@@ -103,6 +158,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash), flatten_cytation_data=MagicMock())
             with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
                     patch.object(workflow, "plot_calibration"), patch.object(workflow, "plot_kinetics"), \
+                    patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True), \
                     patch("scheduler.simulation_state.can_save", return_value=True):
                 output = execute(config, show_gui=False)
             save()
@@ -293,7 +349,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         with patch.dict(workflow.__dict__), patch.dict("sys.modules", {
             "workflow_config_manager": types.SimpleNamespace(ConfigManager=manager),
             "master_usdl_coordinator": coordinator,
-        }), patch.object(workflow, "build_plan", side_effect=confirmed_plan), patch.object(workflow, "plot_calibration"):
+        }), patch.object(workflow, "build_plan", side_effect=confirmed_plan), patch.object(workflow, "plot_calibration"), \
+            patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True):
             output = execute()
         self.assertEqual(events, ["review", "plan"])
         self.assertEqual(yaml.safe_load((output / "config.yaml").read_text()), confirmed)
