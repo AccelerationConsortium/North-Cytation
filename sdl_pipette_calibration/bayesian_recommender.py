@@ -85,6 +85,8 @@ class AxBayesianOptimizer:
         """Initialize optimizer with configuration."""
         self.config = config
         self.is_first_volume = is_first_volume
+        self.sobol_only = (config.experiment_config is not None
+                           and not config.experiment_config.use_bayesian_optimization())
         self.state = OptimizationState()
         self.csv_export_dir = None  # Set during optimization to export Ax trials
         self.optimizer_insights = {}  # Store acquisition values and model predictions per trial
@@ -434,40 +436,46 @@ class AxBayesianOptimizer:
             else:
                 backend = "GPEI"
         
-        # Get model and generation kwargs from backend configuration
-        bayesian_model, model_gen_kwargs = self._get_model_and_kwargs(backend)
-        logger.info(f"Mapped backend '{backend}' to model: {bayesian_model.__name__ if hasattr(bayesian_model, '__name__') else bayesian_model}")
-        if model_gen_kwargs:
-            acqf_name = model_gen_kwargs.get('botorch_acqf_class').__name__ if 'botorch_acqf_class' in model_gen_kwargs else 'default'
-            logger.info(f"Using acquisition function: {acqf_name}")
-        
-        if num_sobol_trials > 0:
-            # Strategy with SOBOL followed by Bayesian (like existing working code)
-            generation_strategy = GenerationStrategy(
-                steps=[
-                    GenerationStep(
-                        model=Models.SOBOL,
-                        num_trials=num_sobol_trials,
-                        min_trials_observed=num_sobol_trials,  # Wait for all SOBOL trials
-                    ),
-                    GenerationStep(
-                        model=bayesian_model,  # Backend-determined model
-                        num_trials=-1,  # Continue indefinitely
-                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
-                    ),
-                ]
-            )
+        if self.sobol_only:
+            generation_strategy = GenerationStrategy(steps=[
+                GenerationStep(model=Models.SOBOL, num_trials=-1,
+                               model_kwargs={"seed": self.config.random_seed}),
+            ])
         else:
-            # Pure Bayesian optimization (skip SOBOL)
-            generation_strategy = GenerationStrategy(
-                steps=[
-                    GenerationStep(
-                        model=bayesian_model,  # Backend-determined model
-                        num_trials=-1,  # Continue indefinitely
-                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
-                    ),
-                ]
-            )
+            # Get model and generation kwargs from backend configuration
+            bayesian_model, model_gen_kwargs = self._get_model_and_kwargs(backend)
+            logger.info(f"Mapped backend '{backend}' to model: {bayesian_model.__name__ if hasattr(bayesian_model, '__name__') else bayesian_model}")
+            if model_gen_kwargs:
+                acqf_name = model_gen_kwargs.get('botorch_acqf_class').__name__ if 'botorch_acqf_class' in model_gen_kwargs else 'default'
+                logger.info(f"Using acquisition function: {acqf_name}")
+
+            if num_sobol_trials > 0:
+                # Strategy with SOBOL followed by Bayesian (like existing working code)
+                generation_strategy = GenerationStrategy(
+                    steps=[
+                        GenerationStep(
+                            model=Models.SOBOL,
+                            num_trials=num_sobol_trials,
+                            min_trials_observed=num_sobol_trials,  # Wait for all SOBOL trials
+                        ),
+                        GenerationStep(
+                            model=bayesian_model,  # Backend-determined model
+                            num_trials=-1,  # Continue indefinitely
+                            model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
+                        ),
+                    ]
+                )
+            else:
+                # Pure Bayesian optimization (skip SOBOL)
+                generation_strategy = GenerationStrategy(
+                    steps=[
+                        GenerationStep(
+                            model=bayesian_model,  # Backend-determined model
+                            num_trials=-1,  # Continue indefinitely
+                            model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
+                        ),
+                    ]
+                )
         
         # Create Ax client with custom strategy
         ax_client = AxClient(
@@ -505,7 +513,9 @@ class AxBayesianOptimizer:
         # Store references
         self.state.ax_client = ax_client
         logger.info(f"Created Ax client with {num_sobol_trials} SOBOL trials")
-        if num_sobol_trials == 0:
+        if self.sobol_only:
+            logger.info("  Mode: Sobol-only simulation (no Bayesian model fitting)")
+        elif num_sobol_trials == 0:
             logger.info("  Mode: Pure Bayesian optimization (no exploration)")
         else:
             logger.info(f"  Mode: {num_sobol_trials} SOBOL trials -> Bayesian optimization")
@@ -576,25 +586,26 @@ class AxBayesianOptimizer:
                 else:
                     logger.info(f"  [ACQ] Acquisition Value: Not available ({method} generation)")
                 
-            # Get model predictions for this point (what does the model think will happen?)
-            try:
-                predictions = self.state.ax_client.get_model_predictions_for_parameterizations([params])
-                if predictions and len(predictions) > 0:
-                    pred = predictions[0]
-                    logger.info("  [PRED] Model Predictions:")
-                    for metric, (mean, sem) in pred.items():
-                        uncertainty_pct = (sem / abs(mean) * 100) if mean != 0 else float('inf')
-                        logger.info(f"    - {metric}: {mean:.3f} +/- {sem:.3f} (uncertainty: {uncertainty_pct:.1f}%)")
-                        # Store for CSV
-                        insights[f'predicted_{metric}_mean'] = mean
-                        insights[f'predicted_{metric}_sem'] = sem
-                        insights[f'predicted_{metric}_uncertainty_pct'] = uncertainty_pct
-                else:
-                    logger.info("  [PRED] Model Predictions: Not available")
+            if not self.sobol_only:
+                # Get model predictions for this point (what does the model think will happen?)
+                try:
+                    predictions = self.state.ax_client.get_model_predictions_for_parameterizations([params])
+                    if predictions and len(predictions) > 0:
+                        pred = predictions[0]
+                        logger.info("  [PRED] Model Predictions:")
+                        for metric, (mean, sem) in pred.items():
+                            uncertainty_pct = (sem / abs(mean) * 100) if mean != 0 else float('inf')
+                            logger.info(f"    - {metric}: {mean:.3f} +/- {sem:.3f} (uncertainty: {uncertainty_pct:.1f}%)")
+                            # Store for CSV
+                            insights[f'predicted_{metric}_mean'] = mean
+                            insights[f'predicted_{metric}_sem'] = sem
+                            insights[f'predicted_{metric}_uncertainty_pct'] = uncertainty_pct
+                    else:
+                        logger.info("  [PRED] Model Predictions: Not available")
                         
-            except Exception as e:
-                logger.debug(f"Could not get model predictions: {e}")
-                logger.info("  [PRED] Model Predictions: Error retrieving predictions")
+                except Exception as e:
+                    logger.debug(f"Could not get model predictions: {e}")
+                    logger.info("  [PRED] Model Predictions: Error retrieving predictions")
                 
         except Exception as e:
             logger.debug(f"Could not extract optimizer insights: {e}")
@@ -980,7 +991,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
     optimization_config = OptimizationConfig(
         optimizer_type=optimizer_type,
         constraints=constraints,
-        random_seed=config.get_random_seed() or 42,
+        random_seed=config.get_random_seed() if config.get_random_seed() is not None else 42,
         num_initial_trials=sobol_count,
         target_volume_ml=target_volume_ml,
         experiment_config=config,

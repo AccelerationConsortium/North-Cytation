@@ -94,7 +94,7 @@ class Biotek_Wrapper:
         Move the plate carrier into the reader.
         
         Args:
-            plate_type (str): Type of plate to expect ("96 WELL PLATE" or "48 WELL PLATE")
+            plate_type (str): Type of plate to expect ("96 WELL PLATE", "48 WELL PLATE", or "24 WELL PLATE")
             use_lid (bool): Whether the plate has a lid (default: False)
         """
         self.biotek.carrier_in(plate_type_name=plate_type, lid_on_plate=use_lid)
@@ -306,7 +306,7 @@ class Biotek_Wrapper:
             protocol_path (str): Path to the Biotek protocol file (.prt)
             wells (list, optional): List of well indices to measure (0-based)
                 If None, measures all wells according to protocol
-            plate_type (str): Plate format - "96 WELL PLATE" or "48 WELL PLATE"
+            plate_type (str): Plate format - "96 WELL PLATE", "48 WELL PLATE", or "24 WELL PLATE"
             
         Returns:
             pandas.DataFrame: Combined measurement data from all wells
@@ -331,10 +331,16 @@ class Biotek_Wrapper:
                     grouped_wells = self.group_wells(wells, plate_type)
                 else:
                     # Use all wells if none specified
-                    if plate_type == "96 WELL PLATE" or plate_type == "96 QUARTZ LID":
-                        grouped_wells = [self.well_index_to_label(i, 12) for i in range(96)]
-                    else:  # 48 WELL PLATE
-                        grouped_wells = [self.well_index_to_label(i, 8) for i in range(48)]
+                    plate_layouts = {
+                        "96 WELL PLATE": (96, 12),
+                        "96 QUARTZ LID": (96, 12),
+                        "48 WELL PLATE": (48, 8),
+                        "24 WELL PLATE": (24, 6),
+                    }
+                    if plate_type not in plate_layouts:
+                        raise ValueError(f"Unsupported plate type: {plate_type}")
+                    well_count, columns = plate_layouts[plate_type]
+                    grouped_wells = [self.well_index_to_label(i, columns) for i in range(well_count)]
                     grouped_wells = [grouped_wells]  # Single group with all wells
                     
                 # Process each group of wells sequentially
@@ -393,7 +399,7 @@ class Biotek_Wrapper:
         
         Args:
             indices (list): List of 0-based well indices to group
-            plate_type (str): Plate format - "96 WELL PLATE" or "48 WELL PLATE"
+            plate_type (str): Plate format - "96 WELL PLATE", "48 WELL PLATE", or "24 WELL PLATE"
             
         Returns:
             list: List of well groups, where each group is a list of well labels
@@ -415,6 +421,8 @@ class Biotek_Wrapper:
             nums_per_letter = 12  # A1-A12, B1-B12, etc.
         elif plate_type == "48 WELL PLATE":
             nums_per_letter = 8   # A1-A8, B1-B8, etc.
+        elif plate_type == "24 WELL PLATE":
+            nums_per_letter = 6   # A1-A6, B1-B6, etc.
         else:
             self._log('error', f"Unsupported plate type: {plate_type}")
             raise ValueError(f"Unsupported plate type: {plate_type}")

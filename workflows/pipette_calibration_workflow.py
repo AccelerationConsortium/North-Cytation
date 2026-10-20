@@ -19,6 +19,10 @@ _ROOT = Path(__file__).resolve().parents[1]
 _PROTOCOL_NAME = "calibration_protocol_northrobot"
 
 SIMULATE = True
+# Internal development switches; excluded from GUI/YAML configuration.
+# Hardware always saves files and uses the configured Bayesian optimizer.
+_SAVE_FILES_ON_SIMULATE = False
+_USE_BAYES_OPT_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 TARGET_VIAL = "acetone"
 CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config_workflow.yaml"
@@ -225,6 +229,8 @@ def _effective_config(config, base_path):
     raw["validation"]["replicates_per_volume"] = config["REPLICATES_PER_VOLUME"]
     if raw["output"]["export_optimal_conditions"] is not True:
         raise ValueError("Base config must enable optimal-conditions export")
+    raw["output"]["save_files"] = not config["SIMULATE"] or _SAVE_FILES_ON_SIMULATE
+    raw["optimization"]["use_bayesian"] = not config["SIMULATE"] or _USE_BAYES_OPT_ON_SIMULATE
     return raw
 
 
@@ -235,7 +241,6 @@ def _snapshot(path, raw):
 
 def _preflight_artifact(path, raw):
     from sdl_pipette_calibration.pipetting_wizard import PipettingWizard
-    from sdl_pipette_calibration.parameter_constraints import constrain_parameters
 
     if not path.is_file():
         raise FileNotFoundError(f"Current run final exporter CSV missing: {path}")
@@ -243,6 +248,15 @@ def _preflight_artifact(path, raw):
     data = wizard.load_calibration_data(path)
     if data is None:
         raise ValueError("Current run CSV is not usable wizard calibration data")
+    _preflight_conditions(data, raw)
+
+
+def _preflight_conditions(data, raw):
+    """Validate the same calibration table for disk and in-memory handoffs."""
+    from sdl_pipette_calibration.pipetting_wizard import PipettingWizard
+    from sdl_pipette_calibration.parameter_constraints import constrain_parameters
+
+    wizard = PipettingWizard()
     required = set(raw["hardware_parameters"]) | set(raw["experiment"]["fixed_parameters"])
     columns = ["volume_target_ul", "volume_measured_ml", "calibration_overaspirate_vol"]
     columns.extend("hardware_parameters_" + name for name in sorted(required))
@@ -338,27 +352,42 @@ def execute(config=None, show_gui=True):
         base_path = base_path.resolve(strict=True)
         raw = _effective_config(confirmed, base_path)
         protocol = load_hardware_protocol(_PROTOCOL_NAME)
-        output = _base_path(raw["output"]["base_directory"], base_path) / (
-            "pc_" + uuid4().hex[:12])
-        output.mkdir(parents=True, exist_ok=False)
-        raw["output"]["base_directory"] = str(output / "calibration")
-        raw["validation"]["output_directory"] = str(output / "validation")
+        liquids = importlib.import_module(_PROTOCOL_NAME).LIQUIDS
+        if confirmed["LIQUID"] not in liquids:
+            raise ValueError(f"Unknown calibration liquid: {confirmed['LIQUID']}")
+        save_files = raw["output"]["save_files"]
+        output = None
+        if save_files:
+            output = _base_path(raw["output"]["base_directory"], base_path) / (
+                "pc_" + uuid4().hex[:12])
+            output.mkdir(parents=True, exist_ok=False)
+            raw["output"]["base_directory"] = str(output / "calibration")
+            raw["validation"]["output_directory"] = str(output / "validation")
+            _snapshot(output / "calibration_effective_config.yaml", raw)
+            _snapshot(output / "workflow_confirmed_config.yaml", confirmed)
         calibration_config = ExperimentConfig(raw, str(base_path))
-        _snapshot(output / "calibration_effective_config.yaml", raw)
-        _snapshot(output / "workflow_confirmed_config.yaml", confirmed)
-        lash_e.logger.info("Calibration workflow output: %s", output)
+        lash_e.logger.info("Calibration workflow output: %s", output or "in-memory only")
         _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} started | liquid={confirmed['LIQUID']}")
         experiment = CalibrationExperiment(calibration_config)
         with protocol.workflow_session(lash_e, raw, confirmed["TARGET_VIAL"]):
             calibration_results = experiment.run()
-        artifact = Path(experiment.output_dir).resolve() / f"optimal_conditions_{confirmed['LIQUID']}.csv"
-        _preflight_artifact(artifact, raw)
+        artifact = None
+        conditions = None
+        if save_files:
+            artifact = Path(experiment.output_dir).resolve() / f"optimal_conditions_{confirmed['LIQUID']}.csv"
+            _preflight_artifact(artifact, raw)
+        else:
+            conditions = experiment.optimal_conditions_table(calibration_results)
+            _preflight_conditions(conditions, raw)
         validation_raw = deepcopy(raw)
         validation_raw["experiment"]["volume_targets_ml"] = deepcopy(confirmed["VALIDATION_VOLUMES_ML"])
-        validation_raw["validation"]["optimal_conditions_file"] = str(artifact)
+        validation_raw["validation"]["optimal_conditions_file"] = str(artifact) if artifact is not None else None
         validation_config = ExperimentConfig(validation_raw, str(base_path))
-        _snapshot(output / "validation_effective_config.yaml", validation_raw)
-        validator = ValidationRunner(validation_config, base_path)
+        if save_files:
+            _snapshot(output / "validation_effective_config.yaml", validation_raw)
+            validator = ValidationRunner(validation_config, base_path)
+        else:
+            validator = ValidationRunner(validation_config, base_path, optimal_conditions=conditions)
         with protocol.workflow_session(lash_e, validation_raw, confirmed["TARGET_VIAL"]):
             validation_results = validator.run_validation()
         summary = _check_validation(validation_results, confirmed)
@@ -370,7 +399,8 @@ def execute(config=None, show_gui=True):
         _send_workflow_slack(lash_e, message)
         failed = False
         return {"calibration_results": calibration_results, "validation_results": validation_results,
-                "optimal_conditions_file": str(artifact), "output_dir": str(output)}
+                "optimal_conditions_file": str(artifact) if artifact is not None else None,
+                "output_dir": str(output) if output is not None else None}
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("Pipette calibration workflow failed")
         if isinstance(error, KeyboardInterrupt):

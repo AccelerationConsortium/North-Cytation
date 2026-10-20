@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # workflow_configs/fluorescence_calibration_workflow.yaml (standard pattern:
 # module-level UPPERCASE constants + workflow_globals=globals() at Lash_E init).
 SIMULATE = True
+_SAVE_FILES_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
@@ -50,6 +51,7 @@ MIN_SCHEDULE_GAP_MIN = 5
 RANDOMIZED_ORDER = False
 RANDOMIZATION_SEED = 42
 WELLPLATE_TYPE = "96 WELL PLATE"
+VOLUME_SCALE_BY_PLATE = {"96 WELL PLATE": 1, "48 WELL PLATE": 2, "24 WELL PLATE": 4}
 DISPENSE_ORDER = ["medium", "dye"]
 # Which base media to prepare wells for.
 TEST_WATER = True
@@ -74,7 +76,7 @@ _CONFIG_KEYS = [
     "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
     "FRESH_SUBSTOCKS", "PREPARE_ONLY", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
     "MIN_SCHEDULE_GAP_MIN", "RANDOMIZED_ORDER",
-    "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "DISPENSE_ORDER",
+    "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DISPENSE_ORDER",
     "TEST_WATER", "TEST_SURFACTANT", "TEST_SOLVENT",
     "SURFACTANT_NAME", "SURFACTANT_CONCENTRATION_MM", "SURFACTANT_CMC_MM",
     "SURFACTANT_LIQUID", "VORTEX_SECONDS", "PROTOCOL_FILE", "RAW_CHANNELS",
@@ -91,7 +93,7 @@ _PROTOCOLS = {
     "coumarin-6": (r"C:\Protocols\Coumarin_96.prt", ["485_530"]),
     "nile-red": (r"C:\Protocols\NileRed_96.prt", ["550_648"]),
 }
-_PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
+_PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8), "24 WELL PLATE": (24, 6)}
 _STOCK_CONCENTRATIONS_UM = {"pyrene": 48.6, "nile-red": 50.0, "coumarin-6": 3.0}
 
 
@@ -135,7 +137,13 @@ def build_plan(config):
     if type(c["PREPARE_ONLY"]) is not bool:
         raise ValueError("PREPARE_ONLY must be true or false")
     if c["WELLPLATE_TYPE"] not in _PLATES:
-        raise ValueError("Only configured 48/96-well plates are supported; 24 needs robot geometry")
+        raise ValueError("Only 24/48/96-well plate layouts are supported")
+    scales = c["VOLUME_SCALE_BY_PLATE"]
+    if not isinstance(scales, dict) or c["WELLPLATE_TYPE"] not in scales:
+        raise ValueError(f"No volume scale configured for {c['WELLPLATE_TYPE']}")
+    scale = scales[c["WELLPLATE_TYPE"]]
+    if isinstance(scale, bool) or not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
+        raise ValueError(f"Volume scale for {c['WELLPLATE_TYPE']} must be finite and positive")
     for key in ("REPLICATES", "REPETITIONS", "MEASUREMENT_REPLICATES"):
         if type(c[key]) is not int or c[key] < 1:
             raise ValueError(f"{key} must be a positive integer")
@@ -170,6 +178,8 @@ def build_plan(config):
     if stock_concentration is None:
         stock_concentration = _STOCK_CONCENTRATIONS_UM[dye]
     capacity, columns = _PLATES[c["WELLPLATE_TYPE"]]
+    scaled_dye_ul = c["DYE_VOLUME_UL"] * scale
+    scaled_total_ul = c["TOTAL_VOLUME_UL"] * scale
     rng = np.random.default_rng(c["RANDOMIZATION_SEED"])
     media = [medium for medium, enabled in (
         ("water", c["TEST_WATER"]), ("surfactant", c["TEST_SURFACTANT"]), ("solvent", c["TEST_SOLVENT"])
@@ -199,8 +209,9 @@ def build_plan(config):
                         dye=dye, dye_solvent=solvent,
                         dilution_factor=factor, concentration_relative=factor * fraction,
                         concentration_um=stock_concentration * factor * fraction,
-                        dye_volume_ul=c["DYE_VOLUME_UL"],
-                        medium_volume_ul=c["TOTAL_VOLUME_UL"] - c["DYE_VOLUME_UL"],
+                        dye_volume_ul=scaled_dye_ul,
+                        medium_volume_ul=scaled_total_ul - scaled_dye_ul,
+                        volume_scale=scale,
                         solvent_fraction=1.0 if medium == "solvent" else fraction,
                         surfactant_final_mm=surf * (1 - fraction) if medium == "surfactant" and surf is not None else None))
         if c["RANDOMIZED_ORDER"]:
@@ -213,7 +224,7 @@ def build_plan(config):
         rows.extend(block)
     plan = pd.DataFrame(rows)
     for recipe in recipes:
-        required = (plan.dye_source == recipe["vial"]).sum() * c["DYE_VOLUME_UL"] / 1000
+        required = (plan.dye_source == recipe["vial"]).sum() * scaled_dye_ul / 1000
         if required + 0.1 > c["SUBSTOCK_VOLUME_ML"]:
             raise ValueError(f"Insufficient substock volume for {recipe['vial']} (including 0.1 mL reserve)")
     return plan, pd.DataFrame(recipes, columns=["batch", "vial", "stock_ml", "solvent_ml"])
@@ -419,18 +430,9 @@ def execute(config=None, show_gui=True):
         protocol, channels = _PROTOCOLS[dye]
         protocol = c["PROTOCOL_FILE"] or protocol
         channels = c["RAW_CHANNELS"] or channels
-        sim_suffix = "_simulate" if c["SIMULATE"] else ""
-        name_suffix = "_" + c["DYE"] + "_" + c["DYE_SOLVENT"]
-        output = Path("output") / "fluorescence_calibration" / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + sim_suffix + name_suffix)
-        output.mkdir(parents=True)
-        plan.to_csv(output / "well_plan.csv", index=False)
-        recipes.to_csv(output / "substock_recipes.csv", index=False)
-        (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
         if not c["PREPARE_ONLY"]:
             if not protocol or not channels:
                 raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
-            if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
-                raise ValueError("Set a fluorescence protocol matching the selected plate format")
             # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
             if not c["SIMULATE"] and not Path(protocol).is_file():
                 raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
@@ -466,7 +468,7 @@ def execute(config=None, show_gui=True):
             if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
                 raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
             plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
-            if c["TOTAL_VOLUME_UL"] / 1000 > plate_config["max_volume_per_well"]:
+            if (c["TOTAL_VOLUME_UL"] * c["VOLUME_SCALE_BY_PLATE"][c["WELLPLATE_TYPE"]]) / 1000 > plate_config["max_volume_per_well"]:
                 raise ValueError("Total volume exceeds plate capacity")
             if lash.nr_track.NUM_SOURCE < (0 if half == 1 else plan.plate.nunique()):
                 raise ValueError("Load enough plates for the complete experiment")
@@ -476,8 +478,12 @@ def execute(config=None, show_gui=True):
         working_required = (
             plan.loc[plan.dye_source == working_vial, "dye_volume_ul"].sum()
             + plan.loc[plan.medium == "solvent", "medium_volume_ul"].sum()) / 1000
-        # A nearly full working vial may already have served blanks before interruption.
-        working_fill = max(0.0, 6.0 - working.vial_volume) if working.vial_volume < 5.9 else 0.0
+        # Fill enough for this plan, with reserve, without exceeding the 8 mL vial.
+        if working_required + 0.1 > 8.0:
+            raise ValueError("Insufficient working solvent capacity: scaled plan needs more than one 8 mL vial fill")
+        working_target = max(6.0, working_required + 0.1)
+        working_fill = (0.0 if working.vial_volume >= max(5.9, working_required + 0.1)
+                        else max(0.0, working_target - working.vial_volume))
         if working_required + 0.1 > working.vial_volume + working_fill:
             raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
         pending_solvent = sum(recipe.solvent_ml for recipe in recipes.itertuples()
@@ -506,6 +512,18 @@ def execute(config=None, show_gui=True):
                                  liquid=c["SURFACTANT_LIQUID"])
         if working_fill > 0:
             dispense_solvent(lash, solvent_sources, working_vial, working_fill, solvent, reserve)
+        output = None
+        if not lash.simulate or _SAVE_FILES_ON_SIMULATE:
+            suffix = "_simulate" if lash.simulate else ""
+            name_suffix = "_" + c["DYE"] + "_" + c["DYE_SOLVENT"]
+            output = Path("output") / "fluorescence_calibration" / (
+                "fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + suffix + name_suffix)
+            output.mkdir(parents=True)
+            plan.to_csv(output / "well_plan.csv", index=False)
+            recipes.to_csv(output / "substock_recipes.csv", index=False)
+            (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
+        else:
+            lash.logger.info("Simulation file output disabled; results remain in memory.")
         prepared, measurements = set(), []
         for plate, wells in plan.groupby("plate", sort=True):
             batch = int(wells.substock_batch.iloc[0])
@@ -526,7 +544,7 @@ def execute(config=None, show_gui=True):
             if half is None:
                 lash.grab_new_wellplate()
             else:
-                two_run_plate.begin(lash, half, str(output))
+                two_run_plate.begin(lash, half, str(output) if output is not None else None)
             for component in c["DISPENSE_ORDER"]:
                 source_column = "medium" if component == "medium" else "dye_source"
                 volume_column = f"{component}_volume_ul"
@@ -561,7 +579,8 @@ def execute(config=None, show_gui=True):
                             raise RuntimeError(f"No fluorescence data for plate {plate}, t={timepoint_min}min, read {read}")
                         data = simulate_fluorescence_readout(wells, channels)
                     else:
-                        raw.to_csv(output / f"raw_plate_{plate}_t{timepoint_min}_rep{read}.csv")
+                        if output is not None:
+                            raw.to_csv(output / f"raw_plate_{plate}_t{timepoint_min}_rep{read}.csv")
                         data = flatten_cytation_data(raw, "fluorescence")
                         if not set(["well_position", *channels]).issubset(data.columns):
                             raise ValueError(f"Unexpected Cytation channels: {list(data.columns)}")
@@ -575,7 +594,8 @@ def execute(config=None, show_gui=True):
                     merged["elapsed_actual_min"] = (time.monotonic() - t0) / 60
                     merged["measurement_replicate"] = read
                     measurements.append(merged)
-                    pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
+                    if output is not None:
+                        pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
                 if not c["SIMULATE"]:
                     slack_agent.send_slack_message(f"Fluorescence calibration: plate {plate}, t={timepoint_min} min measured")
             if half is None:
@@ -593,14 +613,17 @@ def execute(config=None, show_gui=True):
         summary = summarize(combined, channels)
         effective_stock = c["STOCK_CONCENTRATION_UM"] or _STOCK_CONCENTRATIONS_UM[dye]
         summary["concentration_um"] = summary["concentration_relative"] * effective_stock
-        summary.to_csv(output / "calibration_summary.csv", index=False)
-        fit_calibration(summary, channels, effective_stock).to_csv(
-            output / "calibration_fits.csv", index=False)
+        fits = fit_calibration(summary, channels, effective_stock)
         wells = per_well_means(combined, channels)
         wells["concentration_um"] = wells["concentration_relative"] * effective_stock
-        plot_calibration(wells, summary, channels, output)
-        plot_kinetics(wells, channels, output)
-        lash.logger.info(f"Calibration measurements saved to {output}")
+        if output is not None:
+            summary.to_csv(output / "calibration_summary.csv", index=False)
+            fits.to_csv(output / "calibration_fits.csv", index=False)
+            plot_calibration(wells, summary, channels, output)
+            plot_kinetics(wells, channels, output)
+            lash.logger.info(f"Calibration measurements saved to {output}")
+        else:
+            lash.logger.info("Fluorescence calibration complete; no experiment files saved.")
         if not c["SIMULATE"]:
             slack_agent.send_slack_message(f"Fluorescence calibration workflow complete! Results saved to {output}")
         return output

@@ -1384,7 +1384,7 @@ def validate_pipetting_accuracy(
     
     # === GENERATE PLOTS ===
     plot_file = None
-    if save_raw_data:
+    if save_raw_data and calib_folder is not None:
         try:
             plot_file = _create_validation_plots(
                 df_analysis=df_analysis, df_raw=df, stats_df=stats_df,
@@ -1394,7 +1394,7 @@ def validate_pipetting_accuracy(
             )
         except Exception as e:
             lash_e.logger.warning("Could not create validation plots: %s", e)
-    
+
     # === SAVE DATA ===
     data_files = {}
     

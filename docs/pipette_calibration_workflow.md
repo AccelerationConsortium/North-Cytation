@@ -61,3 +61,28 @@ value, or `False` to let calibration search between `_MIN` and `_MAX`.
 `OVERASPIRATE_VOL_MIN`/`MAX`/`MAX_FRACTION_OF_TARGET` bound how much extra
 volume calibration may aspirate relative to the target. `RANDOM_SEED` makes
 trial selection reproducible.
+
+Simulation defaults to a fast execution check. Two internal constants in
+`workflows/pipette_calibration_workflow.py` control this behavior:
+
+```python
+_SAVE_FILES_ON_SIMULATE = False
+_USE_BAYES_OPT_ON_SIMULATE = False
+```
+
+With these defaults, Ax uses seeded Sobol suggestions throughout screening and
+optimization, without Bayesian model fitting or prediction diagnostics. Calibration,
+two-point correction, parameter transfer, measurement budgets, and independent
+validation still run. LLM suggestions are disabled in this mode.
+
+Calibration and validation results stay in memory. No calibration output folders,
+snapshots, backups, CSV/JSON exports, analysis reports, or plots are created.
+Validation receives the same table used by CSV export and retains the parameter
+checks, compensation, and interpolation. Returned `output_dir` and
+`optimal_conditions_file` are `None`; the result objects remain available.
+Coordinator logs and temporary simulation state are unaffected.
+
+Set either constant to `True` independently to restore that behavior for simulation.
+These constants are excluded from GUI/YAML configuration. Hardware runs retain
+the configured optimizer and file output. The calibration engine uses the Ax
+0.4.3 API pinned in `sdl_pipette_calibration/requirements.txt`.

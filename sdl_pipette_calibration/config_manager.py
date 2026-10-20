@@ -360,6 +360,8 @@ class ExperimentConfig:
     # LLM optimization
     def is_llm_optimization_enabled(self) -> bool:
         """Check if LLM-based optimization is enabled."""
+        if not self.use_bayesian_optimization():
+            return False
         optimization_section = self._config.get('optimization', {})
         llm_section = optimization_section.get('llm_optimization', {})
         enabled = llm_section.get('enabled', False)
@@ -421,6 +423,8 @@ class ExperimentConfig:
     
     def use_llm_for_screening(self) -> bool:
         """Check if LLM should be used for screening phase."""
+        if not self.use_bayesian_optimization():
+            return False
         return self._config.get('screening', {}).get('use_llm_suggestions', False)
     
     def get_screening_llm_config_path(self) -> Optional[str]:
@@ -473,6 +477,14 @@ class ExperimentConfig:
         """Check if range-based variability calculation should be used."""
         return self._config.get('optimization', {}).get('use_range_based_variability', False)
     
+    def should_save_files(self) -> bool:
+        """Disable artifacts only for an explicitly configured simulation."""
+        return not self.is_simulation() or self._config.get('output', {}).get('save_files', True)
+
+    def use_bayesian_optimization(self) -> bool:
+        """Hardware always uses the configured Bayesian optimizer."""
+        return not self.is_simulation() or self._config.get('optimization', {}).get('use_bayesian', True)
+
     # Output configuration
     def get_output_directory(self) -> str:
         """Get base output directory, resolved relative to config file location."""

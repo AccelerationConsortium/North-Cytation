@@ -120,12 +120,17 @@ class CalibrationExperiment:
         
     def _create_output_directory(self):
         """Create timestamped output directory."""
+        if not self.config.should_save_files():
+            self.output_dir = None
+            return
         liquid = self.config.get_liquid_name()
         self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}_{liquid}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def _save_incremental_data(self):
         """Save current trial data incrementally (for crash recovery)."""
+        if not self.config.should_save_files():
+            return
         try:
             # Save current progress to incremental file
             incremental_path = self.output_dir / "incremental_results.json"
@@ -172,6 +177,8 @@ class CalibrationExperiment:
         Uses the exact same export logic as the final export to ensure consistency.
         Saves to optimal_conditions_incremental.csv for crash recovery.
         """
+        if not self.config.should_save_files():
+            return
         try:
             # Only proceed if we have completed volumes with results
             if not self.volume_results:
@@ -237,6 +244,8 @@ class CalibrationExperiment:
 
     def _save_measurement_immediately(self, measurement, target_volume_ml: float, strategy: str, parameters=None):
         """Save individual measurement to CSV immediately after it's taken."""
+        if not self.config.should_save_files():
+            return
         try:
             import csv
             import os
@@ -1881,6 +1890,8 @@ class CalibrationExperiment:
     
     def _export_results(self, results: ExperimentResults):
         """Export results to files."""
+        if not self.config.should_save_files():
+            return
         if not self.config.should_export_optimal_conditions():
             return
         
@@ -1939,8 +1950,40 @@ class CalibrationExperiment:
         except Exception as e:
             logger.warning(f"Failed to save config file: {e}")
     
+    @staticmethod
+    def optimal_condition_records(results):
+        """Build the shared export/validation records from measured best trials."""
+        optimal_conditions = []
+        # Convert optimal conditions
+        for volume_result in results.volume_results:
+            if volume_result.optimal_parameters:
+                # Create optimal condition dictionary from the best trial
+                best_trial = volume_result.best_trials[0] if volume_result.best_trials else None
+                if best_trial:
+                    optimal_dict = {
+                        'volume_ul': volume_result.target_volume_ml * 1000,
+                        'measured_volume_ul': best_trial.analysis.mean_volume_ml * 1000,
+                        'deviation_pct': best_trial.analysis.absolute_deviation_pct,
+                        'cv_pct': best_trial.analysis.cv_volume_pct,
+                        'time_s': best_trial.analysis.mean_duration_s,
+                        'trials_used': len(volume_result.trials),
+                        'measurements_count': volume_result.measurement_count,
+                        'status': 'success' if best_trial.analysis.absolute_deviation_pct <= 10 else 'partial_success',
+                        'parameters': asdict(volume_result.optimal_parameters)
+                    }
+                    optimal_conditions.append(optimal_dict)
+
+        return optimal_conditions
+
+    def optimal_conditions_table(self, results):
+        """Return the same table that the final CSV exporter writes."""
+        from .csv_export import CleanCSVExporter
+        return CleanCSVExporter.optimal_conditions_table(self.optimal_condition_records(results))
+
     def _generate_enhanced_outputs(self, results: ExperimentResults) -> None:
         """Generate enhanced visualization and analysis outputs."""
+        if not self.config.should_save_files():
+            return
         if not ENHANCED_OUTPUTS_AVAILABLE:
             logger.warning(
                 "Enhanced outputs disabled: could not import visualization/analysis modules. "
@@ -1991,25 +2034,8 @@ class CalibrationExperiment:
                     measurement_dict['liquid'] = trial.liquid
                     raw_measurements.append(measurement_dict)
             
-            # Convert optimal conditions
-            for volume_result in results.volume_results:
-                if volume_result.optimal_parameters:
-                    # Create optimal condition dictionary from the best trial
-                    best_trial = volume_result.best_trials[0] if volume_result.best_trials else None
-                    if best_trial:
-                        optimal_dict = {
-                            'volume_ul': volume_result.target_volume_ml * 1000,
-                            'measured_volume_ul': best_trial.analysis.mean_volume_ml * 1000,
-                            'deviation_pct': best_trial.analysis.absolute_deviation_pct,
-                            'cv_pct': best_trial.analysis.cv_volume_pct,
-                            'time_s': best_trial.analysis.mean_duration_s,
-                            'trials_used': len(volume_result.trials),
-                            'measurements_count': volume_result.measurement_count,
-                            'status': 'success' if best_trial.analysis.absolute_deviation_pct <= 10 else 'partial_success',
-                            'parameters': asdict(volume_result.optimal_parameters)
-                        }
-                        optimal_conditions.append(optimal_dict)
-            
+            optimal_conditions = self.optimal_condition_records(results)
+
             # Generate analysis insights first (needed for SHAP plots)
             logger.info("Generating analysis insights...")
             insights = analyze_calibration_experiment(trial_results, optimal_conditions, str(self.output_dir))
@@ -2043,6 +2069,8 @@ class CalibrationExperiment:
                                            constraint_update: Optional[ConstraintBoundsUpdate],
                                            two_point_trials: List[TrialResult]) -> None:
         """Save constraint calibration results to a dedicated text file for visibility."""
+        if not self.config.should_save_files():
+            return
         if not two_point_trials:
             return
         

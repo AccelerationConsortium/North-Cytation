@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from workflows import fluorescence_calibration_workflow as workflow
+from workflows import interrupt_cleanup
 from workflows.fluorescence_calibration_workflow import build_plan, execute, fit_calibration, summarize
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -25,12 +26,40 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.vial_file = self.root / "vials.csv"
         shutil.copyfile(REPO_ROOT / "status" / "fluorescence_calibration_vials.csv", self.vial_file)
         inventory = pd.read_csv(self.vial_file)
+        if "DMSO" not in set(inventory.vial_name):
+            bulk = inventory.loc[inventory.vial_name == "DMSO_refill"].copy()
+            bulk.loc[:, "vial_index"] = int(inventory.vial_index.max()) + 1
+            bulk.loc[:, "vial_name"] = "DMSO"
+            bulk.loc[:, "location_index"] = 4
+            bulk.loc[:, "home_location_index"] = 4
+            inventory = pd.concat([inventory, bulk], ignore_index=True)
+        inventory.loc[inventory.vial_name == "DMSO", "vial_volume"] = 20.0
+        inventory.loc[inventory.vial_name == "DMSO_working", "vial_volume"] = 0.0
+        inventory.loc[inventory.vial_name == "surfactant_refill", "vial_volume"] = 19.9
+        for name, template, location_index, volume in (
+            ("acetone", "DMSO", 5, 20.0),
+            ("acetone_working", "DMSO_working", 41, 6.0),
+            ("coumarin6_acetone_stock", "pyrene_DMSO_stock", 42, 7.8),
+            ("coumarin6_acetone_s1", "pyrene_DMSO_s1", 43, 0.0),
+            ("coumarin6_acetone_s2", "pyrene_DMSO_s2", 44, 0.0),
+            ("coumarin6_acetone_s3", "pyrene_DMSO_s3", 45, 0.0),
+        ):
+            if name not in set(inventory.vial_name):
+                row = inventory.loc[inventory.vial_name == template].copy()
+                row.loc[:, "vial_index"] = int(inventory.vial_index.max()) + 1
+                row.loc[:, "vial_name"] = name
+                row.loc[:, "location_index"] = location_index
+                row.loc[:, "home_location_index"] = location_index
+                row.loc[:, "vial_volume"] = volume
+                inventory = pd.concat([inventory, row], ignore_index=True)
         inventory.loc[inventory.vial_name.str.contains(r'_s\d+$'), 'vial_volume'] = 0.0
         inventory.to_csv(self.vial_file, index=False)
         self.original_directory = Path.cwd()
         os.chdir(self.root)
         self.addCleanup(os.chdir, self.original_directory)
-        self.config = {**BASE_CONFIG, "INPUT_VIAL_STATUS_FILE": str(self.vial_file), "MEASUREMENT_SCHEDULE_MIN": [0]}
+        self.config = {**BASE_CONFIG, "INPUT_VIAL_STATUS_FILE": str(self.vial_file),
+                       "MEASUREMENT_SCHEDULE_MIN": [0],
+                       "SOLVENT_SOURCE_VIALS": ["DMSO", "DMSO_2"]}
         slack = patch.object(workflow, "slack_agent", MagicMock())
         slack.start()
         self.addCleanup(slack.stop)
@@ -130,12 +159,69 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 self.assertEqual(len(transfers), before)
             robot.VIAL_DF.to_csv(self.vial_file, index=False)
         bulk_transfers = [entry for entry in transfers if entry[0] in ("DMSO", "DMSO_2", "DMSO_3")]
-        self.assertAlmostEqual(sum(entry[2] for entry in bulk_transfers), 38.7)
+        # Three sets of substocks plus the initially empty working-vial refill.
+        self.assertAlmostEqual(sum(entry[2] for entry in bulk_transfers), 44.7)
         stock_transfers = [entry for entry in transfers if entry[0].endswith("_stock")]
         self.assertEqual(len(stock_transfers), 9)
         final = pd.read_csv(self.vial_file).set_index("vial_name")
         self.assertTrue((final.loc[["DMSO", "DMSO_2", "DMSO_3"], "vial_volume"] >= 2.0 - 1e-9).all())
 
+    def test_simulation_keeps_automation_and_analysis_without_saving(self):
+        for reader_has_data in (False, True):
+            with self.subTest(reader_has_data=reader_has_data):
+                lash = self.fake_coordinator(simulate=True)
+                lash.workflow_config = self.config
+                plan, _ = build_plan(self.config)
+                raw = pd.DataFrame({"well_position": plan.well_position,
+                                    "334_373": 10 + plan.concentration_relative * 100,
+                                    "334_384": 20 + plan.concentration_relative * 200})
+                lash.measure_wellplate.return_value = raw if reader_has_data else None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=lambda data, _: data)
+                before = set(self.root.rglob("*"))
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                        patch.object(pd.DataFrame, "to_csv", side_effect=AssertionError("Unexpected CSV write")), \
+                        patch.object(Path, "write_text", side_effect=AssertionError("Unexpected text write")), \
+                        patch.object(workflow, "fit_calibration", wraps=fit_calibration) as fit, \
+                        patch.object(workflow, "plot_calibration") as calibration_plot, \
+                        patch.object(workflow, "plot_kinetics") as kinetics_plot:
+                    self.assertIsNone(execute(self.config, show_gui=False))
+                self.assertEqual(set(self.root.rglob("*")), before)
+                fit.assert_called_once()
+                calibration_plot.assert_not_called()
+                kinetics_plot.assert_not_called()
+                lash.nr_robot.dispense_from_vial_into_vial.assert_called()
+                lash.nr_robot.dispense_from_vials_into_wellplate.assert_called()
+                lash.measure_wellplate.assert_called_once()
+                lash.grab_new_wellplate.assert_called_once()
+                lash.discard_used_wellplate.assert_called_once()
+
+    def test_simulation_saving_can_be_reenabled(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = self.config
+        lash.measure_wellplate.return_value = None
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True), \
+                patch.object(workflow, "plot_calibration") as calibration_plot, \
+                patch.object(workflow, "plot_kinetics") as kinetics_plot:
+            output = execute(self.config, show_gui=False)
+        self.assertEqual([path.resolve() for path in
+                          (self.root / "output" / "fluorescence_calibration").iterdir()],
+                         [output.resolve()])
+        self.assertIn("_simulate_", output.name)
+        for name in ("well_plan.csv", "substock_recipes.csv", "config.yaml",
+                     "fluorescence_results.csv", "calibration_summary.csv", "calibration_fits.csv"):
+            self.assertTrue((output / name).is_file(), name)
+        calibration_plot.assert_called_once()
+        kinetics_plot.assert_called_once()
+
+    def test_simulation_save_switch_is_private_and_disabled(self):
+        from workflow_config_manager import ConfigManager
+        self.assertIs(workflow._SAVE_FILES_ON_SIMULATE, False)
+        self.assertNotIn("_SAVE_FILES_ON_SIMULATE", workflow._CONFIG_KEYS)
+        self.assertNotIn("_SAVE_FILES_ON_SIMULATE", ConfigManager.workflow_constants(vars(workflow)))
     def test_transfer_staging_depends_on_either_closed_cap(self):
         for source_cap, destination_cap in (("open", "open"), ("closed", "open"),
                                             ("open", "closed"), ("closed", "closed")):
@@ -323,6 +409,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                                                 flatten_cytation_data=MagicMock())
             with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
                     patch.object(workflow, "plot_calibration"), patch.object(workflow, "plot_kinetics"), \
+                    patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True), \
                     patch("scheduler.simulation_state.can_save", return_value=True):
                 output = execute(config, show_gui=False)
             save()
@@ -378,7 +465,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_selected_pair_uses_actual_solvent_vial_in_execution(self):
         lash = self.fake_coordinator(simulate=True)
-        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone",
+                  "SOLVENT_SOURCE_VIALS": ["acetone"]}
         lash.workflow_config = config
         lash.measure_wellplate.return_value = None
         coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
@@ -404,11 +492,12 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             with self.subTest(dye=dye, solvent=solvent):
                 lash = self.fake_coordinator(simulate=True)
                 lash.workflow_config = {**self.config, "DYE": dye, "DYE_SOLVENT": solvent,
-                                        "SIMULATE": True}
+                                        "SIMULATE": True, "SOLVENT_SOURCE_VIALS": [solvent]}
                 lash.measure_wellplate.return_value = None
                 coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
                                                     flatten_cytation_data=MagicMock())
-                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                        patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True):
                     output = execute(lash.workflow_config, show_gui=False)
                 transfers = lash.nr_robot.dispense_from_vial_into_vial.call_args_list
                 self.assertTrue(all(not call.args[1].endswith("_working") for call in transfers))
@@ -427,8 +516,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_robot.dispense_from_vial_into_vial.side_effect = KeyboardInterrupt
         coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
                                             flatten_cytation_data=MagicMock())
-        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch(
-                "workflows.interrupt_cleanup.cleanup_after_keyboard_interrupt") as cleanup:
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(
+                interrupt_cleanup, "cleanup_after_keyboard_interrupt") as cleanup:
             with self.assertRaises(KeyboardInterrupt):
                 execute(lash.workflow_config, show_gui=False)
         cleanup.assert_called_once_with(lash)
@@ -574,7 +663,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_invalid_plans_fail(self):
         for override in ({"DYE_VOLUME_UL": 200}, {"REPLICATES": 0},
-                         {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "24 WELL PLATE"},
+                         {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "12 WELL PLATE"},
                          {"SURFACTANT_CONCENTRATION_MM": 10, "SURFACTANT_CMC_MM": 9.9},
                          {"REPETITIONS": 21, "SUBSTOCK_VOLUME_ML": 1.0},
                          {"TOTAL_VOLUME_UL": float("nan")},
@@ -586,6 +675,23 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                          {"DYE": "unknown"}, {"DYE_SOLVENT": "---"}):
             with self.subTest(override=override), self.assertRaises(ValueError):
                 build_plan({**self.config, **override})
+
+    def test_plate_scale_preserves_dye_fraction_and_splits_wells(self):
+        base = self.config.copy()
+        base["DYE_VOLUME_UL"] = 5
+        base["TOTAL_VOLUME_UL"] = 200
+        for plate_type, scale, plate_count in (
+            ("96 WELL PLATE", 1, 1), ("48 WELL PLATE", 2, 1),
+            ("24 WELL PLATE", 4, 2),
+        ):
+            with self.subTest(plate_type=plate_type):
+                plan, recipes = build_plan({**base, "WELLPLATE_TYPE": plate_type})
+                self.assertEqual(plan.plate.nunique(), plate_count)
+                self.assertTrue((plan.dye_volume_ul == 5 * scale).all())
+                self.assertTrue((plan.medium_volume_ul == 195 * scale).all())
+                self.assertTrue((plan.volume_scale == scale).all())
+                self.assertTrue((plan.concentration_relative == plan.dilution_factor * 0.025).all())
+                self.assertEqual(recipes.stock_ml.sum(), build_plan(base)[1].stock_ml.sum())
 
     def test_blank_correction_and_repeat_reads_are_not_independent_wells(self):
         test_config = {**self.config, "DILUTION_FACTORS": [0.0, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}
@@ -666,6 +772,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 inventory.to_csv(self.vial_file, index=False)
                 lash = self.fake_coordinator(simulate=True)
                 lash.workflow_config = {**self.config, "SIMULATE": True,
+                                        "SOLVENT_SOURCE_VIALS": ["DMSO"],
                                         "REPETITIONS": changes.get("repetitions", 1)}
                 lash.nr_track.NUM_SOURCE = 10
                 module = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
@@ -706,7 +813,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         with patch.dict(workflow.__dict__), patch.dict("sys.modules", {
             "workflow_config_manager": types.SimpleNamespace(ConfigManager=manager),
             "master_usdl_coordinator": coordinator,
-        }), patch.object(workflow, "build_plan", side_effect=confirmed_plan), patch.object(workflow, "plot_calibration"):
+        }), patch.object(workflow, "build_plan", side_effect=confirmed_plan), patch.object(workflow, "plot_calibration"), \
+            patch.object(workflow, "_SAVE_FILES_ON_SIMULATE", True):
             output = execute()
         self.assertEqual(events, ["review", "plan"])
         self.assertEqual(yaml.safe_load((output / "config.yaml").read_text()), confirmed)

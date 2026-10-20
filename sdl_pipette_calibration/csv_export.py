@@ -112,8 +112,9 @@ class CleanCSVExporter:
         df.to_csv(self.output_dir / "trial_results.csv", index=False)
         logger.info(f"Exported {len(df)} trial results to trial_results.csv")
     
-    def _export_optimal_conditions(self, optimal_conditions: List[Dict]) -> None:
-        """Export optimal conditions with unified volume naming."""
+    @staticmethod
+    def optimal_conditions_table(optimal_conditions: List[Dict]) -> pd.DataFrame:
+        """Build final calibration rows without requiring filesystem output."""
         rows = []
         
         for condition in optimal_conditions:
@@ -139,13 +140,16 @@ class CleanCSVExporter:
             
             # Flatten optimal parameters
             parameters = condition.get('parameters', {})
-            flattened_params = self._flatten_parameters(parameters)
+            flattened_params = CleanCSVExporter._flatten_parameters(parameters)
             row.update(flattened_params)
             
             rows.append(row)
         
-        # Create DataFrame and save
-        df = pd.DataFrame(rows)
+        return pd.DataFrame(rows)
+
+    def _export_optimal_conditions(self, optimal_conditions: List[Dict]) -> None:
+        """Export optimal conditions with unified volume naming."""
+        df = self.optimal_conditions_table(optimal_conditions)
         filename = f"optimal_conditions_{self.liquid}.csv" if self.liquid else "optimal_conditions.csv"
         df.to_csv(self.output_dir / filename, index=False)
         logger.info(f"Exported {len(df)} optimal conditions to {filename}")
@@ -204,7 +208,8 @@ class CleanCSVExporter:
         df.to_csv(self.output_dir / "raw_measurements.csv", index=False)
         logger.info(f"Exported {len(df)} raw measurements to raw_measurements.csv")
     
-    def _flatten_parameters(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _flatten_parameters(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         Flatten nested parameter dictionaries into individual columns.
         

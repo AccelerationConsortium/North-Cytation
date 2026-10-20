@@ -29,6 +29,17 @@ existing convention and are locally ignored by Git.
 The default experiment uses 45 wells: three media (water, premixed surfactant,
 native dye solvent), three dye levels plus a matched solvent-only blank, each
 in triplicate. Each well receives 195 uL medium and 5 uL dye substock or solvent.
+`TOTAL_VOLUME_UL` and `DYE_VOLUME_UL` are base 96-well values. Selecting a
+different `WELLPLATE_TYPE` applies `VOLUME_SCALE_BY_PLATE` to both volumes:
+1x for 96 wells, 2x for 48 wells, and 4x for 24 wells by default. The plan
+spreads wells across as many physical plates as needed, preserving the dye
+fraction and final concentrations. Substock preparation volumes remain fixed;
+the workflow checks that the prepared amount covers the scaled dye demand.
+The 24-well layout can be planned now but requires robot plate geometry and
+additional within-plate liquid refills before hardware execution. The current
+8 mL working-vial refill path does not cover every scaled multi-plate plan.
+For 48-well runs, the workflow fills the working solvent vial to the amount
+required by the plan plus its reserve.
 The default dilution factors are 0, 0.1, 0.25, 0.5 and 1. Each diluted
 substock is 6 mL; for example, 0.25x uses 1.5 mL parent stock and 4.5 mL solvent.
 Substocks are diluted directly from the parent stock with pure solvent and

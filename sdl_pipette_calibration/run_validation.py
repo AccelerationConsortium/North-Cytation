@@ -61,13 +61,18 @@ def setup_logging():
 class ValidationRunner:
     """Hardware-agnostic validation system using the modular protocol framework."""
     
-    def __init__(self, config: ExperimentConfig, config_file_path: Path = None):
+    def __init__(self, config: ExperimentConfig, config_file_path: Path = None, optimal_conditions=None):
         self.config = config
+        self._optimal_conditions = optimal_conditions.copy(deep=True) if optimal_conditions is not None else None
         self.logger = logging.getLogger(__name__)
         self.protocol = None
         self.protocol_state = None
         self.pipetting_wizard = PipettingWizard()
         
+        self.output_dir = None
+        if not config.should_save_files():
+            return
+
         # Set up output directory relative to config file location
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir_name = config._config['validation']['output_directory']
@@ -113,7 +118,7 @@ class ValidationRunner:
             return {
                 'validation_results': validation_results,
                 'analysis': analysis,
-                'output_dir': str(self.output_dir)
+                'output_dir': str(self.output_dir) if self.output_dir is not None else None
             }
             
         except Exception as e:
@@ -138,6 +143,8 @@ class ValidationRunner:
     
     def _load_calibration_results(self) -> pd.DataFrame:
         """Load optimal conditions from calibration results."""
+        if self._optimal_conditions is not None:
+            return self._optimal_conditions.copy(deep=True)
         validation_config = self.config._config['validation']
         optimal_conditions_file = Path(validation_config['optimal_conditions_file'])
         
@@ -410,6 +417,8 @@ class ValidationRunner:
     
     def _generate_outputs(self, validation_results: List[Dict[str, Any]], analysis: Dict[str, Any]):
         """Generate validation output files and plots."""
+        if not self.config.should_save_files():
+            return
         self.logger.info("Generating validation outputs...")
         
         # Save raw data
