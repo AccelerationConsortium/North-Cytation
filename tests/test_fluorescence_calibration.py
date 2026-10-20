@@ -573,13 +573,30 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_invalid_plans_fail(self):
         for override in ({"DYE_VOLUME_UL": 200}, {"REPLICATES": 0},
-                         {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "24 WELL PLATE"},
+                         {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "12 WELL PLATE"},
                          {"SURFACTANT_CONCENTRATION_MM": 10, "SURFACTANT_CMC_MM": 9.9},
                          {"REPETITIONS": 21, "SUBSTOCK_VOLUME_ML": 1.0},
                          {"TOTAL_VOLUME_UL": float("nan")},
                          {"DYE": "unknown"}, {"DYE_SOLVENT": "---"}):
             with self.subTest(override=override), self.assertRaises(ValueError):
                 build_plan({**self.config, **override})
+
+    def test_plate_scale_preserves_dye_fraction_and_splits_wells(self):
+        base = self.config.copy()
+        base["DYE_VOLUME_UL"] = 5
+        base["TOTAL_VOLUME_UL"] = 200
+        for plate_type, scale, plate_count in (
+            ("96 WELL PLATE", 1, 1), ("48 WELL PLATE", 2, 1),
+            ("24 WELL PLATE", 4, 2),
+        ):
+            with self.subTest(plate_type=plate_type):
+                plan, recipes = build_plan({**base, "WELLPLATE_TYPE": plate_type})
+                self.assertEqual(plan.plate.nunique(), plate_count)
+                self.assertTrue((plan.dye_volume_ul == 5 * scale).all())
+                self.assertTrue((plan.medium_volume_ul == 195 * scale).all())
+                self.assertTrue((plan.volume_scale == scale).all())
+                self.assertTrue((plan.concentration_relative == plan.dilution_factor * 0.025).all())
+                self.assertEqual(recipes.stock_ml.sum(), build_plan(base)[1].stock_ml.sum())
 
     def test_blank_correction_and_repeat_reads_are_not_independent_wells(self):
         test_config = {**self.config, "DILUTION_FACTORS": [0.0, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}

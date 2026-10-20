@@ -19,6 +19,9 @@ Current status:
 import sys
 sys.path.append("../utoronto_demo")
 import os
+import time
+import math
+import random
 import pandas as pd
 
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
@@ -62,6 +65,11 @@ SIMULATE = False
 # or any other number to stop after that many wells.
 MAX_WELLS = 96
 WELLPLATE_TYPE = "96 WELL PLATE"
+VOLUME_SCALE_BY_PLATE = {"96 WELL PLATE": 1, "48 WELL PLATE": 2, "24 WELL PLATE": 4}
+
+_RECIPE_VOLUME_COLUMNS = (
+    "surf_A_volume_ul", "surf_B_volume_ul", "water_volume_ul", "buffer_volume_ul",
+)
 
 # Study metadata/config scaffold. These values are loaded through the workflow
 # config system but do not yet change execution behavior.
@@ -74,9 +82,13 @@ DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
 
 PREPARATION_REPLICATES = 3
 MEASUREMENT_REPLICATES = 3
+# Minutes since a block finishes dispensing; [0] preserves the current single read.
+MEASUREMENT_SCHEDULE_MIN = [0]
 
 RANDOMIZED_ORDER = False
 RANDOMIZATION_SEED = None
+RANDOMIZED_MEASUREMENT_ORDER = False
+MEASUREMENT_RANDOMIZATION_SEED = None
 EXECUTION_BLOCK_SIZE = 96
 
 # Refill cadence within each component dispense.
@@ -96,9 +108,10 @@ EXPERIMENT_TAG = "study"
 # historically persisted for this workflow) used by execute()/ConfigManager.
 _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
-    "MAX_WELLS", "WELLPLATE_TYPE", "DYE", "DYE_SOLVENT", "DYE_VIAL",
+    "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE", "DYE_SOLVENT", "DYE_VIAL",
     "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
-    "MEASUREMENT_REPLICATES", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
+    "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
+    "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
     "EXECUTION_BLOCK_SIZE", "REFILL_CHECK_CHUNK_SIZE",
     "WATER_REFILL_THRESHOLD_ML", "EXPERIMENT_TAG",
     "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SHAKE_WAIT_PROTOCOL",
@@ -166,8 +179,39 @@ def get_dye_protocol():
     protocol["dye"] = DYE
     protocol["dye_solvent"] = DYE_SOLVENT
     protocol["dye_vial"] = DYE_VIAL
-    protocol["dye_volume_ul"] = DYE_VOLUME_UL
+    protocol["dye_volume_ul"] = DYE_VOLUME_UL * get_volume_scale()
     return protocol
+
+
+def get_volume_scale():
+    """Scale the base 96-well recipe for the selected physical plate."""
+    if WELLPLATE_TYPE not in VOLUME_SCALE_BY_PLATE:
+        raise ValueError(f"No volume scale configured for WELLPLATE_TYPE '{WELLPLATE_TYPE}'")
+    scale = VOLUME_SCALE_BY_PLATE[WELLPLATE_TYPE]
+    if isinstance(scale, bool) or not isinstance(scale, (int, float)) or scale <= 0:
+        raise ValueError(f"Invalid volume scale for {WELLPLATE_TYPE}: {scale}")
+    return scale
+
+
+def scale_well_recipes(well_recipes_df, lash_e):
+    """Return a scaled copy; never change the source recipe file or stock recipes."""
+    scale = get_volume_scale()
+    missing = [column for column in _RECIPE_VOLUME_COLUMNS if column not in well_recipes_df]
+    if missing:
+        raise KeyError(f"Recipe missing volume columns: {missing}")
+    scaled = well_recipes_df.copy()
+    for column in _RECIPE_VOLUME_COLUMNS:
+        scaled[column] = pd.to_numeric(scaled[column], errors="raise") * scale
+    if "pyrene_volume_ul" in scaled:
+        scaled["pyrene_volume_ul"] = pd.to_numeric(scaled["pyrene_volume_ul"], errors="raise") * scale
+    total_ul = scaled[list(_RECIPE_VOLUME_COLUMNS)].fillna(0).sum(axis=1) + DYE_VOLUME_UL * scale
+    capacity_ml = lash_e.nr_robot.WELLPLATES[WELLPLATE_TYPE].get("max_volume_per_well")
+    if capacity_ml is not None and (total_ul > capacity_ml * 1000).any():
+        raise ValueError(
+            f"Scaled recipe exceeds {WELLPLATE_TYPE} capacity of {capacity_ml * 1000:g} uL "
+            f"(maximum {total_ul.max():g} uL)"
+        )
+    return scaled
 
 
 def get_wellplate_size(lash_e):
@@ -188,6 +232,8 @@ def get_wells_per_row():
         return 12
     if WELLPLATE_TYPE == "48 WELL PLATE":
         return 8
+    if WELLPLATE_TYPE == "24 WELL PLATE":
+        return 6
     raise ValueError(f"Unsupported WELLPLATE_TYPE for well label conversion: {WELLPLATE_TYPE}")
 
 
@@ -202,16 +248,26 @@ def validate_execution_block_size(lash_e):
     wellplate_size = get_wellplate_size(lash_e)
     if EXECUTION_BLOCK_SIZE <= 0:
         raise ValueError(f"EXECUTION_BLOCK_SIZE must be positive, got {EXECUTION_BLOCK_SIZE}")
-    if EXECUTION_BLOCK_SIZE > wellplate_size:
-        raise ValueError(
-            f"EXECUTION_BLOCK_SIZE={EXECUTION_BLOCK_SIZE} cannot exceed "
-            f"wellplate size {wellplate_size} for {WELLPLATE_TYPE}"
-        )
-    if MAX_WELLS > 0 and EXECUTION_BLOCK_SIZE > MAX_WELLS:
-        raise ValueError(
-            f"EXECUTION_BLOCK_SIZE={EXECUTION_BLOCK_SIZE} cannot exceed MAX_WELLS={MAX_WELLS}"
-        )
     return wellplate_size
+
+
+def validate_measurement_schedule():
+    """Require a first read at zero and increasing, finite minute offsets."""
+    schedule = MEASUREMENT_SCHEDULE_MIN
+    if (not isinstance(schedule, (list, tuple)) or not schedule or schedule[0] != 0
+            or any(isinstance(value, bool) or not isinstance(value, (int, float))
+                   or not math.isfinite(value) or value < 0 for value in schedule)
+            or any(later <= earlier for earlier, later in zip(schedule, schedule[1:]))):
+        raise ValueError("MEASUREMENT_SCHEDULE_MIN must start at 0 and strictly increase")
+    return schedule
+
+
+def get_measurement_well_order(block_df, randomizer):
+    """Choose one physical well sequence for both assays in a measurement read."""
+    wells = sorted(block_df["wellplate_index"].tolist())
+    if RANDOMIZED_MEASUREMENT_ORDER:
+        randomizer.shuffle(wells)
+    return wells
 
 
 def get_measurement_value_columns():
@@ -245,7 +301,9 @@ def get_study_config():
         "dye": DYE,
         "dye_solvent": DYE_SOLVENT,
         "dye_vial": DYE_VIAL,
-        "dye_volume_ul": DYE_VOLUME_UL,
+        "dye_volume_ul": get_dye_protocol()["dye_volume_ul"],
+        "base_dye_volume_ul": DYE_VOLUME_UL,
+        "volume_scale": get_volume_scale(),
         "dispense_order": DISPENSE_ORDER,
         "wellplate_type": WELLPLATE_TYPE,
         "fluorescence_protocol_file": dye_protocol["fluorescence_protocol_file"],
@@ -253,8 +311,11 @@ def get_study_config():
         "fluorescence_metric_kind": dye_protocol["metric_kind"],
         "preparation_replicates": PREPARATION_REPLICATES,
         "measurement_replicates": MEASUREMENT_REPLICATES,
+        "measurement_schedule_min": MEASUREMENT_SCHEDULE_MIN,
         "randomized_order": RANDOMIZED_ORDER,
         "randomization_seed": RANDOMIZATION_SEED,
+        "randomized_measurement_order": RANDOMIZED_MEASUREMENT_ORDER,
+        "measurement_randomization_seed": MEASUREMENT_RANDOMIZATION_SEED,
         "execution_block_size": EXECUTION_BLOCK_SIZE,
     }
 
@@ -265,16 +326,21 @@ def add_study_metadata(results_df, preparation_replicate):
     results_df["dye"] = DYE
     results_df["dye_solvent"] = DYE_SOLVENT
     results_df["dye_vial"] = DYE_VIAL
-    results_df["dye_volume_ul"] = DYE_VOLUME_UL
+    results_df["dye_volume_ul"] = get_dye_protocol()["dye_volume_ul"]
+    results_df["base_dye_volume_ul"] = DYE_VOLUME_UL
+    results_df["volume_scale"] = get_volume_scale()
     results_df["dispense_order"] = "|".join(DISPENSE_ORDER)
     results_df["wellplate_type"] = WELLPLATE_TYPE
     results_df["preparation_replicates"] = PREPARATION_REPLICATES
     results_df["measurement_replicates"] = MEASUREMENT_REPLICATES
+    results_df["measurement_schedule_min"] = "|".join(map(str, MEASUREMENT_SCHEDULE_MIN))
     results_df["preparation_replicate"] = preparation_replicate
     if "measurement_replicate" not in results_df.columns:
         results_df["measurement_replicate"] = 1
     results_df["randomized_order"] = RANDOMIZED_ORDER
     results_df["randomization_seed"] = RANDOMIZATION_SEED
+    results_df["randomized_measurement_order"] = RANDOMIZED_MEASUREMENT_ORDER
+    results_df["measurement_randomization_seed"] = MEASUREMENT_RANDOMIZATION_SEED
     results_df["execution_block_size"] = EXECUTION_BLOCK_SIZE
     return results_df
 
@@ -282,7 +348,7 @@ def add_study_metadata(results_df, preparation_replicate):
 def save_measurement_analysis_tables(replicate_df, output_folder, logger):
     """Save per-measurement and mean-measurement CSVs for plotting/analysis."""
     measurement_value_columns = get_measurement_value_columns()
-    required_columns = ["measurement_replicate", *measurement_value_columns]
+    required_columns = ["measurement_replicate", "timepoint_min", *measurement_value_columns]
     missing_columns = [col for col in required_columns if col not in replicate_df.columns]
     if missing_columns:
         raise KeyError(f"Missing measurement columns for analysis tables: {missing_columns}")
@@ -306,13 +372,16 @@ def save_measurement_analysis_tables(replicate_df, output_folder, logger):
 
     group_columns = [
         col for col in replicate_df.columns
-        if col not in measurement_value_columns and col != "measurement_replicate"
+        if col not in measurement_value_columns and col not in (
+            "measurement_replicate", "elapsed_actual_min", "measurement_order_position"
+        )
     ]
+    mean_columns = list(measurement_value_columns) + ["elapsed_actual_min"]
     mean_df = replicate_df.groupby(
         group_columns,
         dropna=False,
         as_index=False,
-    )[list(measurement_value_columns)].mean()
+    )[mean_columns].mean()
     mean_df["measurement_replicate"] = "mean"
 
     mean_csv = os.path.join(analysis_folder, "measurement_mean_results.csv")
@@ -341,7 +410,7 @@ def apply_well_order(well_recipes_df, logger):
     if "source_plate_index" not in ordered_df.columns:
         ordered_df["source_plate_index"] = 0
     ordered_df["source_plate_row"] = ordered_df.index
-    ordered_df["execution_block"] = ordered_df["source_plate_row"] // EXECUTION_BLOCK_SIZE
+    ordered_df["execution_block"] = ordered_df["source_plate_row"] // min(EXECUTION_BLOCK_SIZE, len(ordered_df))
 
     if not RANDOMIZED_ORDER:
         logger.info("RANDOMIZED_ORDER=False: preserving original wellplate_index order")
@@ -383,7 +452,7 @@ def split_into_execution_blocks(plate_df):
     ]
 
 
-def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
+def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=True, measurement_order=None):
     """Measure turbidity using the configured wellplate type."""
     lash_e.logger.info(f"Measuring and processing turbidity (shake_and_wait={shake_and_wait})...")
     result_df = well_recipes_df.copy()
@@ -396,6 +465,9 @@ def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=
         batch_end = min(batch_start + EXECUTION_BLOCK_SIZE, total_wells)
         batch_df = result_df.iloc[batch_start:batch_end]
         wells_in_batch = batch_df["wellplate_index"].tolist()
+        if measurement_order is not None:
+            batch_wells = set(wells_in_batch)
+            wells_in_batch = [well for well in measurement_order if well in batch_wells]
         lash_e.logger.info(
             f"\nMeasuring turbidity batch {batch_start // EXECUTION_BLOCK_SIZE + 1}: "
             f"wells {batch_start}-{batch_end - 1}"
@@ -407,6 +479,7 @@ def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=
             batch_df,
             shake_and_wait=shake_and_wait,
             return_wellplate=False,
+            one_well_at_a_time=measurement_order is not None,
         )
         if turbidity_data is None:
             continue
@@ -445,7 +518,8 @@ def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=
     return result_df
 
 
-def measure_study_turbidity(lash_e, well_indices, batch_recipes, shake_and_wait=True, return_wellplate=True):
+def measure_study_turbidity(lash_e, well_indices, batch_recipes, shake_and_wait=True, return_wellplate=True,
+                            one_well_at_a_time=False):
     """Measure turbidity for selected wells using the configured wellplate type."""
     shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
     lash_e.logger.info(f"Measuring turbidity in wells {well_indices} ({shake_msg})")
@@ -456,7 +530,14 @@ def measure_study_turbidity(lash_e, well_indices, batch_recipes, shake_and_wait=
     else:
         lash_e.logger.info("Skipping shake protocol")
 
-    turbidity_data = measure_study_turbidity_protocol_only(lash_e, well_indices, batch_recipes)
+    if one_well_at_a_time:
+        reads = [measure_study_turbidity_protocol_only(lash_e, [well], batch_recipes)
+                 for well in well_indices]
+        if any(read is None for read in reads):
+            raise RuntimeError("Missing turbidity data during ordered measurement")
+        turbidity_data = pd.concat(reads, ignore_index=True)
+    else:
+        turbidity_data = measure_study_turbidity_protocol_only(lash_e, well_indices, batch_recipes)
 
     if return_wellplate:
         position_study_wellplate_at_track(lash_e)
@@ -876,7 +957,8 @@ def dispense_study_component_to_wellplate(
     )
 
 
-def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait=True):
+def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait=True,
+                                         measurement_order=None):
     """Measure fluorescence using the active dye protocol."""
     dye_protocol = get_dye_protocol()
     if not dye_protocol["implemented"]:
@@ -907,6 +989,9 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
         batch_end = min(batch_start + EXECUTION_BLOCK_SIZE, total_wells)
         batch_df = result_df.iloc[batch_start:batch_end]
         wells_in_batch = batch_df["wellplate_index"].tolist()
+        if measurement_order is not None:
+            batch_wells = set(wells_in_batch)
+            wells_in_batch = [well for well in measurement_order if well in batch_wells]
         lash_e.logger.info(
             f"\nMeasuring dye fluorescence batch {batch_start // EXECUTION_BLOCK_SIZE + 1}: "
             f"wells {batch_start}-{batch_end - 1}"
@@ -919,6 +1004,7 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
             dye_protocol,
             shake_and_wait=shake_and_wait,
             return_wellplate=True,
+            one_well_at_a_time=measurement_order is not None,
         )
 
         if fluorescence_data is None:
@@ -970,6 +1056,7 @@ def measure_dye_fluorescence(
     dye_protocol,
     shake_and_wait=True,
     return_wellplate=True,
+    one_well_at_a_time=False,
 ):
     """Measure fluorescence for the active dye using its configured protocol."""
     shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
@@ -983,12 +1070,16 @@ def measure_dye_fluorescence(
     else:
         lash_e.logger.info("Skipping shake protocol")
 
-    fluorescence_data = measure_dye_fluorescence_protocol_only(
-        lash_e,
-        well_indices,
-        batch_recipes,
-        dye_protocol,
-    )
+    if one_well_at_a_time:
+        reads = [measure_dye_fluorescence_protocol_only(lash_e, [well], batch_recipes, dye_protocol)
+                 for well in well_indices]
+        if any(read is None for read in reads):
+            raise RuntimeError("Missing fluorescence data during ordered measurement")
+        fluorescence_data = pd.concat(reads, ignore_index=True)
+    else:
+        fluorescence_data = measure_dye_fluorescence_protocol_only(
+            lash_e, well_indices, batch_recipes, dye_protocol,
+        )
 
     if return_wellplate:
         position_study_wellplate_at_track(lash_e)
@@ -1430,6 +1521,7 @@ def execute_preparation_replicate(
     create_substocks_from_recipes(lash_e, dilution_recipes)
 
     completed_plates = []
+    measurement_randomizer = random.Random(MEASUREMENT_RANDOMIZATION_SEED)
     lash_e.nr_robot.home_robot_components()
 
     for plate_idx, source_plate_df in enumerate(plate_dfs):
@@ -1450,21 +1542,34 @@ def execute_preparation_replicate(
             )
             execute_dispensing_with_refills(lash_e, block_df, dilution_recipes)
 
-            for measurement_replicate in range(1, MEASUREMENT_REPLICATES + 1):
-                lash_e.logger.info(
-                    f"Measuring prep {preparation_replicate}, plate {plate_idx + 1}, "
-                    f"block {block_idx + 1}, "
-                    f"measurement replicate {measurement_replicate}/{MEASUREMENT_REPLICATES}"
-                )
-                measurement_df = block_df.copy()
-                measurement_df = measure_and_process_study_turbidity(
-                    lash_e, measurement_df, shake_and_wait=True
-                )
-                measurement_df = measure_and_process_dye_fluorescence(
-                    lash_e, measurement_df, shake_and_wait=False
-                )
-                measurement_df["measurement_replicate"] = measurement_replicate
-                completed_plates.append(measurement_df)
+            measurement_start = time.monotonic()
+            for timepoint_min in validate_measurement_schedule():
+                wait_seconds = measurement_start + timepoint_min * 60 - time.monotonic()
+                if wait_seconds > 0 and not simulate:
+                    time.sleep(wait_seconds)
+                for measurement_replicate in range(1, MEASUREMENT_REPLICATES + 1):
+                    well_order = get_measurement_well_order(block_df, measurement_randomizer)
+                    ordered_reads = well_order if RANDOMIZED_MEASUREMENT_ORDER else None
+                    lash_e.logger.info(
+                        f"Measuring prep {preparation_replicate}, plate {plate_idx + 1}, "
+                        f"block {block_idx + 1}, t={timepoint_min} min, "
+                        f"measurement replicate {measurement_replicate}/{MEASUREMENT_REPLICATES}"
+                    )
+                    measurement_df = block_df.copy()
+                    measurement_df = measure_and_process_study_turbidity(
+                        lash_e, measurement_df, shake_and_wait=True,
+                        measurement_order=ordered_reads,
+                    )
+                    measurement_df = measure_and_process_dye_fluorescence(
+                        lash_e, measurement_df, shake_and_wait=False,
+                        measurement_order=ordered_reads,
+                    )
+                    order_positions = {well: position for position, well in enumerate(well_order, 1)}
+                    measurement_df["measurement_order_position"] = measurement_df["wellplate_index"].map(order_positions)
+                    measurement_df["timepoint_min"] = timepoint_min
+                    measurement_df["elapsed_actual_min"] = (time.monotonic() - measurement_start) / 60
+                    measurement_df["measurement_replicate"] = measurement_replicate
+                    completed_plates.append(measurement_df)
 
         lash_e.discard_used_wellplate()
 
@@ -1486,6 +1591,19 @@ def execute_preparation_replicate(
         for replicate, path in analysis_tables["individual_csvs"].items()
     ]
     analysis_inputs.append(("measurement_mean", analysis_tables["mean_csv"]))
+    if len(MEASUREMENT_SCHEDULE_MIN) > 1:
+        timepoint_inputs = []
+        for label, measurement_csv in analysis_inputs:
+            table = pd.read_csv(measurement_csv)
+            for timepoint_min, timepoint_table in table.groupby("timepoint_min", sort=True):
+                timepoint_label = f"{label}_t{timepoint_min:g}min"
+                timepoint_csv = os.path.join(
+                    experiment_output_folder, "measurement_replicate_analysis",
+                    f"{timepoint_label}_results.csv",
+                )
+                timepoint_table.to_csv(timepoint_csv, index=False)
+                timepoint_inputs.append((timepoint_label, timepoint_csv))
+        analysis_inputs = timepoint_inputs
     for label, measurement_csv in analysis_inputs:
         one_d_folder = os.path.join(experiment_output_folder, "one_dimensional", label)
         try:
@@ -1516,13 +1634,21 @@ def execute_preparation_replicate(
 
     dye_protocol = get_dye_protocol()
     if dye_protocol["primary_metric"] == "ratio":
-        try:
-            run_post_experiment_analysis(
-                analysis_tables["mean_csv"], experiment_output_folder,
-                surfactant_a_name, surfactant_b_name, lash_e.logger,
-            )
-        except Exception as e:
-            lash_e.logger.warning(f"Post-experiment analysis failed: {e}")
+        mean_inputs = [
+            (label, path) for label, path in analysis_inputs
+            if label == "measurement_mean" or label.startswith("measurement_mean_t")
+        ]
+        for label, mean_csv in mean_inputs:
+            destination = (experiment_output_folder if label == "measurement_mean" else
+                           os.path.join(experiment_output_folder, "post_analysis", label))
+            try:
+                os.makedirs(destination, exist_ok=True)
+                run_post_experiment_analysis(
+                    mean_csv, destination,
+                    surfactant_a_name, surfactant_b_name, lash_e.logger,
+                )
+            except Exception as e:
+                lash_e.logger.warning(f"Post-experiment analysis failed for {label}: {e}")
     else:
         lash_e.logger.info(
             "Skipping legacy post-experiment analysis because it assumes pyrene ratio; "
@@ -1548,6 +1674,7 @@ def execute_study_workflow(
 ):
     """Replay a grid CSV in one pass with study config available locally."""
     study_config = get_study_config()
+    validate_measurement_schedule()
 
     # Home robot once before the first experiment
     lash_e.nr_robot.home_robot_components()
@@ -1580,6 +1707,7 @@ def execute_study_workflow(
         lash_e.logger.info(f"MAX_WELLS={max_wells}: running first {len(well_recipes_df)} wells only")
 
     wellplate_size = validate_execution_block_size(lash_e)
+    well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
     plate_dfs = split_into_plates(well_recipes_df, wellplate_size=wellplate_size)
     plate_dfs = [apply_well_order(plate_df, lash_e.logger) for plate_df in plate_dfs]
     lash_e.logger.info(f"Source CSV splits into {len(plate_dfs)} plate(s)")

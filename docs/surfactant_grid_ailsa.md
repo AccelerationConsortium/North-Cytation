@@ -21,6 +21,31 @@ which other experiments rely on. Recipe/stock CSVs default to
 `workflow_configs/surfactant_grid_ailsa.yaml`. Set `MAX_WELLS` to `0` to run
 every well, or to a smaller number (e.g. 96 for one plate) to stop early.
 
+`WELLPLATE_TYPE` selects the physical plate. The recipe rows are split across as
+many plates as needed (96 rows use two 48-well plates or four 24-well plates).
+`VOLUME_SCALE_BY_PLATE` scales all per-well recipe ingredient volumes and the
+configured base `DYE_VOLUME_UL` without changing either source CSV. The defaults
+are 1x for 96 wells, 2x for 48 wells, and 4x for 24 wells. The workflow checks
+the scaled total against the configured plate capacity. A 24-well plate also
+requires a robot wellplate definition and compatible reader protocols before use.
+
+`MEASUREMENT_SCHEDULE_MIN` sets elapsed minutes from the end of each dispensing
+block. The default `[0]` runs the original single measurement sequence. At
+every timepoint, each `MEASUREMENT_REPLICATES` read repeats the same shake/wait,
+turbidity, then fluorescence sequence. Results include the scheduled timepoint
+and actual elapsed time. Mean tables group reads by scheduled timepoint, and
+plots and scoring are generated separately for each timepoint when there are
+multiple scheduled times.
+
+`RANDOMIZED_MEASUREMENT_ORDER: true` independently shuffles the physical well
+read sequence for each measurement replicate and timepoint. Set
+`MEASUREMENT_RANDOMIZATION_SEED` for repeatable shuffles. Both turbidity and
+fluorescence use the same order in a given replicate; each well is sent to the
+reader separately so its normal grouping logic cannot sort the sequence. This
+can make reads substantially slower. The default `false` keeps the existing
+reader grouping and physical well order. Results record the 1-based
+`measurement_order_position` for each read.
+
 Runtime behavior matches the replay workflow when `DYE="pyrene"`.
 `coumarin-6` and `nile-red` dispensing is implemented for hardware runs, but
 `simulate_dye_fluorescence()` only fabricates data for `DYE="pyrene"` —
