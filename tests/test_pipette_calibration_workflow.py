@@ -326,7 +326,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         WorkflowConfigTests.setUp(self)
         self.temporary = tempfile.TemporaryDirectory(prefix='north_calibration_tests_')
         self.addCleanup(self.temporary.cleanup)
-        self.directory = Path(self.temporary.name)
+        self.directory = Path(self.temporary.name).resolve()
         self.source_bytes = self.base_path.read_bytes()
         raw = yaml.safe_load(self.source_bytes)
         raw['output']['base_directory'] = str(self.directory / 'output')

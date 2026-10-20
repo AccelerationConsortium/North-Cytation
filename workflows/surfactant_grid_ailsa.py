@@ -70,9 +70,9 @@ DYE_SOLVENT = "DMSO"
 DYE_VIAL = "dye_vial"
 DYE_VOLUME_UL = 5
 # "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
-DISPENSE_ORDER = ["surfactant_B", "water", "surfactant_A", "dye"]
+DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
 
-PREPARATION_REPLICATES = 1
+PREPARATION_REPLICATES = 3
 MEASUREMENT_REPLICATES = 3
 
 RANDOMIZED_ORDER = False
@@ -418,7 +418,7 @@ def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=
             turbidity_filename = (
                 f"turbidity_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
             )
-            sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+            sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
             turbidity_path = os.path.join(
                 "output",
                 sim_folder,
@@ -883,7 +883,7 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
                 f"fluorescence_{DYE}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_"
                 f"{timestamp}.csv"
             )
-            sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+            sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
             fluorescence_path = os.path.join(
                 "output",
                 sim_folder,

@@ -2465,7 +2465,13 @@ class North_Robot(North_Base):
         if max_system_volume <= 0:
             raise ValueError("Pipet tip capacity must be positive")
 
-        repeats = max(1, math.ceil(volume / max_system_volume))
+        transfer_limit = max_system_volume
+        if liquid is not None:
+            calibrated_max = PipettingWizard(logger=self.logger).get_max_calibrated_volume(liquid)
+            if calibrated_max is not None:
+                transfer_limit = min(transfer_limit, calibrated_max)
+
+        repeats = max(1, math.ceil(volume / transfer_limit))
         for _ in range(10):
             sub_volume = volume / repeats
             parameters = self._get_optimized_parameters(
@@ -2483,7 +2489,7 @@ class North_Robot(North_Base):
                 f"({max_system_volume:.3f} mL) with the resolved pipetting parameters")
 
         if repeats > 1:
-            self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit pipet tip capacity")
+            self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit transfer limits")
         volume = sub_volume
 
         total_mass = 0
@@ -3853,6 +3859,8 @@ class North_Robot(North_Base):
 
         self.logger.info(f"Moving vial {self.get_vial_info(vial_index, 'vial_name')} to {location}: {location_index}")
         self.grab_vial(vial_index, move_speed=move_speed) #Grab the vial
+        if not self.simulate:
+            time.sleep(0.5)
         self.drop_off_vial(vial_index,location,location_index, move_speed=move_speed) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):

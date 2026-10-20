@@ -52,32 +52,9 @@ logger = logging.getLogger(__name__)
 
 # Tip conditioning volume will be calculated dynamically based on target volumes
 
-# Liquid densities for mass-to-volume conversion (g/mL)
-LIQUIDS = {
-    "water": {"density": 1.00, "refill_pipets": False},
-    "ethanol": {"density": 0.789, "refill_pipets": False},
-    "toluene": {"density": 0.867, "refill_pipets": False},
-    "heptane": {"density": 0.68, "refill_pipets": False},
-    "2MeTHF": {"density": 0.852, "refill_pipets": False},
-    "isopropanol": {"density": 0.789, "refill_pipets": False},
-    "DMSO": {"density": 1.1, "refill_pipets": False},
-    "acetone": {"density": 0.79, "refill_pipets": False},
-    "glycerol": {"density": 1.26, "refill_pipets": True},
-    "PEG_Water": {"density": 1.05, "refill_pipets": True},
-    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
-    "agar_water": {"density": 1.01, "refill_pipets": False},
-    "agar_water_refill": {"density": 1.01, "refill_pipets": True},
-    "agar_water_4%": {"density": 1.01, "refill_pipets": True},
-    "TFA": {"density": 1.49, "refill_pipets": False},
-    "6M_HCl": {"density": 1.10, "refill_pipets": False},
-    "6M_TFA": {"density": 1.25, "refill_pipets": False},
-    "6M_p_TSA": {"density": 1.25, "refill_pipets": False},
-    "6M_Citric_Acid": {"density": 1.27, "refill_pipets": False},
-    "6M_H2SO4": {"density": 1.34, "refill_pipets": False},
-    "6M_H3PO4": {"density": 1.35, "refill_pipets": False},
-    "PVA_water": {"density": 1.01, "refill_pipets": False},
-    "PVA_DMSO": {"density": 1.11, "refill_pipets": True},
-}
+from pipetting_data.liquid_registry import get_liquid, load_liquids
+
+LIQUIDS = load_liquids()
 
 
 from pipetting_data.pipetting_parameters import PipettingParameters
@@ -118,8 +95,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         liquid = experiment['liquid']
         if cfg['experiment']['liquid'] != liquid:
             raise ValueError("Engine liquid does not match the bound workflow")
-        if liquid not in LIQUIDS:
-            raise ValueError(f"Unknown calibration liquid: {liquid}")
+        get_liquid(liquid, LIQUIDS)
         self.quality_std_threshold = experiment['quality_std_threshold_g']
         self.conditioning_volume = self.get_tip_conditioning_volume(max(experiment['volume_targets_ml']))
         robot = lash_e.nr_robot
@@ -170,6 +146,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         if 'liquid' not in cfg['experiment']:
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
+        get_liquid(liquid, LIQUIDS)
         
         # Volume adjustment tracking for tip carryover/evaporation
         
@@ -573,10 +550,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 # Convert mass to volume using liquid density
                 liquid = state['liquid']
-                if liquid not in LIQUIDS:
-                    raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
-                
-                density_g_mL = LIQUIDS[liquid]['density']
+                density_g_mL = get_liquid(liquid, LIQUIDS)['density']
                 if not simulate: 
                     measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
                     measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display

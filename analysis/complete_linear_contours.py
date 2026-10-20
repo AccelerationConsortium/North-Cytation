@@ -10,7 +10,7 @@ from scipy.interpolate import griddata
 from matplotlib.colors import LogNorm
 
 # === TWEAKABLE PARAMETERS ===
-CSV_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\output\surfactant_grid_SDS_BDDAC_March_12_Overnight__SDS_CTAB_BDDAC_20260313_012112\iterative_experiment_results.csv"
+CSV_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\output\surfactant_grid\legacy\surfactant_grid_SDS_BDDAC_March_12_Overnight__SDS_CTAB_BDDAC_20260313_012112\iterative_experiment_results.csv"
 
 # Surfactant names for plot titles
 SURFACTANT_A_NAME = "SDS"

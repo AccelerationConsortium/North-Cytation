@@ -27,23 +27,9 @@ import slack_agent
 # Tip conditioning volume (mL)
 TIP_CONDITIONING_VOLUME = 0.10
 
-# Liquid densities for mass-to-volume conversion (g/mL)
-LIQUIDS = {
-    "water": {"density": 1.00, "refill_pipets": False},
-    "ethanol": {"density": 0.789, "refill_pipets": False},
-    "toluene": {"density": 0.867, "refill_pipets": False},
-    "2MeTHF": {"density": 0.852, "refill_pipets": False},
-    "isopropanol": {"density": 0.789, "refill_pipets": False},
-    "DMSO": {"density": 1.1, "refill_pipets": False},
-    "acetone": {"density": 0.79, "refill_pipets": False},
-    "glycerol": {"density": 1.26, "refill_pipets": True},
-    "PEG_Water": {"density": 1.05, "refill_pipets": True},
-    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
-    "agar_water": {"density": 1.01, "refill_pipets": False},
-    "agar_water_refill": {"density": 1.01, "refill_pipets": True},
-    "TFA": {"density": 1.49, "refill_pipets": False},
-    "6M_HCl": {"density": 1.10, "refill_pipets": False},
-}
+from pipetting_data.liquid_registry import get_liquid, load_liquids
+
+LIQUIDS = load_liquids()
 
 # Temperature settings
 DEFAULT_TARGET_TEMP = 40.0  # Default target temperature in Celsius
@@ -67,6 +53,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
         if 'liquid' not in cfg['experiment']:
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
+        get_liquid(liquid, LIQUIDS)
         
         # Get target temperature (with fallback to default)
         target_temp = DEFAULT_TARGET_TEMP
@@ -400,10 +387,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                 
                 # Convert mass to volume using liquid density
                 liquid = state['liquid']
-                if liquid not in LIQUIDS:
-                    raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
-                
-                density_g_mL = LIQUIDS[liquid]['density']
+                density_g_mL = get_liquid(liquid, LIQUIDS)['density']
                 if not simulate: 
                     measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
                     measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display

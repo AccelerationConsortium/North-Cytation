@@ -750,6 +750,15 @@ class SchedulerWindow(QMainWindow):
                 jobs.append((row, name, config_path, config, vial_path))
                 if vial_path is not None:
                     vial_files.append(str(vial_path))
+            state_paths = set(vial_files) | {
+                str((REPO_ROOT / "robot_state" / "robot_status.yaml").resolve()),
+                str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve()),
+            }
+            approved_files = self.approved_simulation_inputs["files"]
+            fluorescence_plate_state = str(
+                (REPO_ROOT / "robot_state" / "fluorescence_plate.yaml").resolve())
+            if fluorescence_plate_state in approved_files:
+                state_paths.add(fluorescence_plate_state)
             for row, name, config_path, config, vial_path in jobs:
                 config["SIMULATE"] = False
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
@@ -757,12 +766,9 @@ class SchedulerWindow(QMainWindow):
                 folder.mkdir(parents=True)
                 (folder / "input.json").write_text(json.dumps({
                     "workflow": name, "config_file": str(config_path.resolve()), "config": config,
-                    "input_hashes": {path: digest for path, digest in self.approved_simulation_inputs["files"].items()
-                                     if path not in set(vial_files) | {
-                                         str((REPO_ROOT / "robot_state" / "robot_status.yaml").resolve()),
-                                         str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve()),
-                                         str((REPO_ROOT / "robot_state" / "fluorescence_plate.yaml").resolve())
-                                     } or (vial_path is not None and path == str(vial_path))},
+                    "input_hashes": {path: digest for path, digest in approved_files.items() if path not in state_paths},
+                    "state_hashes": {path: approved_files[path] for path in state_paths},
+                    "previous_job_result": str(root / "jobs" / f"{row - 1:03d}" / "result.json") if row else None,
                     "state_root": str(REPO_ROOT / "robot_state"), "vial_files": vial_files,
                 }), encoding="utf-8")
             if self.queue_input_fingerprint() != self.approved_simulation_inputs:

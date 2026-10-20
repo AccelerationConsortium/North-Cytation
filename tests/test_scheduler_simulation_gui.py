@@ -4,6 +4,8 @@ import os
 import sys
 import tempfile
 import unittest
+import types
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +18,7 @@ from PySide6.QtCore import QEventLoop, QProcess, QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 import scheduler_gui
 from scheduler import simulation_state as state
+from scheduler import live_runner
 
 
 class HarmlessProcess(QProcess):
@@ -106,6 +109,29 @@ class SimulationGuiTests(unittest.TestCase):
         timer.stop()
         watchdog.stop()
         self.assertIsNone(self.window.simulation_process, "Test child did not finish; watchdog is only a test limit")
+
+    def test_live_preparation_carries_shared_inventory_between_jobs(self):
+        second = Path(self.window.row_config_path(self.window.table.cellWidget(1, 0)))
+        config = yaml.safe_load(second.read_text())
+        config["INPUT_VIAL_STATUS_FILE"] = "status/first.csv"
+        second.write_text(yaml.safe_dump(config))
+        self.window.start_simulation()
+        self.wait_for_queue()
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+             patch.object(self.window, "launch_next_simulation"):
+            self.window.start_live_run()
+        root = self.window.simulation_session
+        inventory = self.root / "status/first.csv"
+
+        def execute(config, show_gui):
+            inventory.write_text("vial_name,location,location_index,vial_volume\nfirst,main_8mL_rack,0,1.5\n")
+
+        with patch.object(live_runner, "scheduler_live_lock", return_value=nullcontext()), \
+             patch.object(live_runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            first = live_runner.run_job(root / "jobs/000")
+            second_result = live_runner.run_job(root / "jobs/001")
+        self.assertTrue(first["handoff_ok"], first["exception"])
+        self.assertTrue(second_result["handoff_ok"], second_result["exception"])
 
     def test_children_run_in_order_with_state_and_notes(self):
         original = (self.root / "robot_state" / "robot_status.yaml").read_bytes()

@@ -2066,7 +2066,7 @@ def setup_experiment_folder(lash_e):
     if lash_e.simulate and not _SAVE_FILES_ON_SIMULATE:
         lash_e.logger.info("Simulation file output disabled; results remain in memory.")
         return None, name
-    sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+    sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
     base = os.path.join("output", sim_folder, name)
     os.makedirs(base, exist_ok=True)
     os.makedirs(os.path.join(base, "measurement_backups"), exist_ok=True)
@@ -2671,7 +2671,7 @@ def execute(config=None, show_gui=True):
             validation_folder = None
             if not lash_e.simulate or _SAVE_FILES_ON_SIMULATE:
                 validation_folder = os.path.join(
-                    "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    "output", "surfactant_grid", "validation", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 )
                 os.makedirs(validation_folder, exist_ok=True)
             validate_pipetting_system(

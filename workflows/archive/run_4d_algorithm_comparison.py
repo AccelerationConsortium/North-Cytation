@@ -4,7 +4,7 @@ Runs the multidimensional workflow in simulation for all 5 recommender
 algorithms on a 4D surfactant system (SDS + NaLS anionic, TTAB + DTAB cationic).
 
 Executes algorithms sequentially. Each run saves results to:
-    output/simulated_surfactant_grid/multidim_4D_SDS_NaLS_TTAB_DTAB_{algorithm}_*
+    output/surfactant_grid/simulated/multidim_4D_SDS_NaLS_TTAB_DTAB_{algorithm}_*
 
 Usage (from repo root):
     python workflows/run_4d_algorithm_comparison.py

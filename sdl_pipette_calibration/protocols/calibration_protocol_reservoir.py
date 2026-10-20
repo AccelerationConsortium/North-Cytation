@@ -27,20 +27,9 @@ import slack_agent
 # Line priming volume (mL) - prime the reservoir line before calibration
 LINE_PRIMING_VOLUME = 0.5
 
-# Liquid densities for mass-to-volume conversion (g/mL)
-LIQUIDS = {
-    "water": {"density": 1.00},
-    "ethanol": {"density": 0.789},
-    "toluene": {"density": 0.867},
-    "2MeTHF": {"density": 0.852},
-    "isopropanol": {"density": 0.789},
-    "DMSO": {"density": 1.1},
-    "acetone": {"density": 0.79},
-    "glycerol": {"density": 1.26},
-    "PEG_Water": {"density": 1.05},
-    "4%_hyaluronic_acid_water": {"density": 1.01},
-    "agar_water": {"density": 1.01},
-}
+from pipetting_data.liquid_registry import get_liquid, load_liquids
+
+LIQUIDS = load_liquids()
 
 class ReservoirCalibrationProtocol(CalibrationProtocolBase):
     """Reservoir calibration protocol implementing the abstract interface."""
@@ -55,6 +44,7 @@ class ReservoirCalibrationProtocol(CalibrationProtocolBase):
         if 'liquid' not in cfg['experiment']:
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
+        get_liquid(liquid, LIQUIDS)
         
         # Get reservoir index from config (default to 0)
         reservoir_index = 1
@@ -275,10 +265,7 @@ class ReservoirCalibrationProtocol(CalibrationProtocolBase):
                 
                 # Convert mass to volume using liquid density
                 liquid = state['liquid']
-                if liquid not in LIQUIDS:
-                    raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
-                
-                density_g_mL = LIQUIDS[liquid]['density']
+                density_g_mL = get_liquid(liquid, LIQUIDS)['density']
                 measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
                 measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display
                 

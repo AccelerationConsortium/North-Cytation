@@ -134,6 +134,103 @@ class LiveRunnerTests(unittest.TestCase):
         self.assertTrue(result["handoff_ok"])
         self.assertIsNone(execute.call_args.kwargs["config"]["INPUT_VIAL_STATUS_FILE"])
 
+    def prepare_live_chain(self):
+        self.job["input_hashes"] = runner.fingerprint([self.source])
+        self.job["state_hashes"] = runner.fingerprint([
+            self.vials, self.root / "robot_status.yaml", self.root / "track_status.yaml"
+        ])
+        self.save_job()
+        next_folder = self.root / "next"
+        next_folder.mkdir()
+        next_job = dict(self.job, previous_job_result=str(self.root / "result.json"))
+        (next_folder / "input.json").write_text(json.dumps(next_job))
+        return next_folder
+
+    def test_shared_vial_updates_carry_forward_between_live_jobs(self):
+        next_folder = self.prepare_live_chain()
+
+        def execute(config, show_gui):
+            self.vials.write_text("location,location_index,vial_volume\nmain_8mL_rack,0,1.5\n")
+            self.robot["pipets_used"] = {"rack": 1}
+            (self.root / "robot_status.yaml").write_text(yaml.safe_dump(self.robot))
+
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            first = runner.run_job(self.root)
+        self.assertTrue(first["handoff_ok"])
+        self.assertEqual(first["state_hashes"], runner.fingerprint(self.job["state_hashes"]))
+        execute_next = Mock()
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute_next)):
+            second = runner.run_job(next_folder)
+        self.assertTrue(second["handoff_ok"], second["exception"])
+        execute_next.assert_called_once()
+
+    def test_inventory_edit_after_handoff_blocks_next_job(self):
+        next_folder = self.prepare_live_chain()
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=Mock())):
+            self.assertTrue(runner.run_job(self.root)["handoff_ok"])
+        self.vials.write_text("location,location_index\nmain_8mL_rack,1\n")
+        with patch.object(runner.importlib, "import_module") as importer:
+            result = runner.run_job(next_folder)
+        importer.assert_not_called()
+        self.assertIn("Live inventory changed", result["exception"])
+
+    def test_inventory_edit_before_first_job_blocks_import(self):
+        self.prepare_live_chain()
+        self.vials.write_text("location,location_index\nmain_8mL_rack,1\n")
+        with patch.object(runner.importlib, "import_module") as importer:
+            result = runner.run_job(self.root)
+        importer.assert_not_called()
+        self.assertIn("Live inventory changed", result["exception"])
+
+    def test_failed_or_missing_handoff_cannot_authorize_next_job(self):
+        next_folder = self.prepare_live_chain()
+        for previous in (None, {"completed": False, "handoff_ok": False},
+                         {"completed": True, "handoff_ok": True}):
+            with self.subTest(previous=previous):
+                if previous is not None:
+                    (self.root / "result.json").write_text(json.dumps(previous))
+                with patch.object(runner.importlib, "import_module") as importer:
+                    result = runner.run_job(next_folder)
+                importer.assert_not_called()
+                self.assertFalse(result["completed"])
+
+    def test_config_edit_between_jobs_still_blocks_import(self):
+        next_folder = self.prepare_live_chain()
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=Mock())):
+            self.assertTrue(runner.run_job(self.root)["handoff_ok"])
+        self.source.write_text("changed config")
+        with patch.object(runner.importlib, "import_module") as importer:
+            result = runner.run_job(next_folder)
+        importer.assert_not_called()
+        self.assertIn("Reviewed inputs changed", result["exception"])
+
+    def test_config_edit_during_job_blocks_handoff(self):
+        self.prepare_live_chain()
+
+        def execute(config, show_gui):
+            self.source.write_text("changed config")
+
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            result = runner.run_job(self.root)
+        self.assertFalse(result["handoff_ok"])
+        self.assertNotIn("state_hashes", result)
+        self.assertIn("Reviewed inputs changed during the live job", result["exception"])
+
+    def test_logged_error_does_not_publish_inventory_handoff(self):
+        next_folder = self.prepare_live_chain()
+
+        def execute(config, show_gui):
+            logging.getLogger().error("workflow error")
+
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            first = runner.run_job(self.root)
+        self.assertFalse(first["handoff_ok"])
+        self.assertNotIn("state_hashes", first)
+        with patch.object(runner.importlib, "import_module") as importer:
+            second = runner.run_job(next_folder)
+        importer.assert_not_called()
+        self.assertIn("successful handoff", second["exception"])
+
 
 if __name__ == "__main__":
     unittest.main()

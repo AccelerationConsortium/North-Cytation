@@ -300,7 +300,7 @@ def ilya_workflow_v2():
     # Convert to mL after validation
     input_data = input_data / 1000
 
-    os.makedirs("output", exist_ok=True)
+    os.makedirs("output/ilya_dispense_timing", exist_ok=True)
 
     timing_records = []
 
@@ -422,7 +422,7 @@ def ilya_workflow_v2():
     if timing_records:
         timing_df = pd.DataFrame(timing_records)
         timing_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        timing_filepath = os.path.join("output", f"ilya_dispense_timing_{timing_timestamp}.csv")
+        timing_filepath = os.path.join("output", "ilya_dispense_timing", f"ilya_dispense_timing_{timing_timestamp}.csv")
         timing_df.to_csv(timing_filepath, index=False)
         print(f"Dispense timing saved: {timing_filepath}")
 

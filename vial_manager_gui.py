@@ -20,6 +20,7 @@ Features:
 import sys
 import os
 import csv
+from vial_csv import read_vial_csv, save_vial_csv
 import yaml
 import re
 import glob
@@ -2112,19 +2113,7 @@ class VialManagerMainWindow(QMainWindow):
     def load_status_file(self, file_path: str) -> bool:
         """Load vials from CSV status file."""
         try:
-            vials_data = []
-            original_fieldnames = None  # Store original field order
-            with open(file_path, 'r', newline='', encoding='utf-8') as csvfile:
-                # Auto-detect delimiter
-                sample = csvfile.read(1024)
-                csvfile.seek(0)
-                sniffer = csv.Sniffer()
-                delimiter = sniffer.sniff(sample).delimiter
-                
-                reader = csv.DictReader(csvfile, delimiter=delimiter)
-                original_fieldnames = reader.fieldnames  # Preserve original order
-                for row in reader:
-                    vials_data.append(row)
+            original_fieldnames, vials_data = read_vial_csv(file_path)
             
             if not vials_data:
                 QMessageBox.warning(self, "Empty File", "No vial data found in file.")
@@ -3033,10 +3022,7 @@ class VialManagerMainWindow(QMainWindow):
                         if field not in fieldnames:
                             fieldnames.append(field)
                 
-                with open(self.status_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
-                    writer.writerows(all_vials_data)
+                save_vial_csv(self.status_file_path, fieldnames, all_vials_data)
                 
                 self.status_bar.showMessage("File saved successfully")
                 return True

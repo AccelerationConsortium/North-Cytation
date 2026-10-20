@@ -1,4 +1,5 @@
 import sys
+import os
 
 from matplotlib.pylab import False_
 sys.path.append("../utoronto_demo")
@@ -128,7 +129,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     if VALIDATE_LIQUIDS:
         # Validate vials with 200 uL tip conditioning
         from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-        validation_folder = f"output/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        validation_folder = f"output/color_mixing/validation/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         vials = ['water', 'yellow', 'red', 'blue']
         for vial_name in vials:
             try:
@@ -196,7 +197,8 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     if results is not None:
         # Create timestamped filename to avoid overwrites
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        results_filename = f"../utoronto_demo/output/color_mixing_results_{timestamp}.csv"
+        os.makedirs("output/color_mixing/results", exist_ok=True)
+        results_filename = f"output/color_mixing/results/color_mixing_results_{timestamp}.csv"
         
         try:
             # Handle MultiIndex columns by flattening them
@@ -209,7 +211,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
             
         except Exception as e:
             # Fallback: save as pickle if CSV fails
-            pickle_filename = f"../utoronto_demo/output/color_mixing_results_{timestamp}.pkl"
+            pickle_filename = f"output/color_mixing/results/color_mixing_results_{timestamp}.pkl"
             results.to_pickle(pickle_filename)
             print(f"CSV save failed ({e}), results saved as pickle: {pickle_filename}")
     else:

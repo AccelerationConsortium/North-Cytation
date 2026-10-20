@@ -12,6 +12,7 @@ from uuid import uuid4
 import yaml
 
 from master_usdl_coordinator import Lash_E
+from pipetting_data.liquid_registry import get_liquid
 
 _WORKFLOW_NAME = Path(__file__).stem
 _ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +25,7 @@ _SAVE_FILES_ON_SIMULATE = False
 _USE_BAYES_OPT_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 TARGET_VIAL = "acetone"
-CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config.yaml"
+CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config_workflow.yaml"
 LIQUID = "acetone"
 VOLUME_TARGETS_ML = [0.02, 0.01, 0.005]
 RANDOM_SEED = 30
@@ -339,6 +340,7 @@ def execute(config=None, show_gui=True):
     failed = True
     try:
         validate_experiment(confirmed, lash_e)
+        get_liquid(confirmed["LIQUID"])
         from sdl_pipette_calibration.config_manager import ExperimentConfig
         from sdl_pipette_calibration.experiment import CalibrationExperiment
         from sdl_pipette_calibration.protocol_loader import load_hardware_protocol

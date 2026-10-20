@@ -23,6 +23,22 @@ def fingerprint(paths):
     return {str(Path(path).resolve()): hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in paths}
 
 
+def reviewed_live_state(job):
+    """Use the reviewed start state, then each successful live handoff."""
+    expected = job["state_hashes"]
+    previous_path = job.get("previous_job_result")
+    if previous_path:
+        previous = json.loads(Path(previous_path).read_text(encoding="utf-8"))
+        if (previous.get("completed") is not True or previous.get("handoff_ok") is not True
+                or previous.get("exception")
+                or any(record["level"] in {"ERROR", "CRITICAL"} for record in previous["records"])):
+            raise ValueError("Previous live job did not return a successful handoff.")
+        expected = previous["state_hashes"]
+        if set(expected) != set(job["state_hashes"]):
+            raise ValueError("Previous live handoff does not cover this queue's inventory.")
+    return expected
+
+
 def live_state_issues(job):
     root = Path(job["state_root"])
     robot = yaml.safe_load((root / "robot_status.yaml").read_text())
@@ -94,8 +110,6 @@ def run_job(folder):
         if os.environ.get(SESSION_ENV):
             raise RuntimeError("Live execution cannot use simulation state.")
         job = json.loads((folder / "input.json").read_text(encoding="utf-8"))
-        if fingerprint(job["input_hashes"]) != job["input_hashes"]:
-            raise ValueError("Reviewed inputs changed; simulate again before running.")
         config = job["config"]
         if config["SIMULATE"] is not False:
             raise ValueError("Live config must explicitly select SIMULATE=False.")
@@ -103,6 +117,14 @@ def run_job(folder):
         if Path(name).name != name or name.startswith("_"):
             raise ValueError("Invalid workflow name")
         with scheduler_live_lock():
+            if fingerprint(job["input_hashes"]) != job["input_hashes"]:
+                raise ValueError("Reviewed inputs changed; simulate again before running.")
+            if "state_hashes" in job:
+                expected = reviewed_live_state(job)
+                actual = fingerprint(expected)
+                changed = [path for path in expected if actual[path] != expected[path]]
+                if changed:
+                    raise ValueError("Live inventory changed since review or the previous handoff: " + "; ".join(changed))
             issues = live_state_issues(job)
             if issues:
                 raise ValueError("Live starting state requires review: " + "; ".join(issues))
@@ -110,10 +132,14 @@ def run_job(folder):
             with watch_for_interrupt(folder):
                 module.execute(config=config, show_gui=False)
             issues = live_state_issues(job)
-        result["completed"] = True
-        for issue in issues:
-            result["records"].append({"level": "ERROR", "message": f"Live handoff blocked: {issue}"})
-        result["handoff_ok"] = not issues and not any(record["level"] in {"ERROR", "CRITICAL"} for record in diagnostics.records)
+            if fingerprint(job["input_hashes"]) != job["input_hashes"]:
+                raise ValueError("Reviewed inputs changed during the live job; simulate again before running.")
+            result["completed"] = True
+            for issue in issues:
+                result["records"].append({"level": "ERROR", "message": f"Live handoff blocked: {issue}"})
+            result["handoff_ok"] = not issues and not any(record["level"] in {"ERROR", "CRITICAL"} for record in diagnostics.records)
+            if result["handoff_ok"] and "state_hashes" in job:
+                result["state_hashes"] = fingerprint(job["state_hashes"])
         for handler in logger.handlers:
             if isinstance(handler, logging.FileHandler):
                 result["log_file"] = handler.baseFilename
