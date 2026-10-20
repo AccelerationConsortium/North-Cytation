@@ -632,10 +632,12 @@ def generate_study_heatmaps(csv_file_path, output_dir, logger, surfactant_a_name
 
 
 def generate_study_1d_plots(csv_file_path, output_dir, logger, surfactant_a_name, surfactant_b_name):
-    """Generate dye-generic 1D CMC/control plots for each surfactant."""
+    """Save 1D control data and CMC fits, then generate plots."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import numpy as np
+    from analysis.control_cmc_analysis import fit_cmc_curve
 
     os.makedirs(output_dir, exist_ok=True)
     df = pd.read_csv(csv_file_path)
@@ -677,13 +679,64 @@ def generate_study_1d_plots(csv_file_path, output_dir, logger, surfactant_a_name
         ].mean()
         summary = summary.sort_values(concentration_column)
 
+        safe_name = str(surfactant_name).replace(" ", "_")
+        csv_path = os.path.join(output_dir, f"study_1d_{safe_name}_controls.csv")
+        summary.to_csv(csv_path, index=False)
+        saved_paths.append(csv_path)
+
+        # Use the same log-concentration Boltzmann fit as the legacy CMC plot.
+        fit_data = summary[[concentration_column, "fluorescence_metric"]].replace(
+            [np.inf, -np.inf], np.nan
+        ).dropna()
+        fit_data = fit_data[fit_data[concentration_column] > 0]
+        fit_result = {
+            "surfactant": surfactant_name,
+            "metric": metric_label,
+            "fit_status": "insufficient_points",
+            "n_points": len(fit_data),
+            "concentration_unit": "mM",
+            "fit_x_scale": "log10_concentration_mm",
+            "A1": np.nan, "A2": np.nan, "x0": np.nan, "dx": np.nan,
+            "cmc_mm": np.nan, "r_squared": np.nan,
+        }
+        if len(fit_data) >= 4 and fit_data[concentration_column].nunique() >= 4:
+            cmc, r_squared, parameters, _ = fit_cmc_curve(
+                fit_data[concentration_column].to_numpy(),
+                fit_data["fluorescence_metric"].to_numpy(),
+            )
+            if parameters is not None:
+                fit_result.update(
+                    fit_status="success", A1=parameters[0], A2=parameters[1],
+                    x0=parameters[2], dx=parameters[3], cmc_mm=cmc,
+                    r_squared=r_squared,
+                )
+            else:
+                fit_result["fit_status"] = "fit_failed"
+        fit_csv = os.path.join(output_dir, f"study_1d_{safe_name}_fit.csv")
+        pd.DataFrame([fit_result]).to_csv(fit_csv, index=False)
+        saved_paths.append(fit_csv)
+
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
         axes[0].plot(
             summary[concentration_column],
             summary["fluorescence_metric"],
             marker="o",
+            label="Measured mean",
         )
+        if fit_result["fit_status"] == "success":
+            from analysis.control_cmc_analysis import boltzmann
+            x_fit = np.linspace(
+                np.log10(fit_data[concentration_column].min()),
+                np.log10(fit_data[concentration_column].max()), 200,
+            )
+            axes[0].plot(10 ** x_fit, boltzmann(
+                x_fit, fit_result["A1"], fit_result["A2"],
+                fit_result["x0"], fit_result["dx"],
+            ), linestyle="--", label=f"Boltzmann fit (R²={fit_result['r_squared']:.2f})")
+            axes[0].axvline(fit_result["cmc_mm"], color="tab:red", linestyle=":",
+                            label=f"CMC {fit_result['cmc_mm']:.2g} mM")
+            axes[0].legend()
         axes[0].set_title(f"{surfactant_name} 1D Fluorescence")
         axes[0].set_xlabel(f"{surfactant_name} Concentration (mM)")
         axes[0].set_ylabel(f"Fluorescence Metric ({metric_label})")
@@ -705,15 +758,11 @@ def generate_study_1d_plots(csv_file_path, output_dir, logger, surfactant_a_name
         axes[1].grid(True, alpha=0.3)
 
         fig.tight_layout()
-        safe_name = str(surfactant_name).replace(" ", "_")
         plot_path = os.path.join(output_dir, f"study_1d_{safe_name}_controls.png")
         fig.savefig(plot_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
         saved_paths.append(plot_path)
 
-        csv_path = os.path.join(output_dir, f"study_1d_{safe_name}_controls.csv")
-        summary.to_csv(csv_path, index=False)
-        saved_paths.append(csv_path)
         logger.info(f"Saved 1D CMC/control plot for {surfactant_name}: {plot_path}")
 
     return saved_paths
@@ -1057,6 +1106,16 @@ def simulate_dye_fluorescence(well_indices, batch_recipes, dye_protocol):
             elif "water" in str(row["control_type"]).lower():
                 simulated_373.append(800)
                 simulated_384.append(1200)
+            elif str(row["control_type"]).startswith("cmc_"):
+                # Simulated 1D controls need a concentration response so that
+                # fitting and downstream local calibration can be exercised.
+                import numpy as np
+                concentration = (row["surf_A_conc_mm"] if pd.notna(row["surf_A_conc_mm"])
+                                 else row["surf_B_conc_mm"])
+                log_concentration = np.log10(float(concentration))
+                simulated_ratio = 0.75 + 0.10 / (1 + np.exp((log_concentration - np.log10(8.8)) / 0.18))
+                simulated_373.append(1500 * simulated_ratio)
+                simulated_384.append(1500)
             else:
                 simulated_373.append(1500)
                 simulated_384.append(2200)
@@ -1422,49 +1481,38 @@ def execute_preparation_replicate(
         lash_e.logger,
     )
 
-    try:
-        for measurement_replicate, measurement_csv in analysis_tables["individual_csvs"].items():
-            heatmap_folder = os.path.join(
-                experiment_output_folder,
-                "heatmap",
-                f"measurement_replicate_{measurement_replicate}",
-            )
-            os.makedirs(heatmap_folder, exist_ok=True)
-            generate_study_heatmaps(
-                measurement_csv, heatmap_folder, lash_e.logger,
-                surfactant_a_name, surfactant_b_name,
-            )
-            one_d_folder = os.path.join(
-                experiment_output_folder,
-                "one_dimensional",
-                f"measurement_replicate_{measurement_replicate}",
-            )
+    analysis_inputs = [
+        (f"measurement_replicate_{replicate}", path)
+        for replicate, path in analysis_tables["individual_csvs"].items()
+    ]
+    analysis_inputs.append(("measurement_mean", analysis_tables["mean_csv"]))
+    for label, measurement_csv in analysis_inputs:
+        one_d_folder = os.path.join(experiment_output_folder, "one_dimensional", label)
+        try:
             generate_study_1d_plots(
                 measurement_csv, one_d_folder, lash_e.logger,
                 surfactant_a_name, surfactant_b_name,
             )
-
-        mean_heatmap_folder = os.path.join(
-            experiment_output_folder,
-            "heatmap",
-            "measurement_mean",
-        )
-        os.makedirs(mean_heatmap_folder, exist_ok=True)
-        generate_study_heatmaps(
-            analysis_tables["mean_csv"], mean_heatmap_folder, lash_e.logger,
-            surfactant_a_name, surfactant_b_name,
-        )
-        mean_one_d_folder = os.path.join(
-            experiment_output_folder,
-            "one_dimensional",
-            "measurement_mean",
-        )
-        generate_study_1d_plots(
-            analysis_tables["mean_csv"], mean_one_d_folder, lash_e.logger,
-            surfactant_a_name, surfactant_b_name,
-        )
-    except Exception as e:
-        lash_e.logger.warning(f"Plot generation failed: {e}")
+        except Exception as e:
+            lash_e.logger.warning(f"1D analysis failed for {label}: {e}")
+        try:
+            heatmap_folder = os.path.join(experiment_output_folder, "heatmap", label)
+            generate_study_heatmaps(
+                measurement_csv, heatmap_folder, lash_e.logger,
+                surfactant_a_name, surfactant_b_name,
+            )
+        except Exception as e:
+            lash_e.logger.warning(f"Heatmap generation failed for {label}: {e}")
+        if get_dye_protocol()["primary_metric"] == "ratio":
+            try:
+                from analysis.surfactant_grid_scoring import score_surfactant_grid_2d
+                score_surfactant_grid_2d(
+                    measurement_csv, one_d_folder,
+                    os.path.join(experiment_output_folder, "scoring", label),
+                    surfactant_a_name, surfactant_b_name,
+                )
+            except Exception as e:
+                lash_e.logger.warning(f"2D scoring failed for {label}: {e}")
 
     dye_protocol = get_dye_protocol()
     if dye_protocol["primary_metric"] == "ratio":
