@@ -53,6 +53,89 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             vial_info(vial, "vial_type") == "8_mL" and bool(vial_info(vial, "capped")))
         return lash
 
+    def test_solvent_pool_skips_tiny_remainder_and_preserves_reserves(self):
+        lash = self.fake_coordinator(simulate=True)
+        volumes = {"DMSO": 2.001, "DMSO_2": 7.0, "DMSO_3": 20.0}
+        lash.nr_robot.get_vial_info.side_effect = lambda vial, column: volumes[vial]
+        with patch.object(workflow, "dispense_vial_to_vial") as transfer:
+            workflow.dispense_solvent(lash, list(volumes), "destination", 4.5, "DMSO", 2.0)
+        transfer.assert_called_once_with(lash, "DMSO_2", "destination", 4.5, "DMSO")
+
+    def test_solvent_pool_requires_one_container_to_supply_whole_addition(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.nr_robot.get_vial_info.side_effect = lambda vial, column: 4.0
+        with patch.object(workflow, "dispense_vial_to_vial") as transfer:
+            with self.assertRaisesRegex(ValueError, "single container"):
+                workflow.dispense_solvent(lash, ["DMSO", "DMSO_2"], "destination", 3.0, "DMSO", 2.0)
+        transfer.assert_not_called()
+
+    def test_solvent_pool_rejects_insufficient_volume_before_transfers(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.nr_robot.get_vial_info.side_effect = None
+        lash.nr_robot.get_vial_info.return_value = 0.15
+        with patch.object(workflow, "dispense_vial_to_vial") as transfer:
+            with self.assertRaisesRegex(ValueError, "Insufficient bulk DMSO"):
+                workflow.dispense_solvent(lash, ["DMSO", "DMSO_2"], "destination", 0.2, "DMSO", 0.1)
+        transfer.assert_not_called()
+
+    def test_working_solvent_refill_uses_configured_pool_without_identity_named_source(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory = inventory[inventory.vial_name != "DMSO"]
+        inventory.loc[inventory.vial_name == "DMSO_working", "vial_volume"] = 0.0
+        inventory.to_csv(self.vial_file, index=False)
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = {
+            **self.config, "SIMULATE": True, "PREPARE_ONLY": True,
+            "SOLVENT_SOURCE_VIALS": ["DMSO_2", "DMSO_3"],
+        }
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                patch.object(workflow, "dispense_vial_to_vial") as transfer:
+            execute(lash.workflow_config, show_gui=False)
+        working = [call for call in transfer.call_args_list if call.args[2] == "DMSO_working"]
+        self.assertEqual(len(working), 1)
+        self.assertEqual(working[0].args[1:], ("DMSO_2", "DMSO_working", 6.0, "DMSO"))
+
+    def test_six_preparations_share_solvent_pool_and_reuse_each_dyes_substocks(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory.loc[inventory.vial_name == "coumarin6_DMSO_stock", "vial_volume"] = 7.8
+        inventory.to_csv(self.vial_file, index=False)
+        transfers = []
+        for run, dye in enumerate(("nile-red", "nile-red", "coumarin-6", "coumarin-6", "pyrene", "pyrene")):
+            lash = self.fake_coordinator(simulate=True)
+            robot = lash.nr_robot
+            lash.workflow_config = {
+                **self.config, "SIMULATE": True, "DYE": dye, "DYE_SOLVENT": "DMSO",
+                "SOLVENT_SOURCE_VIALS": ["DMSO", "DMSO_2", "DMSO_3"],
+                "PREPARE_ONLY": True, "TEST_WATER": False, "TEST_SURFACTANT": False,
+            }
+
+            def transfer(controller, source, destination, volume, liquid):
+                rows = robot.VIAL_DF
+                source_index = rows.index[rows.vial_name == source][0]
+                destination_index = rows.index[rows.vial_name == destination][0]
+                self.assertGreaterEqual(rows.at[source_index, "vial_volume"] + 1e-9, volume)
+                rows.at[source_index, "vial_volume"] -= volume
+                rows.at[destination_index, "vial_volume"] += volume
+                transfers.append((source, destination, volume))
+
+            coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                flatten_cytation_data=MagicMock())
+            before = len(transfers)
+            with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                    patch.object(workflow, "dispense_vial_to_vial", side_effect=transfer):
+                execute(lash.workflow_config, show_gui=False)
+            if run % 2:
+                self.assertEqual(len(transfers), before)
+            robot.VIAL_DF.to_csv(self.vial_file, index=False)
+        bulk_transfers = [entry for entry in transfers if entry[0] in ("DMSO", "DMSO_2", "DMSO_3")]
+        self.assertAlmostEqual(sum(entry[2] for entry in bulk_transfers), 38.7)
+        stock_transfers = [entry for entry in transfers if entry[0].endswith("_stock")]
+        self.assertEqual(len(stock_transfers), 9)
+        final = pd.read_csv(self.vial_file).set_index("vial_name")
+        self.assertTrue((final.loc[["DMSO", "DMSO_2", "DMSO_3"], "vial_volume"] >= 2.0 - 1e-9).all())
+
     def test_transfer_staging_depends_on_either_closed_cap(self):
         for source_cap, destination_cap in (("open", "open"), ("closed", "open"),
                                             ("open", "closed"), ("closed", "closed")):
@@ -495,6 +578,11 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                          {"SURFACTANT_CONCENTRATION_MM": 10, "SURFACTANT_CMC_MM": 9.9},
                          {"REPETITIONS": 21, "SUBSTOCK_VOLUME_ML": 1.0},
                          {"TOTAL_VOLUME_UL": float("nan")},
+                         {"SOLVENT_SOURCE_VIALS": []},
+                         {"SOLVENT_SOURCE_VIALS": ["DMSO", "DMSO"]},
+                         {"SOLVENT_SOURCE_VIALS": "DMSO"},
+                         {"SOLVENT_SOURCE_RESERVE_ML": -0.1},
+                         {"SOLVENT_SOURCE_RESERVE_ML": float("nan")},
                          {"DYE": "unknown"}, {"DYE_SOLVENT": "---"}):
             with self.subTest(override=override), self.assertRaises(ValueError):
                 build_plan({**self.config, **override})

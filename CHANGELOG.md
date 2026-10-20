@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-10-16] - Multiple Fluorescence Solvent Sources
+
+- ADDED: Ordered `SOLVENT_SOURCE_VIALS` with configurable per-container reserve,
+  combined-volume validation, and source selection using existing vial handling.
+- CHANGED: Default bulk-solvent reserve is 2 mL per container; transfers switch
+  sources without drawing below that volume.
+- FIXED: Each solvent addition uses one sufficiently filled source instead of
+  splitting off tiny leftovers that trigger uncalibrated-volume/small-tip warnings.
+- UNCHANGED: Dye/solvent naming, working-vial dispensing, and prepared-substock reuse.
+
 ## [2026-10-16] - Embedded Validation Recording Reliability
 
 - FIXED: Raw measurements and master CSVs retain per-volume, per-stage pipetting

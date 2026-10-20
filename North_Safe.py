@@ -3894,6 +3894,7 @@ class North_Robot(North_Base):
         self.c9.close_gripper()
         self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
+        self.move_rel_xyz(z_distance=5)
         self.c9.open_clamp()
 
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False
