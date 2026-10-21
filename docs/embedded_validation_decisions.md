@@ -117,3 +117,51 @@ an unresolved volume, to avoid presenting a mixture as a coherent selected-stage
 
 The backfill script requires a matching original backup and refuses a second run on
 already changed input. It is `scripts/backfill_validation_decisions.py`.
+
+## Real-only metadata repair, 2026-10-21
+
+After simulated and unresolved-provenance rows were excluded, the retained snapshot
+contained 7,512 measurements, 1,401 per-volume summaries, and 459 sessions.
+A hash-verified copy of both cleaned masters was preserved in
+`pipetting_data/archives/real_metadata_repair_20261021_175900_6251466/`.
+
+The repair labels stages and selected-stage decisions for all 7,512 measurements
+across 1,405 session/volume groups. It preserves the 101 originally recorded
+decisions; the other 7,411 are explicitly identified as historical reconstructions.
+Complete replicate blocks, compatible raw-stage identities, historical annotations,
+and stage-specific correction decisions were reconciled. Identical numeric readings
+in different stages remain separate observations.
+
+Actual scalar overaspirates are supported for 7,509 measurements; 4,654 differ
+from the original labels. Parameters were captured at the uniquely matched
+aspiration operation, not from the last settings before the next transfer.
+Millisecond-resolution log timestamps are compared with raw timestamps at that same
+precision, with target, vials, mass and stage identity also required. Missing raw
+files were supplemented only by unique complete ordered session/transfer matches.
+
+Three Stage 1 SDS measurements in session `0b505162` (2026-05-06, 0.9 mL)
+used split transfers. Their `overaspirate_vol` is intentionally blank; actual
+component settings are retained in `overaspirate_parts_ml` and the evidence ledger.
+Do not sum, average or copy a component into the scalar column. All three are
+unselected, so none prevents a supported selected-stage summary.
+
+`overaspirate_source` records this repair's evidence status. Existing future
+recordings remain identified by their normal `decision_source=recorded` contract;
+blank repair-specific provenance on a later append is not a historical audit verdict.
+Detailed parameter evidence, original values and unresolved scalar reasons are in
+`recovery/pipetting_real_metadata_20261021/staged/`.
+
+All 1,401 existing summaries were reconciled to selected measurements, including
+36 changed means, and complete session fits were recomputed. Four measurement
+groups have no existing summary row; creating those missing rows belongs to the
+separate recovery/import step. No measurements or summaries were added or removed.
+Single-stage historical records still do not establish whether adaptive correction
+was enabled; that optional field remains unknown unless independently recorded.
+
+The repair stages replacements before activation, checks original hashes while
+holding both master files exclusively, and restores the original pair if activation
+fails. A persistent `activating` manifest after a process interruption requires
+restoring both archived files before resuming writes; the two files are not a
+filesystem-atomic transaction. Independent verification checks original measurement
+conservation, recorded metadata preservation, stage selection, aspiration-boundary
+parameters, summary arithmetic, and rollback on disposable files.

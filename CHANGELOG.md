@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026-10-21] - Real Pipetting Validation Metadata Repair
+
+- RESTORED: Stage and selected-stage decisions for the cleaned real-only dataset,
+  retaining recorded versus reconstructed decision provenance.
+- FIXED: Historical per-measurement overaspirates from uniquely identified
+  aspiration operations; split-transfer components remain separate rather than
+  being represented by a fabricated single overaspirate.
+- FIXED: Selected-stage session summaries and session fits are recomputed from
+  their constituent measurements. Original measured values and row counts remain
+  unchanged; verified pre-repair backups and field-level evidence are retained.
+
 ## [2026-10-21] - Robot Grid Reference Point Fix
 
 - ADDED: Explicit Gripper center / Pipette tip grid reference selector,

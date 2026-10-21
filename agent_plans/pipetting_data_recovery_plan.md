@@ -2,15 +2,23 @@
 
 Date: 2026-10-21
 
-Status: Confirmed-simulation cleanup executed on 2026-10-21; Step 2 investigation
-has progressed. Following the initial cleanup, another 172 sessions were confirmed
-simulated and removed (908 measurements and 300 summaries). Active masters now
-contain 8,524 measurements and 1,553 summaries. Of these, 1,012 measurements and
-152 summaries across 50 sessions remain unresolved. The confirmed-real counts
-remain 7,512 measurements and 1,401 summaries. Schema and retained scientific
-values are unchanged. Analyzer integration and Steps 3–4 remain pending.
+Status: Confirmed-simulation cleanup and the user-requested exclusion of the
+remaining 50 unclear sessions are complete. The active real-only snapshot contains
+7,512 measurements and 1,401 per-volume summaries. Stage/selected-stage metadata
+repair is complete for those retained measurements; 7,509 have verified scalar
+overaspirates, while three split transfers preserve component values instead.
+All existing summaries are reconciled to the selected measurements. The original
+measured values, identities and row counts remain unchanged. Analyzer/GUI review
+and Step 4 (missing real data recovery) remain pending.
 
-Among the remaining 50 sessions, 23 have strong but unconfirmed synthetic-fallback
+Pre-repair cleaned originals are preserved in
+`pipetting_data/archives/real_metadata_repair_20261021_175900_6251466/`.
+See the [repair report](../recovery/pipetting_real_metadata_20261021/REPORT.txt)
+and [field-level ledger](../recovery/pipetting_real_metadata_20261021/staged/field_changes.csv).
+The historical planning counts and investigation states below describe earlier
+snapshots, not the current active dataset.
+
+Among those 50 archived unclear sessions, 23 have strong but unconfirmed synthetic-fallback
 evidence, 22 have protocol associations without enough independent execution
 evidence, and five June 11 sessions lack contemporaneous local logs/raw sources.
 See the [current investigation report](../recovery/pipetting_20261021_workflow_patterns/CURRENT_REPORT.txt)
@@ -18,11 +26,13 @@ and [individual remaining-session ledger](../recovery/pipetting_20261021_workflo
 
 Execution evidence: [cleanup report](../recovery/pipetting_cleanup_20261021/REPORT.txt)
 and [original archive manifest](../pipetting_data/archives/confirmed_simulation_cleanup_20261021_171031_367547/manifest.json).
-The [latest archive manifest](../pipetting_data/archives/workflow_pattern_cleanup_20261021_173304_399176/manifest.json)
-records the final additional cleanup and its preceding generation.
+The [unclear-session exclusion manifest](../pipetting_data/archives/historical_unresolved_exclusion_20261021_174651_828607/manifest.json)
+records the subsequent removal of unresolved records without reclassifying them.
 Historical audit row numbers refer to the archived originals. Use the archive's
-`row_manifest.csv` or the [current row mapping](../recovery/pipetting_20261021_workflow_patterns/current_row_mapping.csv)
-to map them to current retained row positions. The counts in the original planning
+`row_manifest.csv` and the metadata repair's backup-relative measurement ledger
+to identify retained occurrences. The earlier
+[row mapping](../recovery/pipetting_20261021_workflow_patterns/current_row_mapping.csv)
+predates the final unclear-session exclusion. The counts in the original planning
 tables below describe the source snapshot before the first cleanup.
 
 ## Objective
@@ -281,7 +291,9 @@ were added, which summaries were reconstructed, and which candidates remain bloc
 
 Keep each checkpoint independently reviewable. The user authorized archiving the
 two original masters and replacing them with versions excluding only confirmed
-simulation. That cleanup is complete; broader implementation remains pending.
+simulation, subsequently excluding the remaining unclear sessions and authorizing
+the real metadata repair. Those steps are complete. Missing-record import and
+GUI/analyzer changes remain pending.
 During future Git merges, reconcile new recordings and historical metadata
 deliberately: the October 20 merge retained an unannotated data version and lost
 earlier stage reconstruction while the documentation still described that work.
