@@ -205,6 +205,11 @@ class EnhancedRobotArmController:
         self.current_gripper_angle = 0.0
         self.gripper_is_open = False
         self.is_homed = False
+        self.servo_rehome_required = False
+        self.motion_controls = []
+        self.capture_controls = []
+        self.interlock_widget_states = {}
+        self.servo_button = None
         
         # Position system configuration
         self.vial_file_path = vial_file_path
@@ -379,6 +384,7 @@ class EnhancedRobotArmController:
                 self.elbow_angle_rad = 0.0
                 self.gripper_is_open = False
                 self.is_homed = False
+                self.servo_enabled = True
                 
                 # Count representations for compatibility
                 self.gripper_cts = 0
@@ -404,6 +410,8 @@ class EnhancedRobotArmController:
                 return (x, y, shoulder_rad + elbow_rad)  # x, y, tool angle
                 
             def home_robot(self, wait=True):
+                if not self.servo_enabled:
+                    raise RuntimeError("Enable servos before homing")
                 logger.info("SIMULATION: Homing robot")
                 time.sleep(0.5)
                 self.z_position_mm = Z_AXIS_MAX_MM
@@ -425,6 +433,12 @@ class EnhancedRobotArmController:
                 self.y_position_mm = y
                 
                 return True
+
+            def robot_servo(self, servo):
+                self.servo_enabled = servo
+                if not servo:
+                    self.is_homed = False
+                logger.info(f"SIMULATION: Robot servos {'enabled' if servo else 'disabled'}")
                 
             def goto_safe(self, position_list, wait=True):
                 """Move to position safely (same as goto in simulation)."""
@@ -545,11 +559,106 @@ class EnhancedRobotArmController:
         
         return MockRobot()
     
+    def _register_motion_control(self, widget):
+        self.motion_controls.append(widget)
+        return widget
+
+    def _register_capture_control(self, widget):
+        self.capture_controls.append(widget)
+        return widget
+
+    def _update_servo_interlock(self):
+        if self.servo_rehome_required and not self.interlock_widget_states:
+            allowed_controls = set(self.capture_controls)
+            interactive_classes = {
+                "Button", "Checkbutton", "Combobox", "Entry", "Radiobutton",
+                "Scale", "Spinbox", "TButton", "TCheckbutton", "TCombobox",
+                "TEntry", "TRadiobutton", "TScale", "TSpinbox", "Text"
+            }
+
+            def lock_children(parent):
+                for child in parent.winfo_children():
+                    if child not in allowed_controls and child is not self.servo_button:
+                        if child.winfo_class() in interactive_classes:
+                            self.interlock_widget_states[child] = child.cget("state")
+                            child.configure(state=tk.DISABLED)
+                    lock_children(child)
+
+            lock_children(self.root)
+            for control in self.motion_controls:
+                if control not in self.interlock_widget_states:
+                    self.interlock_widget_states[control] = control.cget("state")
+                control.configure(state=tk.DISABLED)
+        if self.servo_rehome_required:
+            for widget in self.interlock_widget_states:
+                if widget.winfo_exists():
+                    widget.configure(state=tk.DISABLED)
+        elif self.interlock_widget_states:
+            for widget, state in self.interlock_widget_states.items():
+                if widget.winfo_exists():
+                    widget.configure(state=state)
+            self.interlock_widget_states.clear()
+
+        if self.servo_button is not None:
+            if self.servo_rehome_required:
+                self.servo_button.configure(text="SERVO ON + HOME")
+            else:
+                self.servo_button.configure(text="DISABLE SERVOS")
+            self.servo_button.configure(
+                state=tk.NORMAL if self.is_connected else tk.DISABLED
+            )
+
+    def toggle_servo_for_position_capture(self):
+        """Disable servos for hand positioning, then require homing before motion."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+
+        if self.servo_rehome_required:
+            self.servo_button.configure(state=tk.DISABLED)
+            try:
+                self.robot.robot_servo(True)
+                if self.home_robot(servo_recovery=True, show_success=False):
+                    messagebox.showinfo(
+                        "Success", "Servos enabled and robot homed successfully."
+                    )
+            except Exception as e:
+                logger.error(f"Failed to enable servos and home robot: {e}")
+                messagebox.showerror(
+                    "Error", f"Could not enable servos and home the robot:\n{e}"
+                )
+            finally:
+                self._update_servo_interlock()
+            return
+
+        disable = messagebox.askyesno(
+            "Disable Robot Servos",
+            "Disable all four robot-axis servos for manual positioning?\n\n"
+            "The robot must be homed before any motion is allowed again."
+        )
+        if not disable:
+            return
+
+        self.servo_rehome_required = True
+        self.is_homed = False
+        self._update_servo_interlock()
+        try:
+            self.robot.robot_servo(False)
+            self.update_display()
+            logger.info("Robot servos disabled; motion locked until homing succeeds")
+        except Exception as e:
+            logger.error(f"Failed to disable robot servos: {e}")
+            messagebox.showerror(
+                "Error",
+                f"Could not confirm servo disable. Motion remains locked; use "
+                f"SERVO ON + HOME before any robot action:\n{e}"
+            )
+
     def create_gui(self):
         """Create the enhanced GUI window with position management."""
         self.root = tk.Tk()
         self.root.title("North Robot Arm Position Control")
-        self.root.geometry("1100x740")
+        self.root.geometry("1100x900")
         self.root.resizable(True, True)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
@@ -607,8 +716,9 @@ class EnhancedRobotArmController:
         self.position_dropdown = ttk.Combobox(idx_row, values=[], state="readonly", width=22)
         self.position_dropdown.pack(side=tk.LEFT, padx=(4, 6))
         self.position_dropdown.bind('<<ComboboxSelected>>', self.on_position_selected)
-        ttk.Button(idx_row, text="Go To",
-                   command=self.goto_selected_position).pack(side=tk.LEFT)
+        self._register_motion_control(ttk.Button(
+            idx_row, text="Go To", command=self.goto_selected_position
+        )).pack(side=tk.LEFT)
 
         self.position_description_label = ttk.Label(pos_sel_frame,
             text="Select an object then an index",
@@ -625,8 +735,9 @@ class EnhancedRobotArmController:
         self.raw_counts_entry = ttk.Entry(raw_row, width=28)
         self.raw_counts_entry.pack(side=tk.LEFT, padx=(4, 6))
         self.raw_counts_entry.insert(0, "[g, e, s, z]")
-        ttk.Button(raw_row, text="Go to Counts",
-                   command=self.goto_arbitrary_counts).pack(side=tk.LEFT)
+        self._register_motion_control(ttk.Button(
+            raw_row, text="Go to Counts", command=self.goto_arbitrary_counts
+        )).pack(side=tk.LEFT)
 
         # ── LEFT: Current Position ──────────────────────────────────────────
         pos_frame = ttk.LabelFrame(left_frame, text="Current Position", padding="8")
@@ -651,49 +762,79 @@ class EnhancedRobotArmController:
         self.home_button = ttk.Button(control_frame, text="HOME ROBOT",
                                       command=self.home_robot, style="Accent.TButton")
         self.home_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 6))
+        self._register_motion_control(self.home_button)
         
-        ttk.Button(control_frame, text="MOVE HOME",
-                   command=self.move_home, style="Warning.TButton").grid(row=0, column=2, sticky=(tk.W, tk.E), pady=(0, 6), padx=(4, 0))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="MOVE HOME", command=self.move_home,
+            style="Warning.TButton"
+        )).grid(row=0, column=2, sticky=(tk.W, tk.E), pady=(0, 6), padx=(4, 0))
+
+        self.servo_button = ttk.Button(
+            control_frame, text="DISABLE SERVOS",
+            command=self.toggle_servo_for_position_capture
+        )
+        self.servo_button.grid(row=10, column=0, columnspan=3,
+                               sticky=(tk.W, tk.E), pady=(6, 0))
 
         ttk.Label(control_frame, text="Z:").grid(row=1, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="▲ UP",
-                   command=self.move_up).grid(row=1, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="▼ DOWN",
-                   command=self.move_down).grid(row=1, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="▲ UP", command=self.move_up
+        )).grid(row=1, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="▼ DOWN", command=self.move_down
+        )).grid(row=1, column=2, padx=2, sticky=(tk.W, tk.E))
 
         ttk.Label(control_frame, text="X:").grid(row=2, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="← -X",
-                   command=self.move_x_left).grid(row=2, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="→ +X",
-                   command=self.move_x_right).grid(row=2, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="← -X", command=self.move_x_left
+        )).grid(row=2, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="→ +X", command=self.move_x_right
+        )).grid(row=2, column=2, padx=2, sticky=(tk.W, tk.E))
 
         ttk.Label(control_frame, text="Y:").grid(row=3, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="↓ -Y",
-                   command=self.move_y_back).grid(row=3, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="↑ +Y",
-                   command=self.move_y_forward).grid(row=3, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="↓ -Y", command=self.move_y_back
+        )).grid(row=3, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="↑ +Y", command=self.move_y_forward
+        )).grid(row=3, column=2, padx=2, sticky=(tk.W, tk.E))
 
         ttk.Label(control_frame, text="Grip:").grid(row=4, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="✋ OPEN", command=self.open_gripper,
-                   style="Success.TButton").grid(row=4, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper,
-                   style="Warning.TButton").grid(row=4, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="✋ OPEN", command=self.open_gripper,
+            style="Success.TButton"
+        )).grid(row=4, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="👊 CLOSE", command=self.close_gripper,
+            style="Warning.TButton"
+        )).grid(row=4, column=2, padx=2, sticky=(tk.W, tk.E))
         
         ttk.Label(control_frame, text="Rotate:").grid(row=5, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="🔄 CCW", command=self.move_gripper_ccw).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="↻ CW", command=self.move_gripper_cw).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="🔄 CCW", command=self.move_gripper_ccw
+        )).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="↻ CW", command=self.move_gripper_cw
+        )).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
         
         ttk.Label(control_frame, text="Clamp:").grid(row=6, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="🔓 OPEN", command=self.open_clamp,
-                   style="Success.TButton").grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="🔒 CLOSE", command=self.close_clamp,
-                   style="Warning.TButton").grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="🔓 OPEN", command=self.open_clamp,
+            style="Success.TButton"
+        )).grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="🔒 CLOSE", command=self.close_clamp,
+            style="Warning.TButton"
+        )).grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
 
         ttk.Label(control_frame, text="Pipet:").grid(row=7, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="GET LARGE",
-                   command=self.get_pipet_large).grid(row=7, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="GET SMALL",
-                   command=self.get_pipet_small).grid(row=7, column=2, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="GET LARGE", command=self.get_pipet_large
+        )).grid(row=7, column=1, padx=2, sticky=(tk.W, tk.E))
+        self._register_motion_control(ttk.Button(
+            control_frame, text="GET SMALL", command=self.get_pipet_small
+        )).grid(row=7, column=2, padx=2, sticky=(tk.W, tk.E))
         ttk.Label(control_frame, text="Held tip:").grid(row=8, column=0, sticky=tk.W)
         self.held_tip_var = tk.StringVar(value="(auto)")
         held_tip_combo = ttk.Combobox(
@@ -704,8 +845,10 @@ class EnhancedRobotArmController:
         )
         held_tip_combo.grid(row=8, column=1, columnspan=2, padx=2, sticky=(tk.W, tk.E))
         held_tip_combo.bind("<<ComboboxSelected>>", self.on_held_tip_selected)
-        ttk.Button(control_frame, text="REMOVE PIPET",
-                   command=self.remove_pipet_action).grid(
+        self._register_motion_control(held_tip_combo)
+        self._register_motion_control(ttk.Button(
+            control_frame, text="REMOVE PIPET", command=self.remove_pipet_action
+        )).grid(
             row=9, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
 
         control_frame.columnconfigure(1, weight=1)
@@ -728,15 +871,19 @@ class EnhancedRobotArmController:
         self.custom_position_name = ttk.Entry(name_row, width=24)
         self.custom_position_name.pack(side=tk.LEFT, padx=(6, 0), fill=tk.X, expand=True)
         self.custom_position_name.insert(0, "my_position_1")
+        self._register_capture_control(self.custom_position_name)
 
         btn_row1 = ttk.Frame(modifications_frame)
         btn_row1.pack(fill=tk.X, pady=2)
-        ttk.Button(btn_row1, text="Save w/ Name",
-                   command=self.save_custom_position).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(btn_row1, text="Save Temp",
-                   command=self.save_temporary_position).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(btn_row1, text="Reset",
-                   command=self.reset_to_original_position).pack(side=tk.LEFT)
+        self._register_capture_control(ttk.Button(
+            btn_row1, text="Save w/ Name", command=self.save_custom_position
+        )).pack(side=tk.LEFT, padx=(0, 4))
+        self._register_capture_control(ttk.Button(
+            btn_row1, text="Save Temp", command=self.save_temporary_position
+        )).pack(side=tk.LEFT, padx=(0, 4))
+        self._register_motion_control(ttk.Button(
+            btn_row1, text="Reset", command=self.reset_to_original_position
+        )).pack(side=tk.LEFT)
 
         btn_row2 = ttk.Frame(modifications_frame)
         btn_row2.pack(fill=tk.X, pady=2)
@@ -775,8 +922,9 @@ class EnhancedRobotArmController:
 
         ttk.Button(export_frame, text="Export CSV",
                    command=self.export_saved_positions_csv).grid(row=0, column=0, padx=(0, 4), pady=2)
-        ttk.Button(export_frame, text="Copy Coords",
-                   command=self.copy_current_position).grid(row=0, column=1, padx=(0, 4), pady=2)
+        self._register_capture_control(ttk.Button(
+            export_frame, text="Copy Coords", command=self.copy_current_position
+        )).grid(row=0, column=1, padx=(0, 4), pady=2)
         ttk.Button(export_frame, text="Export History",
                    command=self.export_session_history).grid(row=0, column=2, pady=2)
         ttk.Button(export_frame, text="Open Temp Folder",
@@ -784,13 +932,14 @@ class EnhancedRobotArmController:
         ttk.Button(export_frame, text="Export JSON",
                    command=self.export_all_positions_json).grid(row=1, column=1, pady=2)
 
-        # ── BOTTOM: Grid Array Generator (full width) ───────────────────────
-        grid_gen_frame = ttk.LabelFrame(main_frame, text="Grid Array Generator", padding="10")
-        grid_gen_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(8, 0))
+        # ── RIGHT: Grid Array Generator ────────────────────────────────────
+        grid_gen_frame = ttk.LabelFrame(right_frame, text="Grid Array Generator", padding="8")
+        grid_gen_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
 
         self.grid_origin_label = ttk.Label(grid_gen_frame, text="Origin: not set",
                                            foreground="gray")
-        self.grid_origin_label.grid(row=0, column=0, columnspan=7, sticky=tk.W, pady=(0, 5))
+        self.grid_origin_label.configure(wraplength=420)
+        self.grid_origin_label.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
 
         ttk.Label(grid_gen_frame, text="Load config:").grid(row=1, column=0, sticky=tk.W)
         obj_names_grid = [n for n, c in self.grid_configs.items() if c['num_cols'] is not None]
@@ -799,49 +948,61 @@ class EnhancedRobotArmController:
         self.grid_object_dropdown.grid(row=1, column=1, padx=(4, 16))
         self.grid_object_dropdown.bind('<<ComboboxSelected>>', self.on_grid_object_selected)
 
-        ttk.Button(grid_gen_frame, text="Set Origin (Current Position)",
-                   command=self.set_grid_origin).grid(row=1, column=2, columnspan=5,
-                   sticky=(tk.W, tk.E), padx=(0, 0))
+        reference_frame = ttk.Frame(grid_gen_frame)
+        reference_frame.grid(row=2, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(6, 0))
+        reference_row = ttk.Frame(reference_frame)
+        reference_row.pack(fill=tk.X)
+        ttk.Label(reference_row, text="Reference point:").pack(side=tk.LEFT)
+        self.grid_reference_point = tk.StringVar(value="gripper")
+        for label, value in [("Gripper center", "gripper"), ("Pipette tip", "pip")]:
+            ttk.Radiobutton(
+                reference_row, text=label, variable=self.grid_reference_point,
+                value=value, command=self.on_grid_reference_changed,
+            ).pack(side=tk.LEFT, padx=(6, 0))
+        self._register_capture_control(ttk.Button(
+            reference_frame, text="Set Origin (Current Position)",
+            command=self.set_grid_origin
+        )).pack(fill=tk.X, pady=(4, 0))
 
-        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=2, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
         self.grid_x_offset_entry = ttk.Entry(grid_gen_frame, width=7)
-        self.grid_x_offset_entry.grid(row=2, column=1, padx=(4, 16), pady=(6, 0))
+        self.grid_x_offset_entry.grid(row=3, column=1, padx=(4, 16), pady=(6, 0))
         self.grid_x_offset_entry.insert(0, "9.0")
 
-        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=2, column=2, sticky=tk.W, pady=(6, 0))
+        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=3, column=2, sticky=tk.W, pady=(6, 0))
         self.grid_y_offset_entry = ttk.Entry(grid_gen_frame, width=7)
-        self.grid_y_offset_entry.grid(row=2, column=3, padx=(4, 16), pady=(6, 0))
+        self.grid_y_offset_entry.grid(row=3, column=3, padx=(4, 0), pady=(6, 0))
         self.grid_y_offset_entry.insert(0, "9.0")
 
-        ttk.Label(grid_gen_frame, text="Cols:").grid(row=2, column=4, sticky=tk.W, pady=(6, 0))
+        ttk.Label(grid_gen_frame, text="Cols:").grid(row=4, column=0, sticky=tk.W, pady=(6, 0))
         self.grid_cols_entry = ttk.Entry(grid_gen_frame, width=5)
-        self.grid_cols_entry.grid(row=2, column=5, padx=(4, 12), pady=(6, 0))
+        self.grid_cols_entry.grid(row=4, column=1, padx=(4, 16), pady=(6, 0))
         self.grid_cols_entry.insert(0, "8")
 
-        ttk.Label(grid_gen_frame, text="Rows:").grid(row=2, column=6, sticky=tk.W, pady=(6, 0))
+        ttk.Label(grid_gen_frame, text="Rows:").grid(row=4, column=2, sticky=tk.W, pady=(6, 0))
         self.grid_rows_entry = ttk.Entry(grid_gen_frame, width=5)
-        self.grid_rows_entry.grid(row=2, column=7, padx=(4, 0), pady=(6, 0))
+        self.grid_rows_entry.grid(row=4, column=3, padx=(4, 0), pady=(6, 0))
         self.grid_rows_entry.insert(0, "6")
 
         ttk.Button(grid_gen_frame, text="Generate Grid Array",
                    command=self.generate_grid_array).grid(
-            row=3, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(6, 4))
+            row=5, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(6, 4))
 
-        self.grid_output_text = tk.Text(grid_gen_frame, height=6, font=("Consolas", 8),
+        self.grid_output_text = tk.Text(grid_gen_frame, height=6, width=46, font=("Consolas", 8),
                                         state=tk.DISABLED)
-        self.grid_output_text.grid(row=4, column=0, columnspan=7, sticky=(tk.W, tk.E))
+        self.grid_output_text.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E))
         grid_scroll = ttk.Scrollbar(grid_gen_frame, orient=tk.VERTICAL,
                                     command=self.grid_output_text.yview)
-        grid_scroll.grid(row=4, column=7, sticky=(tk.N, tk.S))
+        grid_scroll.grid(row=6, column=3, sticky=(tk.N, tk.S, tk.E))
         self.grid_output_text.config(yscrollcommand=grid_scroll.set)
 
         ttk.Button(grid_gen_frame, text="Copy Output to Clipboard",
                    command=self.copy_grid_output).grid(
-            row=5, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(4, 0))
+            row=7, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(4, 0))
 
         # ── Update in Locator ────────────────────────────────────────────────
         update_row = ttk.Frame(grid_gen_frame)
-        update_row.grid(row=6, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(6, 2))
+        update_row.grid(row=8, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(6, 2))
         ttk.Label(update_row, text="Update target:").pack(side=tk.LEFT)
         self.grid_array_type = tk.StringVar(value="gripper")
         self.gripper_radio = ttk.Radiobutton(update_row, text="Gripper positions",
@@ -851,9 +1012,10 @@ class EnhancedRobotArmController:
                         variable=self.grid_array_type, value="pip")
         self.pip_radio.pack(side=tk.LEFT, padx=(6, 0))
         ttk.Button(update_row, text="Update in Locator",
-                   command=self.update_locator_array).pack(side=tk.LEFT, padx=(14, 0))
-        self.locator_update_status = ttk.Label(update_row, text="", foreground="green")
-        self.locator_update_status.pack(side=tk.LEFT, padx=(8, 0))
+                   command=self.update_locator_array).pack(side=tk.LEFT, padx=(6, 0))
+        self.locator_update_status = ttk.Label(grid_gen_frame, text="", foreground="green",
+                                               wraplength=420)
+        self.locator_update_status.grid(row=9, column=0, columnspan=4, sticky=tk.W)
 
         grid_gen_frame.columnconfigure(1, weight=1)
         grid_gen_frame.columnconfigure(3, weight=1)
@@ -868,6 +1030,7 @@ class EnhancedRobotArmController:
         #self.root.bind('<Key>', self.on_key_press)
         self.root.focus_set()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self._update_servo_interlock()
 
     def on_position_object_selected(self, event):
         """Populate the index dropdown when an object is chosen."""
@@ -919,6 +1082,8 @@ class EnhancedRobotArmController:
         """Move robot to the selected workflow position."""
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
+            return
+        if not self._motion_allowed():
             return
             
         if not self.selected_position:
@@ -983,6 +1148,8 @@ class EnhancedRobotArmController:
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
             return
+        if not self._motion_allowed():
+            return
         raw = self.raw_counts_entry.get().strip()
         try:
             parsed = ast.literal_eval(raw)
@@ -1034,15 +1201,21 @@ class EnhancedRobotArmController:
         if not self.is_connected or not self.selected_position:
             messagebox.showwarning("Warning", "Connect robot and select a position first")
             return
-            
-        temp_position = {
-            "z_mm": self.current_z_position,
-            "shoulder_rad": self.current_shoulder_angle,
-            "elbow_rad": self.current_elbow_angle,
-            "gripper_rad": self.current_gripper_angle,
-            "timestamp": datetime.now().strftime("%H:%M:%S"),
-            "original_position": self.selected_position
-        }
+
+        try:
+            positions = self.get_current_positions()
+            temp_position = {
+                "z_mm": self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3]),
+                "shoulder_rad": self.robot.counts_to_rad(self.robot.SHOULDER, positions[2]),
+                "elbow_rad": self.robot.counts_to_rad(self.robot.ELBOW, positions[1]),
+                "gripper_rad": self.robot.counts_to_rad(self.robot.GRIPPER, positions[0]),
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "original_position": self.selected_position
+            }
+        except Exception as e:
+            logger.error(f"Could not capture current position: {e}")
+            messagebox.showerror("Error", f"Could not capture current position:\n{e}")
+            return
         
         # Store with a unique name
         temp_name = f"{self.selected_position}_modified_{len(self.temporary_modifications)+1}"
@@ -1054,6 +1227,8 @@ class EnhancedRobotArmController:
         
     def reset_to_original_position(self):
         """Reset robot to the original position before modifications."""
+        if not self._motion_allowed():
+            return
         if not self.original_position:
             messagebox.showwarning("Warning", "No original position stored")
             return
@@ -1208,6 +1383,9 @@ class EnhancedRobotArmController:
     def save_custom_position(self):
         """Save current position with user-defined name to temp folder."""
         try:
+            if not self.is_connected:
+                raise RuntimeError("Connect to the robot before capturing a position")
+
             # Get custom name from entry field
             custom_name = self.custom_position_name.get().strip()
             if not custom_name:
@@ -1514,10 +1692,18 @@ class EnhancedRobotArmController:
             else:
                 self.log_message(f"Cannot rotate gripper CW: would exceed maximum angle ({GRIPPER_MAX_RAD:.3f} rad)")
 
+    def _motion_allowed(self):
+        if self.servo_rehome_required:
+            logger.warning("Robot action blocked until servos are enabled and homing succeeds")
+            return False
+        return True
+
     def _check_robot_health(self):
         """Check if robot is in a safe state to move."""
         if not self.is_connected:
             logger.error("Robot not connected - cannot move")
+            return False
+        if not self._motion_allowed():
             return False
         
         try:
@@ -1627,6 +1813,8 @@ class EnhancedRobotArmController:
         """
         if not self.is_connected:
             logger.error("Cannot move XY: Robot not connected")
+            return
+        if not self._motion_allowed():
             return
         try:
             logger.info(f"=== Starting XY movement: dx={dx:.1f}mm, dy={dy:.1f}mm ===")
@@ -1824,7 +2012,7 @@ class EnhancedRobotArmController:
             
     def open_gripper(self):
         """Open gripper."""
-        if self.is_connected:
+        if self.is_connected and self._motion_allowed():
             try:
                 self.robot.open_gripper()
                 self.gripper_is_open = True
@@ -1834,7 +2022,7 @@ class EnhancedRobotArmController:
                 
     def close_gripper(self):
         """Close gripper."""
-        if self.is_connected:
+        if self.is_connected and self._motion_allowed():
             try:
                 self.robot.close_gripper()
                 self.gripper_is_open = False
@@ -1846,6 +2034,8 @@ class EnhancedRobotArmController:
         """Open the robot clamp (clamp 0)."""
         if not self.is_connected:
             logger.warning("Cannot open clamp: Robot not connected")
+            return
+        if not self._motion_allowed():
             return
         try:
             if hasattr(self.robot, 'open_clamp'):
@@ -1861,6 +2051,8 @@ class EnhancedRobotArmController:
         if not self.is_connected:
             logger.warning("Cannot close clamp: Robot not connected")
             return
+        if not self._motion_allowed():
+            return
         try:
             if hasattr(self.robot, 'close_clamp'):
                 self.robot.close_clamp()  # Remove wait parameter
@@ -1872,6 +2064,8 @@ class EnhancedRobotArmController:
 
     def get_pipet_large(self):
         """Get a large tip using nr_robot."""
+        if not self._motion_allowed():
+            return
         if self.nr_robot is not None:
             try:
                 self.nr_robot.get_pipet("large_tip")
@@ -1883,6 +2077,8 @@ class EnhancedRobotArmController:
 
     def get_pipet_small(self):
         """Get a small tip using nr_robot."""
+        if not self._motion_allowed():
+            return
         if self.nr_robot is not None:
             try:
                 self.nr_robot.get_pipet("small_tip")
@@ -1894,6 +2090,8 @@ class EnhancedRobotArmController:
 
     def on_held_tip_selected(self, event):
         """Manually override HELD_PIPET_TYPE on the robot so remove_pipet uses the correct procedure."""
+        if not self._motion_allowed():
+            return
         if self.nr_robot is None:
             return
         choice = self.held_tip_var.get()
@@ -1907,6 +2105,8 @@ class EnhancedRobotArmController:
 
     def remove_pipet_action(self):
         """Remove pipet tip using nr_robot."""
+        if not self._motion_allowed():
+            return
         if self.nr_robot is not None:
             try:
                 self.nr_robot.remove_pipet()
@@ -1946,14 +2146,19 @@ class EnhancedRobotArmController:
             self.grid_array_type.set("gripper")
         logger.info(f"Grid config loaded from '{obj_name}': {cfg}")
 
-    def set_grid_origin(self):
-        """Freeze current robot position as the grid origin for array generation.
+    def on_grid_reference_changed(self):
+        """Require a new origin and output when the working point changes."""
+        self.grid_origin = None
+        self.grid_origin_label.config(
+            text="Origin: not set - reference changed; capture origin again",
+            foreground="gray",
+        )
+        self.grid_output_text.config(state=tk.NORMAL)
+        self.grid_output_text.delete("1.0", tk.END)
+        self.grid_output_text.config(state=tk.DISABLED)
 
-        Captures (x, y, theta) via n9_kinematics.fk so that the same math is used
-        for origin capture, grid generation, and verification. tool_theta_rad is
-        essential: without it, generate_grid_array defaults to theta=0 at every
-        cell (n9_kinematics.ik default) and the physical pipette tip drifts.
-        """
+    def set_grid_origin(self):
+        """Capture the selected working point using North's matching FK geometry."""
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
             return
@@ -1970,27 +2175,33 @@ class EnhancedRobotArmController:
             # Use n9k.fk (real kinematics) rather than self.robot.n9_fk so origin
             # and grid math are consistent (the mock robot's n9_fk is a rough
             # approximation and would disagree with n9k.ik used in generation).
-            x, y, theta = n9k.fk(gripper_cts, elbow_cts, shoulder_cts)
+            reference_point = self.grid_reference_point.get()
+            x, y, theta = n9k.fk(
+                gripper_cts, elbow_cts, shoulder_cts,
+                pipette_tip_offset=reference_point == "pip",
+            )
             self.grid_origin = {
                 'x': x, 'y': y,
                 'z_cts': z_cts,
                 'gripper_cts': gripper_cts,
                 'shoulder_cts': shoulder_cts,
                 'tool_theta_rad': theta,
+                'reference_point': reference_point,
             }
             self.grid_origin_label.config(
-                text=(f"Origin: X={x:.2f}mm, Y={y:.2f}mm, theta={theta:+.3f}rad  "
+                text=(f"Origin ({'pipette tip' if reference_point == 'pip' else 'gripper center'}): "
+                      f"X={x:.2f}mm, Y={y:.2f}mm, theta={theta:+.3f}rad  "
                       f"|  Z={z_cts}cts  G={gripper_cts}cts"),
                 foreground="green"
             )
             logger.info(f"Grid origin set: X={x:.2f}, Y={y:.2f}, theta={theta:+.4f}rad, "
-                        f"Z_cts={z_cts}, G_cts={gripper_cts}")
+                        f"Z_cts={z_cts}, G_cts={gripper_cts}, reference={reference_point}")
         except Exception as e:
             logger.error(f"Error setting grid origin: {str(e)}")
 
     def _compute_grid_entries(self, x0, y0, z_cts, origin_gripper_cts,
                               x_offset, y_offset, n_cols, n_rows,
-                              start_shoulder_rad,
+                              start_shoulder_rad, pipette_tip_offset,
                               xy_tol_mm=0.5):
         """Pure math helper: produce Locator.py-style entries for a rectangular grid.
 
@@ -2000,18 +2211,10 @@ class EnhancedRobotArmController:
         Ordering: column-major (col outer, row inner). Column varies X, row varies Y.
         Cell index in the returned list = col * n_rows + row.
 
-        Convention matches _move_xy_delta (the physically-verified Cartesian jog):
-          - Do NOT pass tool_orientation to n9k.ik (use its default).
-          - Solve IK only for (elbow, shoulder).
-          - PRESERVE origin_gripper_cts on every cell. Never take IK's gripper
-            output.
-
-        Why: on this hardware the pipette tip is offset from the wrist rotation
-        axis, so swinging gripper cell-to-cell (which the previous
-        tool_orientation-locked IK did) translates the physical tip by many mm
-        that n9k.fk cannot see. Pinning gripper matches the jog's proven behavior
-        so a generated grid is physically equivalent to sequentially jogging
-        +x_offset / +y_offset from the origin.
+        pipette_tip_offset selects North's pipette geometry (44 mm beyond the
+        gripper center along the forearm). The origin must use the same geometry.
+        Solve only elbow/shoulder and preserve the origin gripper counts; North's
+        pipette position model is independent of gripper rotation.
 
         For each cell tries both SHOULDER_CENTER and SHOULDER_OUT solutions and
         keeps the one whose shoulder angle is closest to the previous cell's
@@ -2025,9 +2228,8 @@ class EnhancedRobotArmController:
         ik_errors : list[str]
             Human-readable message for every IK failure.
         verify_errors : list[str]
-            Cells where FK round-trip (x, y) drift exceeded xy_tol_mm. Only wrist
-            center is checked; tool_theta is intentionally allowed to drift
-            because gripper is pinned to origin (same as _move_xy_delta).
+            Cells where the selected working point's FK round-trip (x, y) drift
+            exceeded xy_tol_mm. Tool orientation is not constrained.
 
         Intended for future reuse: to shift an existing Locator array by adjusting
         one reference cell, call this with the new (x0, y0, z_cts,
@@ -2047,26 +2249,25 @@ class EnhancedRobotArmController:
                 target_x = x0 + col * x_offset
                 target_y = y0 + row * y_offset
                 try:
-                    # NO tool_orientation - matches _move_xy_delta
                     sol_c = n9k.ik(target_x, target_y,
+                                   pipette_tip_offset=pipette_tip_offset,
                                    shoulder_preference=n9k.SHOULDER_CENTER)
                     sol_o = n9k.ik(target_x, target_y,
+                                   pipette_tip_offset=pipette_tip_offset,
                                    shoulder_preference=n9k.SHOULDER_OUT)
                     chosen = sol_c if abs(sol_c[2] - last_shoulder_rad) <= abs(sol_o[2] - last_shoulder_rad) else sol_o
                     last_shoulder_rad = chosen[2]
 
-                    # PRESERVE origin gripper - matches _move_xy_delta
                     gripper_cts = int(origin_gripper_cts)
                     elbow_cts = int(n9k.rad_to_counts(n9k.ELBOW, chosen[1]))
                     shoulder_cts = int(n9k.rad_to_counts(n9k.SHOULDER, chosen[2]))
                     entry = [gripper_cts, elbow_cts, shoulder_cts, int(z_cts)]
                     entries.append(entry)
 
-                    # FK round-trip verification: converting rad->counts->rad loses
-                    # precision, so confirm the actual pose these counts produce
-                    # still matches the target wrist-center within tolerance.
-                    # Gripper does not affect wrist (x, y), so pinning it is safe.
-                    fk_x, fk_y, _fk_theta = n9k.fk(gripper_cts, elbow_cts, shoulder_cts)
+                    fk_x, fk_y, _fk_theta = n9k.fk(
+                        gripper_cts, elbow_cts, shoulder_cts,
+                        pipette_tip_offset=pipette_tip_offset,
+                    )
                     dx = fk_x - target_x
                     dy = fk_y - target_y
                     if abs(dx) > xy_tol_mm or abs(dy) > xy_tol_mm:
@@ -2094,9 +2295,9 @@ class EnhancedRobotArmController:
         if self.grid_origin is None:
             messagebox.showerror("Error", "Set origin first (jog to position, then click Set Origin)")
             return
-        if 'tool_theta_rad' not in self.grid_origin:
+        if self.grid_origin.get('reference_point') != self.grid_reference_point.get():
             messagebox.showerror("Error",
-                "Origin was captured without tool orientation. Re-click Set Origin.")
+                "Origin reference does not match the selection. Re-click Set Origin.")
             return
         try:
             x_offset = float(self.grid_x_offset_entry.get())
@@ -2118,6 +2319,7 @@ class EnhancedRobotArmController:
             x_offset=x_offset, y_offset=y_offset,
             n_cols=n_cols, n_rows=n_rows,
             start_shoulder_rad=start_shoulder_rad,
+            pipette_tip_offset=self.grid_origin['reference_point'] == "pip",
         )
 
         valid_positions = [e for e in entries if e is not None]
@@ -2132,6 +2334,8 @@ class EnhancedRobotArmController:
                      f"(x={x0:.2f}, y={y0:.2f}, gripper_cts={origin_gripper_cts} PRESERVED, z_cts={z_cts})")
         lines.append(f"# Column-major: index = col * {n_rows} + row  "
                      f"(offsets: dx={x_offset}mm, dy={y_offset}mm)")
+        lines.append(f"# Reference point: {self.grid_origin['reference_point']} "
+                     "(pip = North pipette offset; gripper = gripper center)")
         if ik_errors:
             lines.append(f"# IK FAILURES ({len(ik_errors)}):")
             for msg in ik_errors:
@@ -2154,7 +2358,7 @@ class EnhancedRobotArmController:
         if verify_errors:
             logger.warning(f"Grid verification: {len(verify_errors)} cells drifted beyond tolerance")
         else:
-            logger.info("Grid verification: all cells within tolerance (xy<=0.5mm, theta<=0.005rad)")
+            logger.info("Grid verification: selected reference point within XY tolerance (0.5mm per axis)")
 
     def copy_grid_output(self):
         """Copy the grid output text to clipboard."""
@@ -2300,11 +2504,14 @@ class EnhancedRobotArmController:
             self.locator_update_status.config(text=f"Done: {varname} updated ({timestamp})")
         messagebox.showinfo("Success", msg + f"\nBackup saved to Locator.py.bak")
 
-    def home_robot(self):
+    def home_robot(self, servo_recovery=False, show_success=True):
         """Home the robot."""
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
-            return
+            return False
+        if self.servo_rehome_required and not servo_recovery:
+            logger.warning("Homing is reserved for the Servo On + Home recovery action")
+            return False
             
         try:
             logger.info("Homing robot...")
@@ -2313,6 +2520,8 @@ class EnhancedRobotArmController:
             
             self.robot.home_robot(wait=True)
             self.is_homed = True
+            if servo_recovery:
+                self.servo_rehome_required = False
             self.gripper_is_open = False
             
             # Record homing in session history
@@ -2328,35 +2537,34 @@ class EnhancedRobotArmController:
             })
             
             logger.info("Robot homed successfully")
-            messagebox.showinfo("Success", "Robot homed successfully!")
+            if show_success:
+                messagebox.showinfo("Success", "Robot homed successfully!")
+            return True
             
         except Exception as e:
+            self.is_homed = False
             logger.error(f"Error homing robot: {str(e)}")
             messagebox.showerror("Error", f"Failed to home robot:\n{str(e)}")
+            return False
         finally:
             self.home_button.config(text="🏠 HOME ROBOT", state="normal")
+            self._update_servo_interlock()
             self.update_display()
             
     def move_home(self):
-        """Move robot to home position (faster than homing - just moves to [0,0,0,0])."""
+        """Return the arm and carousel home using North_Robot, without re-homing."""
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
+            return
+        if not self._motion_allowed():
             return
             
         try:
             logger.info("Moving robot to home position...")
             
-            # Home position from Locator.py: [0, 0, 0, 0]
-            home_position = [0, 0, 0, 0]
-            
-            if hasattr(self.robot, 'goto_safe'):
-                # Use goto_safe if available (real robot via nr_robot)
-                self.robot.goto_safe(home_position, wait=True)
-                logger.info("Moved to home position using goto_safe")
-            else:
-                # Fallback to regular goto for direct NorthC9 access
-                self.robot.goto(home_position, wait=True)
-                logger.info("Moved to home position using goto")
+            if self.nr_robot is None:
+                raise RuntimeError("North_Robot is not available; connect via Lash_E first")
+            self.nr_robot.move_home()
             
             # Record move in session history
             self.session_history.append({
@@ -2491,40 +2699,20 @@ class EnhancedRobotArmController:
     
     def get_current_positions(self):
         """Get current robot positions in counts format [gripper, elbow, shoulder, z]."""
-        try:
-            if not self.is_connected:
-                # Return default/last known positions if not connected
-                if hasattr(self, 'robot') and hasattr(self.robot, 'gripper_cts'):  # Mock robot
-                    return [
-                        self.robot.gripper_cts,
-                        self.robot.elbow_cts,      # Fixed order: elbow before shoulder
-                        self.robot.shoulder_cts, 
-                        self.robot.z_cts
-                    ]
-                else:
-                    # Default positions if nothing available
-                    return [0, 0, 0, 0]
-            
-            if hasattr(self.robot, 'z_position_mm'):  # Mock robot
-                return [
-                    self.robot.gripper_cts,
-                    self.robot.elbow_cts,        # Fixed order: elbow before shoulder
-                    self.robot.shoulder_cts,
-                    self.robot.z_cts
-                ]
-            else:  # Real robot
-                positions = self.robot.get_robot_positions()  # Returns [gripper, elbow, shoulder, z]
-                return [
-                    positions[0],  # gripper_cts
-                    positions[1],  # elbow_cts (FIXED: was positions[2])  
-                    positions[2],  # shoulder_cts (FIXED: was positions[1])
-                    positions[3]   # z_cts
-                ]
-                
-        except Exception as e:
-            logger.error(f"Error getting current positions: {str(e)}")
-            # Return default positions on error
-            return [0, 0, 0, 0]
+        if not self.is_connected:
+            raise RuntimeError("Robot is not connected; current position cannot be captured")
+
+        if hasattr(self.robot, 'z_position_mm'):  # Mock robot
+            return [
+                self.robot.gripper_cts,
+                self.robot.elbow_cts,
+                self.robot.shoulder_cts,
+                self.robot.z_cts
+            ]
+
+        # Real robot: get_robot_positions() returns [gripper, elbow, shoulder, z].
+        positions = self.robot.get_robot_positions()
+        return [positions[0], positions[1], positions[2], positions[3]]
     
     def on_key_press(self, event):
         """Handle keyboard input for robot control."""

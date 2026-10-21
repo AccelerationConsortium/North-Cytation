@@ -1,5 +1,30 @@
 # Changelog
 
+## [2026-10-21] - Robot Grid Reference Point Fix
+
+- ADDED: Explicit Gripper center / Pipette tip grid reference selector,
+  independent of the Locator update target; changing it clears the origin and output.
+- FIXED: Pipette grids use North's pipette offset consistently in origin capture,
+  inverse kinematics and verification. Exported output records the reference point.
+- FIXED: Grid verification no longer claims to check tool orientation.
+
+## [2026-10-21] - Surfactant Safe Position Replacement
+
+- CHANGED: Shared surfactant vial positioning uses `clamp_2[0]` instead of
+  `heater[2]`, preserving all other positions and their order for the 2D and
+  multidimensional workflows.
+
+## [2026-10-21] - Robot Control GUI Grid Layout
+
+- CHANGED: Grid generation sits in the right column with compact parameter rows,
+  rather than spanning beneath both columns. Robot controls remain visible.
+- CHANGED: Increased the default window height from 740 to 900 pixels.
+
+## [2026-10-21] - Robot Control GUI Home Movement
+
+- FIXED: MOVE HOME uses the existing North_Robot.move_home() helper to return
+  the arm and carousel home, while preserving the servo recovery interlock.
+
 ## [2026-10-16] - Multiple Fluorescence Solvent Sources
 
 - ADDED: Ordered `SOLVENT_SOURCE_VIALS` with configurable per-container reserve,

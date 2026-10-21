@@ -142,6 +142,40 @@ class CoordinatorConfigTests(unittest.TestCase):
         self.robot.assert_not_called()
         self.assertEqual(path.read_text(), 'invalid: [')
 
+    def test_existing_yaml_gains_new_settings_before_review_without_changing_saved_values(self):
+        folder = Path(ConfigManager.CONFIG_DIR)
+        folder.mkdir()
+        path = folder / 'example.yaml'
+        original = '# Operator settings\nSIMULATE: true\nINPUT_VIAL_STATUS_FILE: null\nPARAMETER: 7\n'
+        path.write_text(original)
+        self.values['MEASUREMENT_SCHEDULE_MIN'] = [0]
+        self.values['MEASUREMENT_RANDOMIZATION_SEED'] = None
+        self.values['_CONFIG_KEYS'] += ['MEASUREMENT_SCHEDULE_MIN', 'MEASUREMENT_RANDOMIZATION_SEED']
+
+        def review(instance):
+            saved = yaml.safe_load(path.read_text())
+            self.assertEqual(saved['MEASUREMENT_SCHEDULE_MIN'], [0])
+            self.assertIsNone(saved['MEASUREMENT_RANDOMIZATION_SEED'])
+            self.assertEqual(saved['PARAMETER'], 7)
+            self.assertIsNone(saved['INPUT_VIAL_STATUS_FILE'])
+
+        self.review.side_effect = review
+        coordinator = self.start(workflow_globals=self.values, workflow_name='example')
+        self.assertEqual(coordinator.workflow_config['PARAMETER'], 7)
+        self.assertTrue(path.read_text().startswith(original))
+        saved_text = path.read_text()
+        ConfigManager.setup_config_if_missing('example', self.values)
+        self.assertEqual(path.read_text(), saved_text)
+
+    def test_file_only_yaml_is_not_extended(self):
+        folder = Path(ConfigManager.CONFIG_DIR)
+        folder.mkdir()
+        path = folder / 'example.yaml'
+        original = '_USE_FILE_ONLY: true\nSIMULATE: true\n'
+        path.write_text(original)
+        ConfigManager.setup_config_if_missing('example', self.values)
+        self.assertEqual(path.read_text(), original)
+
 
 if __name__ == '__main__':
     unittest.main()

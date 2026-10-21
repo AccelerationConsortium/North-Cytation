@@ -368,8 +368,8 @@ class ConfigManager:
     @classmethod
     def setup_config_if_missing(cls, workflow_name, workflow_globals, logger=None):
         """
-        Create config file ONLY if it doesn't exist. If it exists, do nothing.
-        Preserves user edits by never overwriting existing config files.
+        Create config if absent, or append newly introduced workflow settings.
+        Preserve existing values and comments; respect _USE_FILE_ONLY.
         
         Args:
             workflow_name (str): Name of the workflow
@@ -380,9 +380,30 @@ class ConfigManager:
             bool: True if config was created, False if it already existed
         """
         config_file = os.path.join(cls.CONFIG_DIR, f"{workflow_name}.yaml")
+        workflow_constants = cls.workflow_constants(workflow_globals)
         
         if os.path.exists(config_file):
-            # Config exists - don't overwrite user changes
+            config = cls._load_config_file(config_file, logger)
+            if not isinstance(config, dict):
+                raise ValueError(f"Workflow config must be a YAML mapping: {config_file}")
+            missing = {key: value for key, value in workflow_constants.items() if key not in config}
+            if missing and not config.get('_USE_FILE_ONLY', False):
+                # Append rather than rewriting operator settings and comments.
+                # Parse the combined text first (e.g. reject explicit YAML document endings).
+                with open(config_file, 'r') as stream:
+                    existing = stream.read()
+                addition = '\n# New workflow settings added from code defaults\n' + yaml.safe_dump(
+                    missing, default_flow_style=False, sort_keys=False, indent=2)
+                combined = yaml.safe_load(existing + addition)
+                if combined != {**config, **missing}:
+                    raise ValueError(f"Could not extend workflow config: {config_file}")
+                with open(config_file, 'a') as stream:
+                    stream.write(addition)
+                message = f"Config Manager: Added new settings to {config_file}: {', '.join(missing)}"
+                if logger:
+                    logger.info(message)
+                else:
+                    print(message)
             if logger:
                 logger.info(f"Config Manager: Config file exists, preserving user changes: {config_file}")
             else:
@@ -390,7 +411,6 @@ class ConfigManager:
             return False
         
         # Config doesn't exist - create it from detected constants
-        workflow_constants = cls.workflow_constants(workflow_globals)
         
         if logger:
             logger.info(f"Config Manager: Creating new config with {len(workflow_constants)} detected constants")
