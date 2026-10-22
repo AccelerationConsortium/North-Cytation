@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # workflow_configs/fluorescence_calibration_workflow.yaml (standard pattern:
 # module-level UPPERCASE constants + workflow_globals=globals() at Lash_E init).
 SIMULATE = True
+VALIDATE_LIQUIDS = False
+VALIDATION_ONLY = False
 _SAVE_FILES_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
 DYE = "pyrene"
@@ -68,7 +70,7 @@ TWO_RUNS_PER_PLATE = False
 
 # Names of the constants above; used to snapshot them into a plain config dict.
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
+    "SIMULATE", "VALIDATE_LIQUIDS", "VALIDATION_ONLY", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
     "STOCK_CONCENTRATION_UM", "DILUTION_FACTORS", "DYE_VOLUME_UL",
     "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
     "FRESH_SUBSTOCKS", "PREPARE_ONLY", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
@@ -421,6 +423,23 @@ def execute(config=None, show_gui=True):
             raise ValueError(f"Missing vials for {pair_id}: {', '.join(missing_vials)}")
         if not inventory.index.is_unique:
             raise ValueError("Vial names must be unique in the selected inventory")
+        if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
+            from workflows.embedded_liquid_validations import run_liquid_validations
+            validation_sources = []
+            solvent_volumes = plan.loc[plan.medium == "solvent", "medium_volume_ul"].tolist()
+            solvent_volumes += plan["dye_volume_ul"].tolist()
+            solvent_volumes += [v * 1000 for recipe in recipes.itertuples()
+                                for v in (recipe.stock_ml, recipe.solvent_ml) if 0 < v <= 1]
+            validation_sources.append((working_vial, solvent, solvent_volumes))
+            if c["TEST_WATER"]:
+                validation_sources.append(("water", "water", plan.loc[plan.medium == "water", "medium_volume_ul"]))
+            if c["TEST_SURFACTANT"]:
+                validation_sources.append(("surfactant", c["SURFACTANT_LIQUID"],
+                                           plan.loc[plan.medium == "surfactant", "medium_volume_ul"]))
+            validation_results = run_liquid_validations(
+                lash, validation_sources, Path("output") / "fluorescence_calibration",)
+            if c["VALIDATION_ONLY"]:
+                return {"validation_results": validation_results}
         # Stage one 8 mL source at the clamp; large vials remain in place.
         for location, index in (("location", "location_index"), ("home_location", "home_location_index")):
             if ((inventory[location] == "clamp") & (inventory[index] == 0)).any():

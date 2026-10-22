@@ -174,3 +174,14 @@ micelle volume require an additional model; this workflow provides calibration
 measurements, not those estimates.
 
 Tests: `python -m unittest discover -s tests -p test_fluorescence_calibration.py`
+# Embedded pipetting validation
+
+Set `VALIDATE_LIQUIDS: true` in the workflow config to run gravimetric
+checks before dispensing, or set `VALIDATION_ONLY: true` to stop after the
+checks. Sessions are separate for each source liquid and for expected volumes
+below 200 uL versus 200 uL and above. The checked volumes are the minimum,
+middle, and maximum values used in each occupied range. `liquid_type` is the
+exact liquid registry name (`water`, `DMSO`, or `SURFACTANT_LIQUID`), while the
+source vial identifies the physical container. Validation uses three replicates
+per volume and may consume liquid. Simulations do not save validation data.
+

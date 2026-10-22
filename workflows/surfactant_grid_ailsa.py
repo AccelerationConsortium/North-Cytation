@@ -60,6 +60,8 @@ RECIPES_CSV = "inputs/gradient_proposal_snapped_96well_recipe.csv"
 STOCKS_CSV = "inputs/experiment_plan_stock_solutions_SDS_BDDAC.csv"
 
 SIMULATE = False
+VALIDATE_LIQUIDS = False
+VALIDATION_ONLY = False
 
 # Set to 0 to run all wells. Set to e.g. 96 to run only the first plate,
 # or any other number to stop after that many wells.
@@ -109,6 +111,7 @@ EXPERIMENT_TAG = "study"
 _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
     "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE", "DYE_SOLVENT", "DYE_VIAL",
+    "VALIDATE_LIQUIDS", "VALIDATION_ONLY",
     "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
     "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
     "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
@@ -1671,6 +1674,8 @@ def execute_study_workflow(
     lash_e,
     simulate=True,
     max_wells=0,
+    validate_liquids=False,
+    validation_only=False,
 ):
     """Replay a grid CSV in one pass with study config available locally."""
     study_config = get_study_config()
@@ -1708,6 +1713,17 @@ def execute_study_workflow(
 
     wellplate_size = validate_execution_block_size(lash_e)
     well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
+    if validate_liquids or validation_only:
+        from workflows.embedded_liquid_validations import run_liquid_validations
+        sources = [("water", "water", well_recipes_df["water_volume_ul"]),
+                   (DYE_VIAL, DYE_SOLVENT, [get_dye_protocol()["dye_volume_ul"]])]
+        for label, column in ((surfactant_a_name, "surf_A_volume_ul"),
+                              (surfactant_b_name, "surf_B_volume_ul")):
+            sources.append((f"{label}_stock", label, well_recipes_df[column]))
+        validation_results = run_liquid_validations(
+            lash_e, sources, os.path.join("output", "surfactant_grid_ailsa"))
+        if validation_only:
+            return {"validation_results": validation_results, "study_config": study_config}
     plate_dfs = split_into_plates(well_recipes_df, wellplate_size=wellplate_size)
     plate_dfs = [apply_well_order(plate_df, lash_e.logger) for plate_df in plate_dfs]
     lash_e.logger.info(f"Source CSV splits into {len(plate_dfs)} plate(s)")
@@ -1779,6 +1795,8 @@ def execute(config=None, show_gui=True):
             lash_e,
             simulate=c["SIMULATE"],
             max_wells=c["MAX_WELLS"],
+            validate_liquids=c["VALIDATE_LIQUIDS"],
+            validation_only=c["VALIDATION_ONLY"],
         )
     except KeyboardInterrupt:
         lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")

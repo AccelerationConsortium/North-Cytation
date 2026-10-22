@@ -65,3 +65,16 @@ complete supplied config with `show_gui=False`, same as the other retained
 workflows — see
 [`workflows/notes/workflow_comments.md`](../workflows/notes/workflow_comments.md)
 for outstanding reconciliation notes on this launch path.
+# Embedded pipetting validation
+
+Set `VALIDATE_LIQUIDS: true` in the workflow config to run gravimetric
+checks before the study, or `VALIDATION_ONLY: true` to run only those checks.
+The checks use the scaled well recipe volumes and run separate sessions for
+water, dye solvent, and each named surfactant. Volumes below 200 uL and at or
+above 200 uL are separate sessions. Each occupied range checks its minimum,
+middle, and maximum planned volumes with three replicates. The validation
+passes the exact liquid registry name separately from its source vial name.
+Register BDDAC with its measured solution density in `robot_state/liquids.yaml`
+before enabling Ailsa validation; an unknown liquid stops validation before
+any pipetting checks start.
+
