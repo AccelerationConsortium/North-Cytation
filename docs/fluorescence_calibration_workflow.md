@@ -55,15 +55,29 @@ in mM to check that the final diluted surfactant remains above the supplied CMC.
 The workflow uses a pre-made surfactant solution; it does not prepare this stock.
 
 Each workflow row specifies one pair with `DYE` and `DYE_SOLVENT`.
+`SOLVENT_SOURCE_VIALS` is an ordered list of pure-solvent inventory names
+(default `[DMSO]`); set it explicitly for the selected solvent. For example,
+`[DMSO, DMSO_2, DMSO_3]` selects the first container able to supply the entire
+solvent addition while retaining its reserve. Additions are not split between
+containers, avoiding tiny transfers of leftover solvent. If no single source
+can supply an addition, execution stops with a refill error.
+`DYE_SOLVENT` remains the chemical identity used for
+pipetting parameters and stock/working-vial names. Every source must contain
+that same pure solvent. `SOLVENT_SOURCE_RESERVE_ML` (default 2 mL) is retained
+in each container; increase it if the physical container requires more dead
+volume. Starting demand is checked against the combined usable volume.
+Scheduler simulations carry each container's updated volume between jobs.
+Existing queued rows are private copies: reload/recreate them with both new
+settings before simulating. Substock reuse is unchanged.
+
 For example, `pyrene` and `DMSO` generate the prefix `pyrene_DMSO`;
 `coumarin-6` and `acetone` generate `coumarin6_acetone`. The prefix is the
 dye and solvent with punctuation removed, joined by an underscore. Each pair
 generates its parent stock name
 `<pair>_stock` and dilution vial names `<pair>_s<level>`. With
 `FRESH_SUBSTOCKS: true`, it includes the repetition number, for example
-`pyrene_DMSO_r2_s1`. The solvent
-vial is named by the row's actual `DYE_SOLVENT` value (`DMSO` or `acetone`), not a
-literal `solvent` vial. `water` and `surfactant` remain fixed vial names. The
+`pyrene_DMSO_r2_s1`. Bulk solvent vial names come from `SOLVENT_SOURCE_VIALS`;
+they need not match `DYE_SOLVENT`. `water` and `surfactant` remain fixed vial names. The
 solvent-only medium and blank wells remain available through `TEST_SOLVENT`.
 The example vial CSV contains both pairs in one inventory. Queue separate rows
 with different `DYE` and `DYE_SOLVENT` values and the same CSV to run both pairs in order.
@@ -111,7 +125,8 @@ exist before dispensing. Extra levels and fresh batches require extra vials.
 When `TEST_WATER` is enabled, startup tops the water vial up to 8 mL from
 reservoir 1, matching the surfactant workflow. It skips water already within
 0.1 mL of full. This also replenishes water between queued workflow runs.
-Bulk and working solvent requirements include a 0.1 mL reserve.
+Working solvent requirements include a 0.1 mL reserve; each bulk source retains
+`SOLVENT_SOURCE_RESERVE_ML`.
 When `TEST_SURFACTANT` is enabled, startup tops the `surfactant` vial up to
 7.5 mL from `surfactant_refill`, skipping it when within 0.1 mL of that target.
 Load the same premixed surfactant solution in this 20 mL source vial at
@@ -122,8 +137,8 @@ The example inventory supplies both dye/solvent pairs with 19.9 mL in each bulk
 solvent vial. Each solvent has an additional empty closed-cap 8 mL working vial:
 `DMSO_working` at `main_8mL_rack[27]` and `acetone_working` at `[28]`.
 The working vial name is the actual `DYE_SOLVENT` value plus `_working`.
-The workflow fills the selected working vial with 6 mL from the matching bulk
-source before dispensing; substocks still use that bulk source. All solvent
+The workflow fills the selected working vial to 6 mL from the configured bulk
+sources before dispensing; substocks use the same ordered pool. All solvent
 additions to the plate, including matched blanks and solvent-only medium,
 use the selected working vial staged at the clamp. A resumed run skips filling a working
 vial already holding at least 5.9 mL. Volume checks reject runs exceeding the

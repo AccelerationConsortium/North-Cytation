@@ -45,15 +45,40 @@ def convert(new_run_csv, legacy_csv):
     new_df = pd.read_csv(new_run_csv).rename(columns=COLUMN_MAP)
     new_df['volume_ul'] = new_df['volume_target']
 
+    # None is a runtime fallback (e.g. blowout_speed uses aspirate_speed),
+    # not a numeric value to write into a calibration CSV.
+    defaults = {name: value for name, value in asdict(PipettingParameters()).items()
+                if value is not None}
+
+    legacy_path = Path(legacy_csv)
+    if not legacy_path.is_file():
+        # First calibration for this liquid -- nothing to merge with or back up.
+        columns = [c for c in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", *defaults])
+                   if c in new_df.columns or c in defaults]
+        created = new_df.reindex(columns=columns)
+        defaulted = {}
+        for column, default in defaults.items():
+            if column not in created.columns:
+                continue
+            missing = created[column].isna()
+            if missing.any():
+                defaulted[column] = int(missing.sum())
+                created[column] = created[column].fillna(default)
+        legacy_path.parent.mkdir(parents=True, exist_ok=True)
+        created.to_csv(legacy_path, index=False)
+        print(f"Created new production file {legacy_csv} ({len(created)} rows) "
+              "-- no prior calibration existed for this liquid")
+        if defaulted:
+            print("Filled missing parameters with PipettingParameters defaults: "
+                  + ", ".join(f"{name}={defaults[name]} ({count} rows)"
+                              for name, count in defaulted.items()))
+        return None
+
     legacy_df = pd.read_csv(legacy_csv)
     # Preserve the legacy schema and add recognized calibration columns supplied
     # by this run. Never drop a mapped hardware parameter merely because the
     # production file predates it. Fill missing hardware values below using
     # the same defaults as the robot; measurement columns remain untouched.
-    # None is a runtime fallback (e.g. blowout_speed uses aspirate_speed),
-    # not a numeric value to write into a calibration CSV.
-    defaults = {name: value for name, value in asdict(PipettingParameters()).items()
-                if value is not None}
     columns = list(legacy_df.columns)
     for column in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", *defaults]):
         if (column in new_df.columns or column in defaults) and column not in columns:

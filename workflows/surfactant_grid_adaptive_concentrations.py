@@ -2263,7 +2263,7 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         return []
         
     logger = lash_e.logger
-    safe_positions = [47, 46, 45, 44, 'clamp', 43, ('heater', 2)]  # Safe spots in order: clamp -> rack positions
+    safe_positions = [47, 46, 45, 44, 'clamp', 43, 'clamp_2']
     
     # Get concentration for each vial from the DataFrame
     vial_concentrations = []
@@ -2300,12 +2300,9 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         if i < len(safe_positions):
             position = safe_positions[i]
             concentration = vial_concentrations[i][1]
-            if position == 'clamp':
-                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> clamp")
-                lash_e.nr_robot.move_vial_to_location(vial_name, 'clamp', 0)
-            elif isinstance(position, tuple) and position[0] == 'heater':
-                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> heater[{position[1]}]")
-                lash_e.nr_robot.move_vial_to_location(vial_name, 'heater', position[1])
+            if position in ('clamp', 'clamp_2'):
+                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> {position}")
+                lash_e.nr_robot.move_vial_to_location(vial_name, position, 0)
             else:
                 logger.info(f"    {vial_name} ({concentration:.2f}mM) -> main_8mL_rack[{position}]")
                 lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', position)

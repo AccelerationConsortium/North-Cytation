@@ -32,3 +32,16 @@ def test_unknown_liquid_fails_before_any_validation(tmp_path):
             run_liquid_validations(lash, [("water", "water", [5]),
                                           ("BDDAC_stock", "BDDAC", [50])], tmp_path)
     validate.assert_not_called()
+
+
+def test_two_surfactant_sources_get_distinct_sessions_with_sds_parameters(tmp_path):
+    lash = Mock(simulate=True)
+    with patch("pipetting_data.embedded_calibration_validation.validate_pipetting_accuracy",
+               return_value={"success": True}) as validate:
+        results = run_liquid_validations(
+            lash, [("SDS_stock", "SDS", [50, 200]),
+                   ("BDDAC_stock", "SDS", [60, 200])], tmp_path)
+    assert len(results) == 4
+    assert [call.kwargs["source_vial"] for call in validate.call_args_list] == [
+        "SDS_stock", "SDS_stock", "BDDAC_stock", "BDDAC_stock"]
+    assert all(call.kwargs["liquid_type"] == "SDS" for call in validate.call_args_list)

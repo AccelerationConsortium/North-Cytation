@@ -1719,7 +1719,7 @@ def execute_study_workflow(
                    (DYE_VIAL, DYE_SOLVENT, [get_dye_protocol()["dye_volume_ul"]])]
         for label, column in ((surfactant_a_name, "surf_A_volume_ul"),
                               (surfactant_b_name, "surf_B_volume_ul")):
-            sources.append((f"{label}_stock", label, well_recipes_df[column]))
+            sources.append((f"{label}_stock", "SDS", well_recipes_df[column]))
         validation_results = run_liquid_validations(
             lash_e, sources, os.path.join("output", "surfactant_grid_ailsa"))
         if validation_only:

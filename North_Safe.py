@@ -929,21 +929,27 @@ class North_Spin:
         self.logger.debug("Stopping centrifuge spin")
         self.c8.spin_axis(2,0)
 
+    #NOTE: Port 3 is the extender port. 
+
     def open_lid(self):
         self.logger.debug("Opening centrifuge lid")
-        self.c9.set_output(3, True)  # Open lid pneumatic
+        self.c9.set_output(11, True)  # Open lid pneumatic
+        self.c9.set_output(3, True)
 
     def close_lid(self):
         self.logger.debug("Closing centrifuge lid")
-        self.c9.set_output(3, False)  # Close lid pneumatic
+        self.c9.set_output(3, False)
+        self.c9.set_output(11, False)  # Close lid pneumatic
 
     def turn_on_vacuum(self):
         self.logger.debug("Turning on centrifuge vacuum")
-        self.c9.set_output(2, True)  # Turn on vacuum pneumatic
+        self.c9.set_output(3, True)
+        self.c9.set_output(10, True)  # Turn on vacuum pneumatic
 
     def turn_off_vacuum(self):
         self.logger.debug("Turning off centrifuge vacuum")
-        self.c9.set_output(2, False)  # Turn off vacuum pneumatic
+        self.c9.set_output(3, False)
+        self.c9.set_output(10, False)  # Turn off vacuum pneumatic
 
 class North_Robot(North_Base):
     """
@@ -3894,6 +3900,7 @@ class North_Robot(North_Base):
         self.c9.close_gripper()
         self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
+        self.move_rel_xyz(z_distance=5)
         self.c9.open_clamp()
 
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False

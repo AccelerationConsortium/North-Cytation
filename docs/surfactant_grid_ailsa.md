@@ -72,9 +72,8 @@ checks before the study, or `VALIDATION_ONLY: true` to run only those checks.
 The checks use the scaled well recipe volumes and run separate sessions for
 water, dye solvent, and each named surfactant. Volumes below 200 uL and at or
 above 200 uL are separate sessions. Each occupied range checks its minimum,
-middle, and maximum planned volumes with three replicates. The validation
-passes the exact liquid registry name separately from its source vial name.
-Register BDDAC with its measured solution density in `robot_state/liquids.yaml`
-before enabling Ailsa validation; an unknown liquid stops validation before
-any pipetting checks start.
+middle, and maximum planned volumes with three replicates. SDS and BDDAC
+source vials are validated separately. Both surfactant solutions use
+`liquid_type="SDS"` for pipetting parameters and gravimetric density; the vial
+name identifies the physical source.
 
