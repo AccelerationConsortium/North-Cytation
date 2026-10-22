@@ -94,11 +94,23 @@ Recommendations are gathered in their own tab.
 
 ## Environment, original runs, and remaining work
 
-Environmental records from parameter_corrections.csv are joined by session and target
-volume. Historical appended temperature/humidity/pressure columns without matching
-headers are supported. These are correction-time readings. Additional environmental
-data can be obtained and cross-referenced, but ingestion of external sensor history,
-timestamp alignment, and multivariable environmental modeling are not implemented yet.
+The Environmental Analysis tab plots temperature and relative humidity from the
+master session records for the selected liquid and date range, with one point per
+session. The master records include historical readings backfilled from the nearest
+valid MQTT reading within one hour of the session timestamp; missing readings stay
+blank. The plot follows the selected date range. Below it, an exploratory model uses
+all available measurement history matching the current calibration settings other
+than overaspirate. It averages replicates at each tested overaspirate and target,
+weights sessions equally, and includes target volume, overaspirate, and calendar
+month when estimating temperature and humidity associations with percentage delivery
+error. The effect plot compares typical low and high readings (10th and 90th
+percentiles across sessions) and shows 95% session-bootstrap uncertainty intervals.
+The tab states which associations the historical data support before the chart, in
+plain language, including the estimated size of the change.
+Text also reports how often bootstrap estimates point in the same direction; this
+is not a probability of causation. A plain-language prediction check compares the
+average miss on unseen sessions with and without environmental variables.
+Associations do not establish cause or justify automatic parameter changes.
 
 Past optimal conditions are read from `sdl_pipette_calibration/output` and
 `output/calibration_runs` / `output/calibration_v2_runs`; saved validation results

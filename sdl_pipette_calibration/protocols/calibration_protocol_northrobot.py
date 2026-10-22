@@ -97,8 +97,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             raise ValueError("Engine liquid does not match the bound workflow")
         get_liquid(liquid, LIQUIDS)
         self.quality_std_threshold = experiment['quality_std_threshold_g']
+        tip_type = experiment.get('north_tip_type')
         self.conditioning_volume = self.get_tip_conditioning_volume(max(experiment['volume_targets_ml']))
         robot = lash_e.nr_robot
+        if tip_type:
+            self.conditioning_volume = min(
+                self.conditioning_volume, robot.PIPET_TIPS[tip_type]['volume'] - 0.001)
         robot.home_robot_components()
         robot.move_vial_to_location(target_vial, "clamp", 0)
         source_index = robot.normalize_vial_index(target_vial)
@@ -107,11 +111,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         if not LIQUIDS[liquid]['refill_pipets']:
             parameters = PipettingParameters(aspirate_speed=15, dispense_speed=5,
                                             dispense_wait_time=0.0, blowout_vol=0.5)
-            robot.aspirate_from_vial(target_vial, self.conditioning_volume, move_up=False, parameters=parameters)
+            robot.aspirate_from_vial(target_vial, self.conditioning_volume, move_up=False, parameters=parameters,
+                                    specified_tip=tip_type)
             robot.dispense_into_vial(target_vial, self.conditioning_volume, initial_move=False, parameters=parameters)
             for cycle in range(3):
                 robot.aspirate_from_vial(target_vial, self.conditioning_volume,
-                                        move_to_aspirate=False, parameters=parameters)
+                                        move_to_aspirate=False, parameters=parameters, specified_tip=tip_type)
                 robot.dispense_into_vial(target_vial, self.conditioning_volume,
                                         initial_move=False, parameters=parameters)
         robot.c9.goto(robot.get_location(use_pipet=True, location_name='clamp', location_index=0))
@@ -123,7 +128,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             'continuous_mass_monitoring': experiment['continuous_monitoring'],
             'max_retries_per_measurement': experiment['max_retries_per_measurement'],
             'simulate': lash_e.simulate, 'adjust_volume': experiment['adjust_volume'],
-            'workflow_managed': True,
+            'workflow_managed': True, 'north_tip_type': tip_type,
             'simulation_random': self._workflow_random,
         }
     
@@ -412,10 +417,15 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         )
         return is_acceptable
 
-    def validate_workflow_capacity(self, volume_ml, params):
+    def validate_workflow_capacity(self, volume_ml, params, tip_type=None):
         """Enforce the North tip constraints for compensated measurement inputs."""
         hardware = params['parameters'] if isinstance(params.get('parameters'), dict) else params
-        tip_capacity = 0.2 if volume_ml < 0.2 else 1.0
+        tip_type = tip_type or (self._workflow_binding[1]['experiment'].get('north_tip_type')
+                                if self._workflow_binding else None)
+        tip_capacity = (self._workflow_binding[0].nr_robot.PIPET_TIPS[tip_type]['volume']
+                        if tip_type and self._workflow_binding else
+                        (1.0 if tip_type == 'large_tip' else 0.2) if tip_type else
+                        (0.2 if volume_ml < 0.2 else 1.0))
         liquid_total = volume_ml + params['overaspirate_vol'] + hardware['post_asp_air_vol']
         if liquid_total > tip_capacity + 1e-9:
             raise ValueError("Measurement parameters exceed North tip capacity")
@@ -517,7 +527,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     rep_start = time.perf_counter()
                     
                     # Aspirate from source vial
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params,
+                                                       specified_tip=state.get('north_tip_type'))
                     
                     # Dispense into measurement vial and measure weight
                     dispense_result = lash_e.nr_robot.dispense_into_vial(
@@ -717,14 +728,20 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     except Exception as e2:
                         print(f"WARNING: All cleanup methods failed: {e2}")
 
-    def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
+    def get_parameter_constraints(self, target_volume_ml: float, tip_type=None) -> List[str]:
         """Get hardware-specific parameter constraints for North Robot system."""
         constraints = []
         
         # North Robot tip volume constraint
         # Use 0.2 mL tips for volumes < 200 uL, otherwise 1.0 mL tips
         # Fixed: 200 uL exactly should use large tips to allow overaspiration
-        if target_volume_ml < 0.20:  # Less than 200 uL (not equal)
+        tip_type = tip_type or (self._workflow_binding[1]['experiment'].get('north_tip_type')
+                                if self._workflow_binding else None)
+        if tip_type:
+            tip_volume_ml = (self._workflow_binding[0].nr_robot.PIPET_TIPS[tip_type]['volume']
+                             if self._workflow_binding else
+                             1.0 if tip_type == 'large_tip' else 0.2)
+        elif target_volume_ml < 0.20:  # Less than 200 uL (not equal)
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0

@@ -29,6 +29,18 @@ existing convention and are locally ignored by Git.
 The default experiment uses 45 wells: three media (water, premixed surfactant,
 native dye solvent), three dye levels plus a matched solvent-only blank, each
 in triplicate. Each well receives 195 uL medium and 5 uL dye substock or solvent.
+For acetone or ethyl acetate runs, set `VOLATILE_SOLVENT: true`. This skips
+solvent-medium wells even when `TEST_SOLVENT` is enabled. `TOTAL_VOLUME_UL` then
+means the aqueous volume intended to remain after the dye solvent evaporates:
+with `TOTAL_VOLUME_UL: 250` and `DYE_VOLUME_UL: 20`, the robot dispenses
+250 uL water or surfactant solution plus 20 uL dye substock (or pure-solvent
+blank). The initial 270 uL must fit the plate. Reported dye concentration uses
+20/250, and the planned final solvent fraction is zero. These calculations
+assume the added solvent evaporates completely while the dye stays in the well;
+the workflow does not measure or wait for evaporation. Lower the physical parent
+stock concentration, set `STOCK_CONCENTRATION_UM` to its actual value, or adjust
+`DILUTION_FACTORS` when increasing the dye addition. With
+`VOLATILE_SOLVENT: false`, the original total-dispensed-volume behavior applies.
 `TOTAL_VOLUME_UL` and `DYE_VOLUME_UL` are base 96-well values. Selecting a
 different `WELLPLATE_TYPE` applies `VOLUME_SCALE_BY_PLATE` to both volumes:
 1x for 96 wells, 2x for 48 wells, and 4x for 24 wells by default. The plan
@@ -193,9 +205,9 @@ Tests: `python -m unittest discover -s tests -p test_fluorescence_calibration.py
 
 Set `VALIDATE_LIQUIDS: true` in the workflow config to run gravimetric
 checks before dispensing, or set `VALIDATION_ONLY: true` to stop after the
-checks. Sessions are separate for each source liquid and for expected volumes
-below 200 uL versus 200 uL and above. The checked volumes are the minimum,
-middle, and maximum values used in each occupied range. `liquid_type` is the
+checks. Sessions are separate for each source liquid and resolved tip. The
+checked volumes are the minimum, middle, and maximum values used by each tip.
+`liquid_type` is the
 exact liquid registry name (`water`, `DMSO`, or `SURFACTANT_LIQUID`), while the
 source vial identifies the physical container. Validation uses three replicates
 per volume and may consume liquid. Simulations do not save validation data.

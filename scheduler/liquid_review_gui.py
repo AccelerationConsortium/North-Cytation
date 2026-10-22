@@ -3,7 +3,6 @@ from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import matplotlib
 import numpy as np
 import pandas as pd
 from PySide6.QtCore import QDate
@@ -13,11 +12,40 @@ from PySide6.QtWidgets import (QComboBox, QDateEdit, QDialog, QHBoxLayout, QLabe
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 
+from scheduler.liquid_environment_analysis import analyze_environment
 from scheduler.liquid_review import (calibration_files, coverage, current_parameters,
-    environmental_history, fingerprint, load_calibration,
+    environmental_sessions, fingerprint, load_calibration,
     matching_measurements, past_result_measurements, past_result_parameters,
     past_results, parse_log, session_overaspirate_estimates, summarize_overaspirate,
     summarize_past_validation)
+
+
+def scale_volume_axis(ax, volumes):
+    """Give small positive target volumes space when targets span a decade."""
+    values = np.asarray(volumes, dtype=float)
+    values = values[np.isfinite(values)]
+    if len(values) and np.all(values > 0) and values.max() / values.min() > 10:
+        ax.set_xscale("log")
+
+
+def scale_volume_comparison(ax, targets, measured):
+    """Keep target and measured volumes on matching scales."""
+    scale_volume_axis(ax, targets)
+    values = np.asarray(measured, dtype=float)
+    values = values[np.isfinite(values)]
+    if ax.get_xscale() == "log" and len(values) and np.all(values > 0):
+        ax.set_yscale("log")
+
+
+def plot_measured_distribution(ax, measured, target):
+    """Show repeated measurements at one target without a degenerate x axis."""
+    values = np.asarray(measured, dtype=float)
+    values = values[np.isfinite(values)]
+    if len(values):
+        ax.hist(values, bins="auto", color="steelblue", alpha=.75)
+    ax.axvline(target, color="crimson", linestyle="--", label=f"Target {target:g} µL")
+    ax.set(xlabel="Measured volume (µL)", ylabel="Measurements")
+    ax.legend(loc="best")
 
 
 class LiquidReviewDialog(QDialog):
@@ -72,6 +100,7 @@ class LiquidTab(QWidget):
     def __init__(self, root, liquid, events):
         super().__init__()
         self.root, self.liquid, self.events = root, liquid, events
+        self.drift_target_ul = None
         self.validation_end = QDate.currentDate()
         self.validation_start = self.validation_end.addMonths(-3)
         layout = QVBoxLayout(self)
@@ -104,7 +133,7 @@ class LiquidTab(QWidget):
                 matched, excluded = matching_measurements(self.root, self.liquid, frame)
                 self.build_past_validation(matched, excluded)
                 data = self.build_validation(frame, matched, excluded)
-                self.build_environment(data)
+                self.build_environment(matched, frame)
                 for volume in sorted({e.volume_ul for e in self.events if e.method == "pipette"}):
                     if data.empty or not np.isclose(data.target_volume_ml * 1000, volume).any():
                         recommendations.add(f"Run embedded validation at {volume:g} µL to test and adjust current settings.")
@@ -154,6 +183,8 @@ class LiquidTab(QWidget):
                 else:
                     recommendations.add(f"Calibrate {volume:g} µL in the applicable tip region.")
         ax.axvline(200, color="gray", linestyle="--")
+        scale_volume_axis(ax, [e.volume_ul for e in self.events] +
+                          ([] if frame is None else frame.volume_target.tolist()))
         ax.set(yticks=[0, 1], yticklabels=["Large ≥200 µL", "Small <200 µL"], xlabel="Target volume (µL)", ylim=(-.5, 1.5))
         ax.set_title("Green: calibration points and within-regime interpolation · ticks: workflow volumes · red: unsupported")
         layout.addWidget(FigureCanvasQTAgg(figure))
@@ -167,7 +198,9 @@ class LiquidTab(QWidget):
                                    label="Current optimal conditions")
             if valid.any():
                 high = max(target[valid].max(), measured[valid].max())
-                calibration_ax.plot([0, high], [0, high], color="gray", linestyle="--", label="Ideal V_M = V_T")
+                scale_volume_comparison(calibration_ax, target[valid], measured[valid])
+                low = target[valid].min() if calibration_ax.get_xscale() == "log" else 0
+                calibration_ax.plot([low, high], [low, high], color="gray", linestyle="--", label="Ideal V_M = V_T")
                 calibration_ax.legend(loc="best")
         calibration_ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)",
                            title="Current calibration from the selected optimal conditions file")
@@ -230,6 +263,22 @@ class LiquidTab(QWidget):
         self.add_dated_tab("Past Validation Results",
                            lambda start, end: self._past_validation_content(matched, excluded, start, end))
 
+    @staticmethod
+    def _plot_validation_scatter(ax, data, summary):
+        sessions = data.groupby(["target_volume_ml", "session_id"], as_index=False).measured_volume_ml.mean()
+        ax.scatter(sessions.target_volume_ml * 1000, sessions.measured_volume_ml * 1000,
+                   s=14, alpha=.2, color="steelblue", label="Accepted session means")
+        ax.scatter(summary.target_ul, summary.mean_ul, s=40, color="crimson", zorder=4, label="Historical mean")
+        with_ci = summary[summary.ci_low_ul.notna()]
+        if not with_ci.empty:
+            ax.errorbar(with_ci.target_ul, with_ci.mean_ul,
+                        yerr=with_ci.mean_ul - with_ci.ci_low_ul, fmt="none", ecolor="crimson",
+                        capsize=4, label="95% CI of the mean")
+        high = max(summary.target_ul.max(), data.measured_volume_ml.max() * 1000)
+        low = summary.target_ul.min() if ax.get_xscale() == "log" else 0
+        ax.plot([low, high], [low, high], linestyle="--", color="gray", label="Ideal V_M = V_T")
+        ax.legend(loc="best")
+
     def _past_validation_content(self, matched, excluded, start, end):
         data, summary, exclusions = summarize_past_validation(matched, excluded, start, end)
         page = QWidget()
@@ -242,22 +291,17 @@ class LiquidTab(QWidget):
         figure = Figure(figsize=(9, 3.5), constrained_layout=True)
         ax = figure.subplots()
         if not data.empty:
-            sessions = data.groupby(["target_volume_ml", "session_id"], as_index=False).measured_volume_ml.mean()
-            ax.scatter(sessions.target_volume_ml * 1000, sessions.measured_volume_ml * 1000,
-                       s=14, alpha=.2, color="steelblue", label="Accepted session means")
-            ax.scatter(summary.target_ul, summary.mean_ul, s=40, color="crimson", zorder=4, label="Historical mean")
-            with_ci = summary[summary.ci_low_ul.notna()]
-            if not with_ci.empty:
-                ax.errorbar(with_ci.target_ul, with_ci.mean_ul,
-                            yerr=with_ci.mean_ul - with_ci.ci_low_ul, fmt="none", ecolor="crimson",
-                            capsize=4, label="95% CI of the mean")
-            high = max(summary.target_ul.max(), data.measured_volume_ml.max() * 1000)
-            ax.plot([0, high], [0, high], linestyle="--", color="gray", label="Ideal V_M = V_T")
-            ax.legend(loc="best")
+            targets = summary.target_ul.to_numpy()
+            if len(targets) == 1:
+                plot_measured_distribution(ax, data.measured_volume_ml * 1000, targets[0])
+            else:
+                scale_volume_comparison(ax, targets, data.measured_volume_ml * 1000)
+                self._plot_validation_scatter(ax, data, summary)
         else:
             ax.text(.5, .5, "No accepted validation measurements match this calibration.",
                     ha="center", va="center", transform=ax.transAxes)
-        ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
+        if data.empty or len(summary) != 1:
+            ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
         canvas = FigureCanvasQTAgg(figure)
         layout.addWidget(NavigationToolbar2QT(canvas, page))
         layout.addWidget(canvas)
@@ -330,13 +374,21 @@ class LiquidTab(QWidget):
             "Each embedded validation session tests up to three V_OA values at a target volume (stages 1-3, all stages used here). "
             "For each session, a line through (V_OA, error = V_M - V_T) gives the V_OA where error would be zero: that session's "
             "estimate of the true V_OA. Estimates from all sessions in the date range are averaged (each session counts once).\n"
-            "Left: the estimate range per target against the current V_OA (black x). Right: how each session's estimate differs "
+            "Left: the estimate range per target against the current V_OA (black x). Select a target volume to see how its session estimate differs "
             "from the current V_OA over time (0 = current V_OA is exactly right; a steady offset means recalibrate, a wide scatter means noise).")
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
+        drift_selector = QComboBox()
+        drift_selector.setToolTip("Target volume shown in the drift plot")
+        for volume in sorted(estimates.target_ul.unique()) if not estimates.empty else []:
+            drift_selector.addItem(f"Drift at {volume:g} \u00b5L", float(volume))
+        if self.drift_target_ul is not None:
+            index = drift_selector.findData(self.drift_target_ul)
+            if index >= 0:
+                drift_selector.setCurrentIndex(index)
+        layout.addWidget(drift_selector)
         figure = Figure(figsize=(11, 3.8), constrained_layout=True)
         left, right = figure.subplots(1, 2)
-        palette = matplotlib.colormaps["tab10"]
         if estimates.empty:
             for ax in (left, right):
                 ax.text(.5, .5, "No sessions with usable V_OA estimates in this date range.",
@@ -349,17 +401,33 @@ class LiquidTab(QWidget):
                 left.errorbar(with_ci.target_ul, with_ci.mean_ul, yerr=with_ci.mean_ul - with_ci.ci_low_ul,
                               fmt="none", ecolor="crimson", capsize=4, label="95% CI of the mean")
             left.scatter(summary.target_ul, summary.current_ul, marker="x", s=60, color="black", zorder=5, label="Current V_OA")
+            scale_volume_axis(left, estimates.target_ul)
             left.legend(loc="best", fontsize=8)
-            for index, (volume, group) in enumerate(estimates.groupby("target_ul")):
-                right.scatter(group.when.to_numpy(), (group.oa_ul - current[volume]).to_numpy(), s=18, alpha=.7,
-                              color=palette(index % 10), label=f"{volume:g} µL")
+        left.set(xlabel="Target V_T (\u00b5L)", ylabel="Overaspirate V_OA (\u00b5L)", title="Estimated true V_OA vs current")
+
+        def draw_drift(*_):
+            if estimates.empty:
+                right.set_xlim(start, end)
+                right.set(xlabel="Validation date", ylabel="Session estimate - current V_OA (\u00b5L)",
+                          title="Drift of the estimate over time")
+                return
+            volume = drift_selector.currentData()
+            if volume is None:
+                return
+            self.drift_target_ul = volume
+            group = estimates[np.isclose(estimates.target_ul, volume)]
+            right.clear()
+            right.scatter(group.when.to_numpy(), (group.oa_ul - current[volume]).to_numpy(),
+                          s=35, alpha=.8, color="steelblue")
             right.axhline(0, color="gray", linestyle="--")
-            right.legend(loc="best", fontsize=8, ncol=2, title="Target")
+            right.set_xlim(group.when.min() - timedelta(days=2), group.when.max() + timedelta(days=2))
             right.tick_params(axis="x", rotation=30)
-        right.set_xlim(start, end)
-        left.set(xlabel="Target V_T (µL)", ylabel="Overaspirate V_OA (µL)", title="Estimated true V_OA vs current")
-        right.set(xlabel="Validation date", ylabel="Session estimate - current V_OA (µL)", title="Drift of the estimate over time")
+            right.set(xlabel="Validation date", ylabel="Session estimate - current V_OA (\u00b5L)",
+                      title=f"Drift at {volume:g} \u00b5L ({len(group)} sessions)")
+            canvas.draw_idle()
         canvas = FigureCanvasQTAgg(figure)
+        drift_selector.currentIndexChanged.connect(draw_drift)
+        draw_drift()
         layout.addWidget(NavigationToolbar2QT(canvas, page))
         layout.addWidget(canvas)
         rows = []
@@ -404,22 +472,118 @@ class LiquidTab(QWidget):
         layout.addWidget(raw_button)
         return page
 
-    def build_environment(self, data):
+    def build_environment(self, matched, calibration):
+        self.environment_analysis = analyze_environment(matched, calibration)
+        self.add_dated_tab("Environmental Analysis", self._environment_content)
+
+    def _environment_content(self, start, end):
         page = QWidget()
         layout = QVBoxLayout(page)
-        env = environmental_history(self.root)
-        rows = []
-        if not data.empty and not env.empty:
-            eligible = set(zip(data.session_id.astype(str), data.target_volume_ml.round(9)))
-            for _, row in env.iterrows():
-                if (str(row.session_id), round(float(row.target_volume_ml), 9)) in eligible:
-                    rows.append([str(row.get(k, "")) for k in ["timestamp", "session_id", "target_volume_ul", "temp_c", "humidity_pct", "new_overaspirate_ml"]])
-        label = QLabel("Environmental records linked by session and target volume. These readings were captured at correction time.\n"
-                       "Additional environmental history can be cross-referenced later. Causal effects and compensation are not inferred from these records.")
+        sessions = environmental_sessions(self.root, self.liquid, start, end)
+        temperature = sessions[sessions.temp_c.notna()]
+        humidity = sessions[sessions.humidity_pct.notna()]
+        label = QLabel(
+            f"{len(sessions)} recorded sessions in this date range. "
+            f"Temperature available for {len(temperature)}; humidity for {len(humidity)}. "
+            "Each point is one session reading. Historical readings are associated with the session timestamp."
+        )
         label.setWordWrap(True)
         layout.addWidget(label)
-        layout.addWidget(make_table(["Timestamp", "Session", "V_T µL", "Temperature °C", "Humidity %", "Corrected V_OA mL"], rows))
-        self.pages.addTab(page, "Environmental Analysis")
+        figure = Figure(figsize=(10, 5), constrained_layout=True)
+        temperature_ax, humidity_ax = figure.subplots(2, 1, sharex=True)
+        temperature_ax.scatter(temperature.when, temperature.temp_c, s=25, alpha=.75, color="firebrick")
+        humidity_ax.scatter(humidity.when, humidity.humidity_pct, s=25, alpha=.75, color="steelblue")
+        temperature_ax.set(ylabel="Temperature (\u00b0C)", title="Temperature at validation sessions")
+        humidity_ax.set(xlabel="Session date", ylabel="Relative humidity (%)", title="Humidity at validation sessions")
+        humidity_ax.set_xlim(start, end)
+        humidity_ax.tick_params(axis="x", rotation=30)
+        if sessions.empty or (temperature.empty and humidity.empty):
+            temperature_ax.text(.5, .5, "No environmental readings in this date range.",
+                                ha="center", va="center", transform=temperature_ax.transAxes)
+        canvas = FigureCanvasQTAgg(figure)
+        layout.addWidget(NavigationToolbar2QT(canvas, page))
+        layout.addWidget(canvas)
+        heading = QLabel("Do temperature or humidity appear related to delivery error?")
+        heading.setWordWrap(True)
+        layout.addWidget(heading)
+        analysis = self.environment_analysis
+        if analysis is None:
+            layout.addWidget(QLabel("Not enough independent sessions or environmental variation for this analysis."))
+        else:
+            description = QLabel(
+                f"Using {analysis.sessions} past sessions that match today's calibration settings, "
+                "we estimate how delivery error changes from a typical low to a typical high reading "
+                "(the 10th and 90th percentiles of past session conditions). "
+                "The comparison accounts for target volume, overaspirate, the other environmental reading, "
+                "and calendar month. Negative values mean less liquid was delivered relative to the target."
+            )
+            description.setWordWrap(True)
+            layout.addWidget(description)
+            def finding(name, effect):
+                if effect.typical_ci_high < 0:
+                    return (f"Higher {name} is associated with less delivered volume: "
+                            f"about {abs(effect.typical_change):.1f}% of the target across the typical range "
+                            f"(95% interval: {abs(effect.typical_ci_high):.1f}% to "
+                            f"{abs(effect.typical_ci_low):.1f}% less).")
+                if effect.typical_ci_low > 0:
+                    return (f"Higher {name} is associated with more delivered volume: "
+                            f"about {effect.typical_change:.1f}% of the target across the typical range "
+                            f"(95% interval: {effect.typical_ci_low:.1f}% to "
+                            f"{effect.typical_ci_high:.1f}% more).")
+                return (f"The {name} pattern is unclear: the plausible change across the typical range "
+                        f"runs from {effect.typical_ci_low:+.1f}% to {effect.typical_ci_high:+.1f}% "
+                        "of the target volume.")
+            takeaway = QLabel("What these sessions suggest: " +
+                              finding("temperature", analysis.temperature) + " " +
+                              finding("humidity", analysis.humidity))
+            takeaway.setWordWrap(True)
+            takeaway.setStyleSheet("font-weight: 600")
+            layout.addWidget(takeaway)
+            effect_figure = Figure(figsize=(9, 2.5), constrained_layout=True)
+            effect_ax = effect_figure.subplots()
+            effects = [("Warmer", analysis.temperature, "°C", 1, "firebrick"),
+                       ("More humid", analysis.humidity, "% RH", 0, "steelblue")]
+            for name, effect, unit, row, color in effects:
+                effect_ax.errorbar(effect.typical_change, row,
+                                   xerr=[[max(0, effect.typical_change - effect.typical_ci_low)],
+                                         [max(0, effect.typical_ci_high - effect.typical_change)]],
+                                   fmt="o", color=color, capsize=5, markersize=7)
+            effect_ax.axvline(0, color="gray", linestyle="--")
+            effect_ax.set(yticks=[1, 0],
+                          yticklabels=[f"Warmer: {analysis.temperature.typical_low:.1f} to "
+                                       f"{analysis.temperature.typical_high:.1f} °C",
+                                       f"More humid: {analysis.humidity.typical_low:.0f} to "
+                                       f"{analysis.humidity.typical_high:.0f}% RH"],
+                          xlabel="Estimated change in delivery error (% of target volume)",
+                          title="Dot: estimate    Line: 95% uncertainty interval    Dashed line: no change",
+                          ylim=(-.5, 1.5))
+            layout.addWidget(FigureCanvasQTAgg(effect_figure))
+            for name, effect, unit, _, _ in effects:
+                sentence = QLabel(
+                    f"{name}: estimated change {effect.typical_change:+.1f}% of target volume "
+                    f"(95% uncertainty interval {effect.typical_ci_low:+.1f} to {effect.typical_ci_high:+.1f}%). "
+                    f"The direction was the same in {effect.direction_agreement_pct:.0f}% "
+                    "of session resamples."
+                )
+                sentence.setWordWrap(True)
+                layout.addWidget(sentence)
+            explanation = QLabel(
+                "Direction agreement measures how consistently the pattern appears when past sessions are resampled. "
+                "It is not the probability that temperature or humidity caused the change. "
+                "If an uncertainty line crosses zero, the data also support no change."
+            )
+            explanation.setWordWrap(True)
+            layout.addWidget(explanation)
+            prediction = QLabel(
+                "Separate question — can these readings help predict another session? We repeatedly hid entire sessions, learned from "
+                "the remaining sessions, then measured the average prediction miss on the hidden ones. "
+                f"Without temperature and humidity the average miss was {analysis.baseline_mae:.2f}% of target volume; "
+                f"with them it was {analysis.environment_mae:.2f}%. Smaller is better. "
+                "This prediction check does not erase associations observed in past sessions."
+            )
+            prediction.setWordWrap(True)
+            layout.addWidget(prediction)
+        return page
 
     def build_past_calibration(self):
         page = QWidget()
@@ -475,6 +639,7 @@ class LiquidTab(QWidget):
             figure.clear()
             ax = figure.subplots()
             result = selector.currentData()
+            is_distribution = False
             page.result_frame = None
             volume_selector.clear()
             results_table.setRowCount(0)
@@ -484,13 +649,21 @@ class LiquidTab(QWidget):
                     frame = past_result_measurements(result)
                     page.result_frame = frame
                     valid = np.isfinite(frame.target_ul) & np.isfinite(frame.measured_ul)
-                    ax.scatter(frame.loc[valid, "target_ul"], frame.loc[valid, "measured_ul"],
-                               s=40 if result.kind == "calibration" else 18, alpha=.8 if result.kind == "calibration" else .45,
-                               color="crimson" if result.kind == "calibration" else "steelblue")
                     if valid.any():
-                        high = max(frame.loc[valid, "target_ul"].max(), frame.loc[valid, "measured_ul"].max())
-                        ax.plot([0, high], [0, high], color="gray", linestyle="--", label="Ideal V_M = V_T")
-                        ax.legend(loc="best")
+                        targets = frame.loc[valid, "target_ul"]
+                        if targets.nunique() == 1 and result.kind == "validation":
+                            is_distribution = True
+                            plot_measured_distribution(ax, frame.loc[valid, "measured_ul"], targets.iloc[0])
+                        else:
+                            ax.scatter(targets, frame.loc[valid, "measured_ul"],
+                                       s=40 if result.kind == "calibration" else 18,
+                                       alpha=.8 if result.kind == "calibration" else .45,
+                                       color="crimson" if result.kind == "calibration" else "steelblue")
+                            scale_volume_comparison(ax, targets, frame.loc[valid, "measured_ul"])
+                            high = max(targets.max(), frame.loc[valid, "measured_ul"].max())
+                            low = targets.min() if ax.get_xscale() == "log" else 0
+                            ax.plot([low, high], [low, high], color="gray", linestyle="--", label="Ideal V_M = V_T")
+                            ax.legend(loc="best")
                     for target in sorted(frame.target_ul.dropna().unique()):
                         volume_selector.addItem(f"{target:g} µL", target)
                     for r, row in frame.iterrows():
@@ -504,7 +677,8 @@ class LiquidTab(QWidget):
                 except (OSError, ValueError, KeyError, TypeError) as error:
                     page.result_frame = None
                     info.setText(f"Could not read selected result: {error}")
-            ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
+            if not is_distribution:
+                ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
             canvas.draw_idle()
         selector.currentIndexChanged.connect(selected)
         volume_selector.currentIndexChanged.connect(selected_volume)

@@ -81,7 +81,7 @@ except ImportError:
     PipettingParameters = None
     ReservoirParameters = None
 
-def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water'):
+def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water', tip_type=None):
     """Condition a pipette tip by aspirating and dispensing into source vial multiple times
     
     Args:
@@ -109,7 +109,8 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         )
         
         for cycle in range(cycles):
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml,
+                                               parameters=dummy_params, specified_tip=tip_type)
             lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
         
         lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
@@ -224,136 +225,132 @@ def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml
         raise OSError(f"Could not save parameter correction to {PARAMETER_CORRECTIONS_LOG}") from exc
 
 
-def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float, 
-                          measured_volume_ml: float = None, measurement_count: int = None, lash_e=None):
-    """Update the optimal_conditions CSV with a new overaspirate value and fresh measurement data.
+def _write_calibration_csv(df: pd.DataFrame, path: str) -> None:
+    """Replace a calibration CSV only after the complete updated file is written."""
+    import tempfile
 
-    If a row for the target volume already exists, overaspirate_vol and measurement data are updated.
-    If not, a new row is inserted with all other parameters interpolated from the
-    two nearest volumes, sorted back into the file.
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', prefix='.calibration_',
+            dir=os.path.dirname(path), delete=False, encoding='utf-8', newline='',
+        ) as temporary:
+            temp_path = temporary.name
+            df.to_csv(temporary, index=False)
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None and os.path.exists(temp_path):
+            os.unlink(temp_path)
 
-    Args:
-        liquid_type: Liquid name matching calibration file naming (e.g. 'water', 'DMSO')
-        target_volume_ml: Target volume in mL
-        new_overaspirate_ml: Optimized overaspirate value in mL
-        measured_volume_ml: Fresh measured volume in mL (optional)
-        measurement_count: Number of measurements used for the average (optional)
-        lash_e: Lash_E instance for simulation check
+
+def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float,
+                            measured_volume_ml: float, measurement_count: int = None, lash_e=None,
+                            tip_type=None, resolved_parameters=None):
+    """Save the selected overaspirate and measured volume in the same calibration row.
+
+    The calibration file stores target and measured volumes in uL; overaspirate is in mL.
+    The measured value must come from the stage that used the selected overaspirate.
     """
-    if lash_e and hasattr(lash_e, 'simulate') and lash_e.simulate:
+    if lash_e is not None and lash_e.simulate:
         print(f"    SIMULATION: Would update calibration CSV for {liquid_type} "
               f"{target_volume_ml*1000:.1f}uL overaspirate -> {new_overaspirate_ml:.4f}mL")
         return
 
-    try:
-        import glob as _glob
+    if not np.isfinite(measured_volume_ml) or measured_volume_ml < 0:
+        raise ValueError('A finite, nonnegative measured volume is required for calibration updates')
+    if not np.isfinite(new_overaspirate_ml):
+        raise ValueError('A finite overaspirate is required for calibration updates')
 
-        target_volume_ul = target_volume_ml * 1000
-        data_dir = os.path.dirname(os.path.abspath(__file__))
+    import glob as _glob
 
-        # Same search patterns as PipettingWizard
-        patterns = [
-            f"optimal_conditions*{liquid_type.lower()}*.csv",
-            f"optimal_conditions*{liquid_type.upper()}*.csv",
-            f"optimal_conditions*{liquid_type.title()}*.csv",
-        ]
-        candidates = []
-        for pattern in patterns:
-            candidates.extend(_glob.glob(os.path.join(data_dir, pattern)))
-        candidates = list(set(candidates))
+    target_volume_ul = target_volume_ml * 1000
+    data_dir = os.path.dirname(os.path.abspath(__file__))
+    prefix = 'optimal_conditions_'
+    candidates = [path for path in _glob.glob(os.path.join(data_dir, f'{prefix}*.csv'))
+                  if os.path.splitext(os.path.basename(path))[0][len(prefix):].casefold()
+                  == liquid_type.casefold()]
+    if not candidates:
+        raise FileNotFoundError(f"No calibration file found for '{liquid_type}'")
 
-        if not candidates:
-            print(f"    Warning: No calibration file found for '{liquid_type}' - skipping CSV update")
-            return
-
-        # Pick the file that best covers the target volume
-        best_file = None
-        best_df = None
-        best_score = float('inf')
-        for path in candidates:
-            try:
-                df_c = pd.read_csv(path)
-                if 'volume_target' not in df_c.columns or df_c.empty:
-                    continue
-                df_c = df_c.sort_values('volume_target').reset_index(drop=True)
-                vols = df_c['volume_target'].values
-                lo, hi = vols.min(), vols.max()
-                score = 0 if lo <= target_volume_ul <= hi else min(abs(target_volume_ul - lo), abs(target_volume_ul - hi))
-                score += 1.0 / len(vols)
-                if score < best_score:
-                    best_score = score
-                    best_file = path
-                    best_df = df_c
-            except Exception:
+    best_file = None
+    best_df = None
+    best_score = float('inf')
+    for path in candidates:
+        df_c = pd.read_csv(path)
+        if 'volume_target' not in df_c.columns or df_c.empty:
+            continue
+        if tip_type is not None:
+            if 'tip_type' not in df_c.columns:
                 continue
+            df_c = df_c[df_c['tip_type'] == tip_type]
+            if df_c.empty:
+                continue
+        df_c = df_c.sort_values('volume_target').reset_index(drop=True)
+        vols = df_c['volume_target'].values
+        lo, hi = vols.min(), vols.max()
+        score = 0 if lo <= target_volume_ul <= hi else min(abs(target_volume_ul - lo), abs(target_volume_ul - hi))
+        score += 1.0 / len(vols)
+        if score < best_score:
+            best_score = score
+            best_file = path
+            best_df = df_c
+    if best_df is None:
+        raise ValueError(f"No matching calibration rows for '{liquid_type}' and tip {tip_type}")
 
-        if best_df is None:
-            print(f"    Warning: Could not load any calibration file for '{liquid_type}' - skipping CSV update")
-            return
+    df = pd.read_csv(best_file)
+    if 'volume_measured' not in df.columns:
+        df['volume_measured'] = np.nan
+    match_mask = (df['volume_target'] - target_volume_ul).abs() < 0.5
+    if tip_type is not None:
+        match_mask &= df['tip_type'] == tip_type
 
-        df = best_df
-        match_mask = (df['volume_target'] - target_volume_ul).abs() < 0.5
-
-        if match_mask.any():
-            # Update existing row with new parameters AND fresh measurement data
-            idx = df[match_mask].index[0]
-            old_overasp = df.at[idx, 'overaspirate_vol']
-            old_measured = df.at[idx, 'volume_measured'] if 'volume_measured' in df.columns else None
-            
-            df.at[idx, 'overaspirate_vol'] = new_overaspirate_ml
-            
-            # Update measurement fields with fresh data from optimization process
-            if measured_volume_ml is not None:
-                target_volume_ul = target_volume_ml * 1000
-                measured_volume_ul = measured_volume_ml * 1000
-                
-                if 'volume_measured' in df.columns:
-                    df.at[idx, 'volume_measured'] = measured_volume_ul
-                if 'measurement_count' in df.columns and measurement_count is not None:
-                    df.at[idx, 'measurement_count'] = measurement_count
-                
-                # Update status to successful with fresh measurements
-                if 'status' in df.columns:
-                    df.at[idx, 'status'] = 'success'
-                    
-                print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL")
-                print(f"      overaspirate: {old_overasp:.4f} -> {new_overaspirate_ml:.4f}mL")
-                if old_measured is not None:
-                    print(f"      measured: {old_measured:.1f} -> {measured_volume_ul:.1f}uL (fresh data)")
-                else:
-                    print(f"      measured: {measured_volume_ul:.1f}uL (fresh data)")
+    measured_volume_ul = measured_volume_ml * 1000
+    if match_mask.any():
+        idx = df[match_mask].index[0]
+        old_overaspirate = df.at[idx, 'overaspirate_vol']
+        df.at[idx, 'overaspirate_vol'] = new_overaspirate_ml
+        df.at[idx, 'volume_measured'] = measured_volume_ul
+        if 'measurement_count' in df.columns and measurement_count is not None:
+            df.at[idx, 'measurement_count'] = measurement_count
+        if 'status' in df.columns:
+            df.at[idx, 'status'] = 'success'
+        _write_calibration_csv(df, best_file)
+        print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
+              f"overaspirate {old_overaspirate:.4f} -> {new_overaspirate_ml:.4f}mL, "
+              f"measured {measured_volume_ul:.1f}uL")
+    else:
+        vols = best_df['volume_target'].values
+        new_row = {}
+        for col in df.columns:
+            if col not in best_df.columns:
+                new_row[col] = np.nan
+            elif pd.api.types.is_numeric_dtype(df[col]):
+                new_row[col] = float(np.interp(target_volume_ul, vols, best_df[col].values))
             else:
-                # Should never happen in optimization context - always have fresh measurements
-                print(f"    Warning: No fresh measurement data provided during optimization")
-                print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
-                      f"overaspirate {old_overasp:.4f} -> {new_overaspirate_ml:.4f}mL")
-            
-            df.to_csv(best_file, index=False)
-        else:
-            # Insert new row - interpolate all numeric columns from surrounding data
-            vols = df['volume_target'].values
-            new_row = {}
+                nearest_idx = int(np.abs(vols - target_volume_ul).argmin())
+                new_row[col] = best_df.iloc[nearest_idx][col]
+        if resolved_parameters is not None:
             for col in df.columns:
-                if pd.api.types.is_numeric_dtype(df[col]):
-                    new_row[col] = float(np.interp(target_volume_ul, vols, df[col].values))
-                else:
-                    nearest_idx = int(np.abs(vols - target_volume_ul).argmin())
-                    new_row[col] = df.iloc[nearest_idx][col]
-            # Set identifying columns explicitly
-            new_row['volume_target'] = target_volume_ul
-            new_row['overaspirate_vol'] = new_overaspirate_ml
-            if 'volume_ml' in df.columns:
-                new_row['volume_ml'] = target_volume_ml
-            if 'volume_ul' in df.columns:
-                new_row['volume_ul'] = target_volume_ul
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df = df.sort_values('volume_target').reset_index(drop=True)
-            df.to_csv(best_file, index=False)
-            print(f"    Inserted new row in {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
-                  f"overaspirate {new_overaspirate_ml:.4f}mL")
-
-    except Exception as e:
-        print(f"    Warning: Could not update calibration CSV: {e}")
+                if hasattr(resolved_parameters, col):
+                    new_row[col] = getattr(resolved_parameters, col)
+        new_row['volume_target'] = target_volume_ul
+        if tip_type is not None:
+            new_row['tip_type'] = tip_type
+        new_row['overaspirate_vol'] = new_overaspirate_ml
+        new_row['volume_measured'] = measured_volume_ul
+        if measurement_count is not None and 'measurement_count' in df.columns:
+            new_row['measurement_count'] = measurement_count
+        if 'status' in df.columns:
+            new_row['status'] = 'success'
+        if 'volume_ml' in df.columns:
+            new_row['volume_ml'] = target_volume_ml
+        if 'volume_ul' in df.columns:
+            new_row['volume_ul'] = target_volume_ul
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df = df.sort_values('volume_target').reset_index(drop=True)
+        _write_calibration_csv(df, best_file)
+        print(f"    Inserted row in {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
+              f"overaspirate {new_overaspirate_ml:.4f}mL, measured {measured_volume_ul:.1f}uL")
 
 
 def _generate_simulated_mass(target_volume_ml: float, density: float, 
@@ -634,13 +631,13 @@ def validate_pipetting_accuracy(
     plot_title: Optional[str] = None,
     save_raw_data: bool = True,
     switch_pipet: bool = False,
-    compensate_overvolume: bool = True,
-    smooth_overvolume: bool = False,
+    compensate_overvolume: bool = False,
     quality_std_threshold: float = None,
     condition_tip_enabled: bool = False,
     conditioning_volume_ul: float = 100,
     parameters: Optional[PipettingParameters] = None,
     adaptive_correction: bool = False,
+    tip_type: Optional[str] = None,
 ) -> Dict:
     
 
@@ -658,8 +655,7 @@ def validate_pipetting_accuracy(
         plot_title: Optional custom title for plots
         save_raw_data: Whether to save raw measurement data (default: True)
         switch_pipet: Whether to change pipet tip between measurements (default: False)
-        compensate_overvolume: Apply overvolume compensation based on measured accuracy (default: True)
-        smooth_overvolume: Apply local smoothing to remove overvolume outliers (default: False)
+        compensate_overvolume: Apply overvolume compensation based on measured accuracy (default: False)
         quality_std_threshold: Standard deviation threshold for quality assessment (default: None = auto-calculate per volume)
         condition_tip_enabled: Whether to condition tip before validation (default: False)
         conditioning_volume_ul: Volume for tip conditioning in uL (default: 100)
@@ -676,6 +672,18 @@ def validate_pipetting_accuracy(
     
     # === VALIDATION ===
     density = get_liquid(liquid_type, LIQUIDS)['density']
+    if adaptive_correction and compensate_overvolume:
+        raise ValueError("Adaptive correction requires uncompensated calibration parameters")
+    if tip_type is not None:
+        from pipetting_data.pipetting_wizard import PipettingWizard
+        if not PipettingWizard().find_calibration_files(liquid_type):
+            raise ValueError(f"No calibration file for {liquid_type}; cannot validate {tip_type}")
+    # Resolve every requested measurement before any hardware motion.
+    resolved_tips = {}
+    for requested_volume in volumes_ml:
+        _, resolved_tips[requested_volume] = lash_e.nr_robot.resolve_pipetting_setup(
+            requested_volume, liquid_type, parameters, specified_tip=tip_type,
+            compensate_overvolume=compensate_overvolume)
     
     # === SIMULATION SAFETY SETUP ===
     # Set simulation environment flag if in simulation mode
@@ -739,7 +747,8 @@ def validate_pipetting_accuracy(
             lash_e.nr_robot.move_vial_to_location(source_vial, 'clamp', 0)
             
             # Condition tip with specified volume
-            condition_tip(lash_e, source_vial, conditioning_volume_ul, liquid_type)
+            condition_tip(lash_e, source_vial, conditioning_volume_ul, liquid_type,
+                          tip_type=tip_type)
             
         except Exception as e:
             print(f"Warning: Tip conditioning failed: {e}")
@@ -763,13 +772,9 @@ def validate_pipetting_accuracy(
         # Resolve parameters for THIS volume specifically - mirrors exactly what
         # dispense_from_vial_into_vial resolves internally, so the logged values always
         # reflect the volume actually being measured, never a different volume in this sweep.
-        stage1_resolved_params = lash_e.nr_robot._get_optimized_parameters(
-            volume=volume_ml,
-            liquid=liquid_type,
-            user_parameters=parameters,
-            compensate_overvolume=compensate_overvolume,
-            smooth_overvolume=smooth_overvolume
-        )
+        stage1_resolved_params, stage1_tip = lash_e.nr_robot.resolve_pipetting_setup(
+            volume_ml, liquid_type, parameters, specified_tip=tip_type,
+            compensate_overvolume=compensate_overvolume)
         stage1_param_values = _get_parameter_values(stage1_resolved_params, "pipetting")
         stage1_resolved_params = PipettingParameters(**stage1_param_values)
         env = _get_latest_environmental_data() or {}
@@ -794,11 +799,11 @@ def validate_pipetting_accuracy(
                     volume=volume_ml,
                     parameters=stage1_resolved_params,
                     liquid=liquid_type,
+                    specified_tip=stage1_tip,
                     remove_tip=switch_pipet,  # Use built-in pipet removal control
                     use_safe_location=False,
                     return_vial_home=False,   # Keep destination vial in clamp for mass measurement
                     compensate_overvolume=compensate_overvolume,
-                    smooth_overvolume=smooth_overvolume,
                     measure_weight=True,  # Enable mass measurement with continuous monitoring
                     continuous_mass_monitoring=True, 
                     save_mass_data=not lash_e.simulate
@@ -948,6 +953,9 @@ def validate_pipetting_accuracy(
                     
                     # Apply ONLY the overaspirate adjustment
                     stage2_params.overaspirate_vol = stage2_overaspirate
+                    lash_e.nr_robot.resolve_pipetting_setup(
+                        volume_ml, liquid_type, stage2_params, specified_tip=stage1_tip,
+                        compensate_overvolume=compensate_overvolume)
                     
                     # Take Stage 2 measurements (3 replicates)
                     stage2_volumes = []
@@ -961,11 +969,11 @@ def validate_pipetting_accuracy(
                             volume=volume_ml,
                             parameters=stage2_params,
                             liquid=liquid_type,
+                            specified_tip=stage1_tip,
                             remove_tip=switch_pipet,
                             use_safe_location=False,
                             return_vial_home=False,
                             compensate_overvolume=compensate_overvolume,
-                            smooth_overvolume=smooth_overvolume,
                             measure_weight=True,
                             continuous_mass_monitoring=True,
                             save_mass_data=not lash_e.simulate
@@ -1067,6 +1075,9 @@ def validate_pipetting_accuracy(
                     
                     # Apply ONLY the optimized overaspirate
                     stage3_params.overaspirate_vol = optimal_overaspirate
+                    lash_e.nr_robot.resolve_pipetting_setup(
+                        volume_ml, liquid_type, stage3_params, specified_tip=stage1_tip,
+                        compensate_overvolume=compensate_overvolume)
                     
                     # Take Stage 3 measurements (3 replicates) 
                     stage3_volumes = []
@@ -1080,11 +1091,11 @@ def validate_pipetting_accuracy(
                             volume=volume_ml,
                             parameters=stage3_params,
                             liquid=liquid_type,
+                            specified_tip=stage1_tip,
                             remove_tip=switch_pipet,
                             use_safe_location=False,
                             return_vial_home=False,
                             compensate_overvolume=compensate_overvolume,
-                            smooth_overvolume=smooth_overvolume,
                             measure_weight=True,
                             continuous_mass_monitoring=True,
                             save_mass_data=not lash_e.simulate
@@ -1187,17 +1198,22 @@ def validate_pipetting_accuracy(
                         print(f"    ✅ Stage {best_stage} has best accuracy ({best_error_ul:.1f}uL)")
                         print(f"    📋 Updating calibration CSV with Stage {best_stage} parameters and fresh measurements")
                         
-                        # Log the parameter optimization
+                        # Persist the best overaspirate AND fresh measurement data back to the calibration CSV
+                        try:
+                            _update_calibration_csv(liquid_type, volume_ml, best_overaspirate,
+                                                  best_mean_ml, best_count, lash_e,
+                                                  tip_type=stage1_tip,
+                                                  resolved_parameters=stage1_resolved_params)
+                        except Exception as error:
+                            raise OSError("Calibration update failed after validation") from error
+
+                        # Record the correction only after the calibration write succeeds.
                         _log_parameter_correction(
                             timestamp, liquid_type, volume_ml,
                             initial_overaspirate, best_overaspirate,
                             f"iterative_optimization_stage{best_stage}", session_id, lash_e,
                             within_tolerance=best_error_ul <= tolerance_ul
                         )
-
-                        # Persist the best overaspirate AND fresh measurement data back to the calibration CSV
-                        _update_calibration_csv(liquid_type, volume_ml, best_overaspirate, 
-                                              best_mean_ml, best_count, lash_e)
                     else:
                         if best_stage == 1:
                             print(f"    🎯 Stage 1 (baseline) is already optimal ({best_error_ul:.1f}uL)")

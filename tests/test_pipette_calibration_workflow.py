@@ -31,7 +31,8 @@ class NorthProtocolSessionTests(unittest.TestCase):
                                   'normalize_vial_index', 'is_vial_pipetable',
                                   '_ensure_vial_accessible_for_pipetting', 'aspirate_from_vial',
                                   'dispense_into_vial', 'get_location', 'c9', 'remove_pipet',
-                                  'return_vial_home', 'move_home', 'get_vial_info'])
+                                  'return_vial_home', 'move_home', 'get_vial_info',
+                                  'PIPET_TIPS'])
         self.robot.c9 = Mock(spec_set=['goto', 'network'])
         self.robot.c9.network = Mock(spec_set=['disconnect'])
         self.robot.is_vial_pipetable.return_value = True
@@ -81,6 +82,17 @@ class NorthProtocolSessionTests(unittest.TestCase):
         parameters['pre_asp_air_vol'] = 0.81
         with self.assertRaisesRegex(ValueError, 'maximum safe volume'):
             self.protocol.validate_workflow_capacity(0.19, parameters)
+
+    def test_workflow_large_tip_applies_large_capacity_below_200_ul(self):
+        self.robot.PIPET_TIPS = {'large_tip': {'volume': 1.0}}
+        config = deepcopy(self.config)
+        config['experiment']['north_tip_type'] = 'large_tip'
+        with self.protocol.workflow_session(self.lash, config, 'water'):
+            constraints = self.protocol.get_parameter_constraints(0.195)
+            self.assertIn('post_asp_air_vol + overaspirate_vol <= 0.805000', constraints)
+            self.protocol.validate_workflow_capacity(0.195, {
+                'overaspirate_vol': 0.02, 'post_asp_air_vol': 0.0,
+                'pre_asp_air_vol': 0.0})
 
 
 class NorthProtocolMeasurementTests(unittest.TestCase):
@@ -352,7 +364,8 @@ class WorkflowExecutionTests(unittest.TestCase):
             '_ensure_vial_accessible_for_pipetting', 'aspirate_from_vial',
             'dispense_into_vial', 'get_location', 'c9', 'remove_pipet',
             'return_vial_home', 'move_home', 'get_vial_info',
-            '_perform_physical_cleanup'])
+            '_perform_physical_cleanup', 'PIPET_TIPS'])
+        self.robot.PIPET_TIPS = yaml.safe_load((ROOT / 'robot_state/pipet_tips.yaml').read_text())
         self.robot.VIAL_FILE = self.config['INPUT_VIAL_STATUS_FILE']
         self.robot.normalize_vial_index.return_value = 0
         self.robot.is_vial_pipetable.return_value = True
@@ -407,6 +420,21 @@ class WorkflowExecutionTests(unittest.TestCase):
                 config[key] = value
                 with self.assertRaises(ValueError):
                     self.workflow.validate_experiment(config, lash)
+
+    def test_tip_preflight_rejects_mixed_or_capacity_exceeding_volumes(self):
+        lash = types.SimpleNamespace(simulate=True, nr_robot=self.robot)
+        for volumes in ([0.1, 0.15, 0.25], [0.19]):
+            config = deepcopy(self.config)
+            config['VOLUME_TARGETS_ML'] = volumes
+            with self.assertRaisesRegex(ValueError, 'separate small-tip and large-tip calibrations'):
+                self.workflow.validate_experiment(config, lash)
+
+    def test_large_tip_can_calibrate_below_200_ul(self):
+        lash = types.SimpleNamespace(simulate=True, nr_robot=self.robot)
+        config = deepcopy(self.config)
+        config.update(TIP_TYPE='large_tip', VOLUME_TARGETS_ML=[0.195],
+                      VALIDATION_VOLUMES_ML=[0.195])
+        self.workflow.validate_experiment(config, lash)
 
     def test_base_fixed_overaspirate_and_disabled_csv_export_rejected(self):
         for section, key, value in [('experiment', 'fixed_parameters', {'overaspirate_vol': 0.004}),

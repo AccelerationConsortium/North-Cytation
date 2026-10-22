@@ -30,19 +30,31 @@ def run_liquid_validations(lash, sources, output_folder, replicates=3):
     Validate all liquid names before moving any hardware.
     """
     from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+    from pipetting_data.pipetting_wizard import PipettingWizard
 
     planned = []
     for source_vial, liquid_name, volumes_ul in sources:
-        groups = volume_groups(volumes_ul)
-        if groups:
-            get_liquid(liquid_name)
-            for size, volumes in groups.items():
-                planned.append((source_vial, liquid_name, size, volumes))
+        values = sorted({float(v) for v in volumes_ul
+                         if isinstance(v, Real) and not isinstance(v, bool)
+                         and math.isfinite(v) and v > 0})
+        if not values:
+            continue
+        get_liquid(liquid_name)
+        if not PipettingWizard(logger=lash.logger).find_calibration_files(liquid_name):
+            raise ValueError(f"No calibration file for {liquid_name}; cannot validate tip-specific settings")
+        by_tip = {}
+        for volume in values:
+            _, tip = lash.nr_robot.resolve_pipetting_setup(
+                volume / 1000, liquid_name, compensate_overvolume=False)
+            by_tip.setdefault(tip, []).append(volume)
+        for tip, selected in by_tip.items():
+            volumes = sorted({selected[0], selected[len(selected) // 2], selected[-1]})
+            planned.append((source_vial, liquid_name, tip, volumes))
 
     results = {}
-    for source_vial, liquid_name, size, volumes in planned:
-        lash.logger.info("Validating %s from %s (%s): %s uL", liquid_name, source_vial, size, volumes)
-        results[(source_vial, liquid_name, size)] = validate_pipetting_accuracy(
+    for source_vial, liquid_name, tip, volumes in planned:
+        lash.logger.info("Validating %s from %s (%s): %s uL", liquid_name, source_vial, tip, volumes)
+        results[(source_vial, liquid_name, tip)] = validate_pipetting_accuracy(
             lash_e=lash,
             source_vial=source_vial,
             destination_vial=source_vial,
@@ -53,7 +65,9 @@ def run_liquid_validations(lash, sources, output_folder, replicates=3):
             switch_pipet=False,
             save_raw_data=not lash.simulate,
             condition_tip_enabled=True,
-            conditioning_volume_ul=min(150 if size == "small" else 800, max(volumes)),
+            conditioning_volume_ul=min(150 if tip == "small_tip" else 800, max(volumes)),
             adaptive_correction=True,
+            compensate_overvolume=False,
+            tip_type=tip,
         )
     return results
