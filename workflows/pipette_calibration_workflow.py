@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import yaml
+import pandas as pd
 
 from master_usdl_coordinator import Lash_E
 from pipetting_data.liquid_registry import get_liquid
@@ -27,6 +28,7 @@ INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 TARGET_VIAL = "acetone"
 CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config_workflow.yaml"
 LIQUID = "acetone"
+TIP_TYPE = "small_tip"
 VOLUME_TARGETS_ML = [0.02, 0.01, 0.005]
 RANDOM_SEED = 30
 MAX_TOTAL_MEASUREMENTS = 300
@@ -92,7 +94,7 @@ _HARDWARE_PARAMETERS = (
 )
 _CONFIG_KEYS = [
     "SIMULATE", "INPUT_VIAL_STATUS_FILE", "TARGET_VIAL", "CALIBRATION_CONFIG_FILE",
-    "LIQUID", "VOLUME_TARGETS_ML", "RANDOM_SEED", "MAX_TOTAL_MEASUREMENTS",
+    "LIQUID", "TIP_TYPE", "VOLUME_TARGETS_ML", "RANDOM_SEED", "MAX_TOTAL_MEASUREMENTS",
     "MAX_MEASUREMENTS_FIRST_VOLUME", "MAX_REPLICATES_PER_TRIAL",
     "NUM_SCREENING_TRIALS", "TWO_POINT_CALIBRATION_REPLICATES", "MIN_GOOD_TRIALS",
     "VALIDATION_VOLUMES_ML", "REPLICATES_PER_VOLUME", "ADJUST_VOLUME",
@@ -144,6 +146,26 @@ def validate_experiment(config, lash_e):
     lash_e.nr_robot.normalize_vial_index(config["TARGET_VIAL"])
     for key in ("VOLUME_TARGETS_ML", "VALIDATION_VOLUMES_ML"):
         _volumes(config[key], key)
+    tip_type = config["TIP_TYPE"]
+    tips = lash_e.nr_robot.PIPET_TIPS
+    if tip_type not in ("small_tip", "large_tip") or tip_type not in tips:
+        raise ValueError("TIP_TYPE must be a configured small_tip or large_tip")
+    capacity = float(tips[tip_type]["volume"])
+    minimum = float(tips[tip_type].get("min_suggested_volume", 0))
+    oav_max = _number(config["OVERASPIRATE_VOL_MAX"], "OVERASPIRATE_VOL_MAX", positive=True)
+    fraction = _number(config["OVERASPIRATE_VOL_MAX_FRACTION_OF_TARGET"],
+                       "OVERASPIRATE_VOL_MAX_FRACTION_OF_TARGET", positive=True)
+    post_max = (config["POST_ASP_AIR_VOL_FIXED_VALUE"] if config["POST_ASP_AIR_VOL_FIXED"]
+                else config["POST_ASP_AIR_VOL_MAX"])
+    _number(post_max, "maximum post-aspiration air volume")
+    for key in ("VOLUME_TARGETS_ML", "VALIDATION_VOLUMES_ML"):
+        for volume in config[key]:
+            if volume < minimum or volume + min(oav_max, volume * fraction) + post_max >= capacity:
+                raise ValueError(
+                    f"{key} contains {volume * 1000:g} uL, outside the safe {tip_type} "
+                    f"calibration range. Lower the maximum volume or run separate "
+                    f"small-tip and large-tip calibrations."
+                )
     for key in ("MAX_TOTAL_MEASUREMENTS", "MAX_MEASUREMENTS_FIRST_VOLUME",
                 "MAX_REPLICATES_PER_TRIAL", "NUM_SCREENING_TRIALS",
                 "TWO_POINT_CALIBRATION_REPLICATES", "MIN_GOOD_TRIALS", "REPLICATES_PER_VOLUME"):
@@ -180,6 +202,7 @@ def _effective_config(config, base_path):
                 "MAX_RETRIES_PER_MEASUREMENT", "QUALITY_STD_THRESHOLD_G"):
         experiment[key.lower()] = deepcopy(config[key])
     experiment["protocol_override"] = _PROTOCOL_NAME
+    experiment["north_tip_type"] = config["TIP_TYPE"]
     raw["optimization"]["stopping_criteria"]["min_good_trials"] = config["MIN_GOOD_TRIALS"]
     overaspirate = raw["calibration_parameters"]["overaspirate_vol"]
     lower = _number(config["OVERASPIRATE_VOL_MIN"], "OVERASPIRATE_VOL_MIN")
@@ -276,14 +299,16 @@ def _preflight_conditions(data, raw):
         raise ValueError("Final CSV does not cover every calibrated volume")
     compensated = wizard.apply_overvolume_compensation(data.copy())
     protocol = importlib.import_module(_PROTOCOL_NAME).protocol_instance
+    tip_type = raw['experiment'].get('north_tip_type')
     for volume in raw["validation"]["volumes_ml"]:
         parameters = wizard.interpolate_parameters(compensated, volume)
         parameters = constrain_parameters(
-            parameters, protocol.get_parameter_constraints(volume), {'target_volume_ml': volume})
+            parameters, protocol.get_parameter_constraints(volume, tip_type=tip_type),
+            {'target_volume_ml': volume})
         for name in required | {"overaspirate_vol", "volume_ml"}:
             _number(parameters[name], f"Interpolated {name}",
                     minimum=None if name == "overaspirate_vol" else 0)
-        protocol.validate_workflow_capacity(volume, parameters)
+        protocol.validate_workflow_capacity(volume, parameters, tip_type=tip_type)
 
 
 def _check_validation(results, config):
@@ -376,9 +401,13 @@ def execute(config=None, show_gui=True):
         if save_files:
             artifact = Path(experiment.output_dir).resolve() / f"optimal_conditions_{confirmed['LIQUID']}.csv"
             _preflight_artifact(artifact, raw)
+            table = pd.read_csv(artifact)
+            table['tip_type'] = confirmed['TIP_TYPE']
+            table.to_csv(artifact, index=False)
         else:
             conditions = experiment.optimal_conditions_table(calibration_results)
             _preflight_conditions(conditions, raw)
+            conditions['tip_type'] = confirmed['TIP_TYPE']
         validation_raw = deepcopy(raw)
         validation_raw["experiment"]["volume_targets_ml"] = deepcopy(confirmed["VALIDATION_VOLUMES_ML"])
         validation_raw["validation"]["optimal_conditions_file"] = str(artifact) if artifact is not None else None

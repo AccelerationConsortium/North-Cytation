@@ -1834,7 +1834,7 @@ class North_Robot(North_Base):
         self.logger.debug(f"Selected {selected_tip} for volume {volume:.3f} mL")
         return selected_tip
     
-    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, smooth_overvolume=False):
+    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, tip_type=None):
         """
         Get optimized pipetting parameters using intelligent hierarchy:
         defaults → liquid-calibrated → user overrides
@@ -1854,7 +1854,8 @@ class North_Robot(North_Base):
         if liquid is not None:
             try:
                 wizard = PipettingWizard(logger=self.logger)
-                calibrated_params = wizard.get_pipetting_parameters(liquid, volume, compensate_overvolume, smooth_overvolume)
+                calibrated_params = wizard.get_pipetting_parameters(
+                    liquid, volume, compensate_overvolume, tip_type=tip_type)
                 
                 if calibrated_params is not None:
                     # Update only the parameters that were successfully calibrated
@@ -1864,6 +1865,8 @@ class North_Robot(North_Base):
                             self.logger.debug(f"Using calibrated {param_name}={param_value} for {liquid} at {volume:.3f}mL")
                             
             except Exception as e:
+                if tip_type is not None:
+                    raise
                 # Graceful fallback - calibration is optional enhancement
                 self.logger.debug(f"Could not load calibrated parameters for {liquid}: {e}")
         
@@ -1889,6 +1892,40 @@ class North_Robot(North_Base):
             "liquid": liquid, "target_volume_ml": volume,
         }))
         return optimized
+
+    def resolve_pipetting_setup(self, volume, liquid=None, user_parameters=None,
+                                specified_tip=None, compensate_overvolume=True):
+        """Resolve a tip and parameters together before aspirating from a vial."""
+        tip_calibration = (liquid is not None and
+                           bool(PipettingWizard(logger=self.logger).find_calibration_files(liquid)))
+        candidates = ([specified_tip] if specified_tip else
+                      sorted(self.PIPET_TIPS, key=lambda name:
+                             self.PIPET_TIPS[name].get('volume', 0)))
+        failures = []
+        for tip in candidates:
+            if tip not in self.PIPET_TIPS:
+                raise ValueError(f"Unknown pipet tip: {tip}")
+            config = self.PIPET_TIPS[tip]
+            if volume < config.get('min_suggested_volume', 0):
+                failures.append(f"{tip}: below minimum suggested volume")
+                continue
+            if volume >= config['volume']:
+                failures.append(f"{tip}: target reaches tip capacity")
+                continue
+            try:
+                params = self._get_optimized_parameters(
+                    volume, liquid, user_parameters, compensate_overvolume,
+                    tip_type=tip if tip_calibration else None)
+            except ValueError as error:
+                failures.append(f"{tip}: {error}")
+                continue
+            tip_load = volume + max(0, params.overaspirate_vol) + max(0, params.post_asp_air_vol)
+            if tip_load >= config['volume']:
+                failures.append(f"{tip}: {tip_load * 1000:.1f} uL reaches tip capacity")
+                continue
+            return params, tip
+        raise ValueError(f"No calibrated tip fits {liquid} at {volume * 1000:g} uL: " +
+                         '; '.join(failures))
     
     def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):
         """
@@ -2106,7 +2143,8 @@ class North_Robot(North_Base):
             tuple: (measured_mass, stability_info) if continuous_mass_monitoring=True, otherwise None
         """
         # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
-        parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
+        parameters, resolved_tip = self.resolve_pipetting_setup(
+            amount_mL, liquid, parameters, specified_tip)
         
         # Extract liquid handling values from parameters
         asp_disp_cycles = parameters.asp_disp_cycles
@@ -2115,8 +2153,9 @@ class North_Robot(North_Base):
         post_asp_air_vol = parameters.post_asp_air_vol
         overaspirate_vol = parameters.overaspirate_vol
         post_retract_wait_time = parameters.post_retract_wait_time
-        # For tip selection, only consider aspirate volume + air gap, NOT overaspirate
-        total_tip_vol = post_asp_air_vol + amount_mL
+        # Pre-aspiration air stays upstream; conservatively include liquid,
+        # positive overaspirate, and post-aspiration air in the tip check.
+        total_tip_vol = amount_mL + max(0, overaspirate_vol) + max(0, post_asp_air_vol)
 
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
@@ -2124,7 +2163,7 @@ class North_Robot(North_Base):
         # Check if source vial has a closed cap that will require uncapping
         source_vial_needs_uncapping = not self.is_vial_pipetable(source_vial_num)
 
-        required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
+        required_tip_type = resolved_tip
 
         # Small tip position/volume safety warnings
         if required_tip_type == 'small_tip':
@@ -2440,7 +2479,7 @@ class North_Robot(North_Base):
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
     def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, 
                                      remove_tip=True, use_safe_location=False, return_vial_home=True, move_speed=None, 
-                                     compensate_overvolume=True, smooth_overvolume=False, measure_weight=False, 
+                                      compensate_overvolume=True, measure_weight=False,
                                      continuous_mass_monitoring=False, save_mass_data=False):
         """
         Transfer liquid from source vial to destination vial.
@@ -2453,7 +2492,6 @@ class North_Robot(North_Base):
             liquid (str, optional): Liquid type for calibrated parameter optimization
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
             compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
-            smooth_overvolume (bool): Apply local smoothing to remove overvolume outliers (default: False)
         """
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
@@ -2481,13 +2519,17 @@ class North_Robot(North_Base):
         repeats = max(1, math.ceil(volume / transfer_limit))
         for _ in range(10):
             sub_volume = volume / repeats
-            parameters = self._get_optimized_parameters(
-                sub_volume, liquid, user_parameters, compensate_overvolume, smooth_overvolume)
+            try:
+                parameters, resolved_tip = self.resolve_pipetting_setup(
+                    sub_volume, liquid, user_parameters, specified_tip,
+                    compensate_overvolume)
+            except ValueError:
+                repeats += 1
+                continue
             total_tip_volume_required = (max(sub_volume, round(sub_volume, 3)) +
                                          parameters.overaspirate_vol +
-                                         parameters.pre_asp_air_vol +
                                          parameters.post_asp_air_vol)
-            if total_tip_volume_required <= max_system_volume:
+            if total_tip_volume_required < self.PIPET_TIPS[resolved_tip]['volume']:
                 break
             repeats += 1
         else:
@@ -2504,7 +2546,8 @@ class North_Robot(North_Base):
             last_run = (i == repeats - 1)
 
             # Aspirate from source (at normal speed)
-            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
+            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters,
+                                   liquid=liquid, specified_tip=resolved_tip, use_safe_location=use_safe_location)
 
             # Set custom movement speed if specified - after aspiration when carrying liquid
             original_vel = None
@@ -3267,8 +3310,10 @@ class North_Robot(North_Base):
             
             # Process volumes in sorted order - this naturally groups similar volumes
             for well_idx, volume in volume_list:
-                self.aspirate_from_vial(vial_name, volume, parameters=parameters, liquid=liquid)  # Automatic tip selection
-                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, liquid=liquid,
+                resolved_params, resolved_tip = self.resolve_pipetting_setup(volume, liquid, parameters)
+                self.aspirate_from_vial(vial_name, volume, parameters=resolved_params,
+                                        liquid=liquid, specified_tip=resolved_tip)
+                self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=liquid,
                                            well_plate_type=well_plate_type)
             
             # Remove tip after processing all volumes for this vial

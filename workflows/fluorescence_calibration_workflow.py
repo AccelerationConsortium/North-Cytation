@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # workflow_configs/fluorescence_calibration_workflow.yaml (standard pattern:
 # module-level UPPERCASE constants + workflow_globals=globals() at Lash_E init).
 SIMULATE = True
+VALIDATE_LIQUIDS = False
+VALIDATION_ONLY = False
 _SAVE_FILES_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
 DYE = "pyrene"
@@ -38,6 +40,7 @@ STOCK_CONCENTRATION_UM = None
 DILUTION_FACTORS = [0.0, 0.1, 0.25, 0.5, 1.0]
 DYE_VOLUME_UL = 5.0
 TOTAL_VOLUME_UL = 200.0
+VOLATILE_SOLVENT = False
 SUBSTOCK_VOLUME_ML = 6.0
 REPLICATES = 3
 REPETITIONS = 1
@@ -70,10 +73,10 @@ TWO_RUNS_PER_PLATE = False
 
 # Names of the constants above; used to snapshot them into a plain config dict.
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
+    "SIMULATE", "VALIDATE_LIQUIDS", "VALIDATION_ONLY", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
     "SOLVENT_SOURCE_VIALS", "SOLVENT_SOURCE_RESERVE_ML",
     "STOCK_CONCENTRATION_UM", "DILUTION_FACTORS", "DYE_VOLUME_UL",
-    "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
+    "TOTAL_VOLUME_UL", "VOLATILE_SOLVENT", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
     "FRESH_SUBSTOCKS", "PREPARE_ONLY", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
     "MIN_SCHEDULE_GAP_MIN", "RANDOMIZED_ORDER",
     "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DISPENSE_ORDER",
@@ -150,6 +153,8 @@ def build_plan(config):
     for key in ("DYE_VOLUME_UL", "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "VORTEX_SECONDS"):
         if not math.isfinite(c[key]) or c[key] <= 0:
             raise ValueError(f"{key} must be finite and positive")
+    if type(c["VOLATILE_SOLVENT"]) is not bool:
+        raise ValueError("VOLATILE_SOLVENT must be true or false")
     schedule = c["MEASUREMENT_SCHEDULE_MIN"]
     if not schedule or schedule[0] != 0 or any(
         not math.isfinite(t) for t in schedule
@@ -165,14 +170,14 @@ def build_plan(config):
     if sorted(c["DISPENSE_ORDER"]) != ["dye", "medium"]:
         raise ValueError("DISPENSE_ORDER must contain medium and dye once each")
     fraction = c["DYE_VOLUME_UL"] / c["TOTAL_VOLUME_UL"]
-    if not 0 < fraction < 1:
+    if not c["VOLATILE_SOLVENT"] and not 0 < fraction < 1:
         raise ValueError("Dye addition must be smaller than total well volume")
     for key in ("STOCK_CONCENTRATION_UM", "SURFACTANT_CONCENTRATION_MM", "SURFACTANT_CMC_MM"):
         if c[key] is not None and (not math.isfinite(c[key]) or c[key] <= 0):
             raise ValueError(f"{key} must be positive or null")
     surf = c["SURFACTANT_CONCENTRATION_MM"]
     cmc = c["SURFACTANT_CMC_MM"]
-    if surf is not None and cmc is not None and surf * (1 - fraction) <= cmc:
+    if surf is not None and cmc is not None and surf * (1 if c["VOLATILE_SOLVENT"] else 1 - fraction) <= cmc:
         raise ValueError("Final surfactant concentration must remain above the configured CMC")
     stock_concentration = c["STOCK_CONCENTRATION_UM"]
     if stock_concentration is None:
@@ -182,10 +187,11 @@ def build_plan(config):
     scaled_total_ul = c["TOTAL_VOLUME_UL"] * scale
     rng = np.random.default_rng(c["RANDOMIZATION_SEED"])
     media = [medium for medium, enabled in (
-        ("water", c["TEST_WATER"]), ("surfactant", c["TEST_SURFACTANT"]), ("solvent", c["TEST_SOLVENT"])
+        ("water", c["TEST_WATER"]), ("surfactant", c["TEST_SURFACTANT"]),
+        ("solvent", c["TEST_SOLVENT"] and not c["VOLATILE_SOLVENT"])
     ) if enabled]
     if not media:
-        raise ValueError("At least one of TEST_WATER, TEST_SURFACTANT, TEST_SOLVENT must be true")
+        raise ValueError("At least one compatible medium must be enabled")
     rows, recipes = [], []
     sets = c["REPETITIONS"] if c["FRESH_SUBSTOCKS"] else 1
     for batch in range(1, sets + 1):
@@ -210,10 +216,11 @@ def build_plan(config):
                         dilution_factor=factor, concentration_relative=factor * fraction,
                         concentration_um=stock_concentration * factor * fraction,
                         dye_volume_ul=scaled_dye_ul,
-                        medium_volume_ul=scaled_total_ul - scaled_dye_ul,
+                        medium_volume_ul=scaled_total_ul if c["VOLATILE_SOLVENT"] else scaled_total_ul - scaled_dye_ul,
                         volume_scale=scale,
-                        solvent_fraction=1.0 if medium == "solvent" else fraction,
-                        surfactant_final_mm=surf * (1 - fraction) if medium == "surfactant" and surf is not None else None))
+                        solvent_fraction=1.0 if medium == "solvent" else 0.0 if c["VOLATILE_SOLVENT"] else fraction,
+                        surfactant_final_mm=surf * (1 if c["VOLATILE_SOLVENT"] else 1 - fraction)
+                        if medium == "surfactant" and surf is not None else None))
         if c["RANDOMIZED_ORDER"]:
             rng.shuffle(block)
         for index, row in enumerate(block):
@@ -454,6 +461,23 @@ def execute(config=None, show_gui=True):
             raise ValueError(f"Missing vials for {pair_id}: {', '.join(missing_vials)}")
         if not inventory.index.is_unique:
             raise ValueError("Vial names must be unique in the selected inventory")
+        if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
+            from workflows.embedded_liquid_validations import run_liquid_validations
+            validation_sources = []
+            solvent_volumes = plan.loc[plan.medium == "solvent", "medium_volume_ul"].tolist()
+            solvent_volumes += plan["dye_volume_ul"].tolist()
+            solvent_volumes += [v * 1000 for recipe in recipes.itertuples()
+                                for v in (recipe.stock_ml, recipe.solvent_ml) if 0 < v <= 1]
+            validation_sources.append((working_vial, solvent, solvent_volumes))
+            if c["TEST_WATER"]:
+                validation_sources.append(("water", "water", plan.loc[plan.medium == "water", "medium_volume_ul"]))
+            if c["TEST_SURFACTANT"]:
+                validation_sources.append(("surfactant", c["SURFACTANT_LIQUID"],
+                                           plan.loc[plan.medium == "surfactant", "medium_volume_ul"]))
+            validation_results = run_liquid_validations(
+                lash, validation_sources, Path("output") / "fluorescence_calibration",)
+            if c["VALIDATION_ONLY"]:
+                return {"validation_results": validation_results}
         if set(solvent_sources) & {working_vial, f"{pair_id}_stock", *recipes.vial,
                                   "water", "surfactant", "surfactant_refill"}:
             raise ValueError("SOLVENT_SOURCE_VIALS must contain only separate pure-solvent containers")
@@ -468,8 +492,10 @@ def execute(config=None, show_gui=True):
             if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
                 raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
             plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
-            if (c["TOTAL_VOLUME_UL"] * c["VOLUME_SCALE_BY_PLATE"][c["WELLPLATE_TYPE"]]) / 1000 > plate_config["max_volume_per_well"]:
-                raise ValueError("Total volume exceeds plate capacity")
+            maximum_dispensed_ul = (c["TOTAL_VOLUME_UL"] +
+                                    (c["DYE_VOLUME_UL"] if c["VOLATILE_SOLVENT"] else 0)) * c["VOLUME_SCALE_BY_PLATE"][c["WELLPLATE_TYPE"]]
+            if maximum_dispensed_ul / 1000 > plate_config["max_volume_per_well"]:
+                raise ValueError("Initial dispensed volume exceeds plate capacity")
             if lash.nr_track.NUM_SOURCE < (0 if half == 1 else plan.plate.nunique()):
                 raise ValueError("Load enough plates for the complete experiment")
         working = inventory.loc[working_vial]

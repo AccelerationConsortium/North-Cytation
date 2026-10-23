@@ -295,6 +295,22 @@ def environmental_history(root):
     return pd.DataFrame(rows)
 
 
+def environmental_sessions(root, liquid, start, end):
+    """Recorded, nonsimulated session conditions for one liquid and date window."""
+    path = Path(root) / "pipetting_data/master_pipetting_sessions.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["when", "temp_c", "humidity_pct"])
+    data = pd.read_csv(path, low_memory=False)
+    data = data[data.liquid_type.astype(str).str.casefold() == liquid.casefold()].copy()
+    if "simulate" in data:
+        data = data[~data.simulate.astype(str).str.casefold().eq("true")]
+    data, _ = filter_dates(data, start, end)
+    data["when"] = pd.to_datetime(data.timestamp, format="%Y%m%d_%H%M%S")
+    for field in ("temp_c", "humidity_pct"):
+        data[field] = pd.to_numeric(data[field], errors="coerce")
+    return data.sort_values("when").drop_duplicates(["session_id", "timestamp"])
+
+
 def original_runs(root, liquid):
     folder = Path(root) / "sdl_pipette_calibration/output"
     matches = []

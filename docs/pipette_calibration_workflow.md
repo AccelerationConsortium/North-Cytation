@@ -38,7 +38,15 @@ to 0.680 g/mL; ethyl acetate uses the operator-supplied 0.902 g/mL.
 Set `LIQUID`/`TARGET_VIAL` for the liquid and source vial, and
 `VOLUME_TARGETS_ML` for the calibration volumes (default `[0.02, 0.01, 0.005]`
 mL). `CALIBRATION_CONFIG_FILE` points at the shared
-`sdl_pipette_calibration/experiment_config.yaml`. Screening runs up to
+`sdl_pipette_calibration/experiment_config.yaml`.
+`TIP_TYPE` chooses `small_tip` or `large_tip` for the entire North Robot run.
+Before hardware motion, the workflow checks every calibration and validation
+volume against that tip's configured capacity using the maximum allowed
+overaspirate and post-aspiration air. A large-tip run may include volumes below
+200 uL if they meet the tip's minimum suggested volume. Saved calibration rows
+record the chosen tip; imported production rows keep that identity.
+
+Screening runs up to
 `NUM_SCREENING_TRIALS` trials with up to `MAX_REPLICATES_PER_TRIAL` replicates
 each, bounded by `MAX_TOTAL_MEASUREMENTS` and
 `MAX_MEASUREMENTS_FIRST_VOLUME`; `MIN_GOOD_TRIALS` is the minimum accepted

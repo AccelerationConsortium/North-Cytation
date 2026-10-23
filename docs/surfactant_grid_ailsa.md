@@ -65,3 +65,15 @@ complete supplied config with `show_gui=False`, same as the other retained
 workflows — see
 [`workflows/notes/workflow_comments.md`](../workflows/notes/workflow_comments.md)
 for outstanding reconciliation notes on this launch path.
+# Embedded pipetting validation
+
+Set `VALIDATE_LIQUIDS: true` in the workflow config to run gravimetric
+checks before the study, or `VALIDATION_ONLY: true` to run only those checks.
+The checks use the scaled well recipe volumes and run separate sessions for
+water, dye solvent, and each named surfactant. Sessions are separated by the
+tip resolved for each planned volume. Each tip group checks its minimum,
+middle, and maximum planned volumes with three replicates. SDS and BDDAC
+source vials are validated separately. Both surfactant solutions use
+`liquid_type="SDS"` for pipetting parameters and gravimetric density; the vial
+name identifies the physical source.
+

@@ -34,7 +34,7 @@ class RecordingRobot:
         return None
 
     def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None,
-                                  compensate_overvolume=True, smooth_overvolume=False):
+                                  compensate_overvolume=True):
         from pipetting_data.pipetting_parameters import PipettingParameters
         if user_parameters is not None:
             return replace(user_parameters)
@@ -46,11 +46,17 @@ class RecordingRobot:
             asp_disp_cycles=2,
         )
 
+    def resolve_pipetting_setup(self, volume, liquid=None, user_parameters=None,
+                                specified_tip=None, **kwargs):
+        return (self._get_optimized_parameters(volume, liquid, user_parameters),
+                specified_tip or ('small_tip' if volume < .2 else 'large_tip'))
+
     def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume,
                                     parameters, liquid, remove_tip, use_safe_location,
                                     return_vial_home, compensate_overvolume,
-                                    smooth_overvolume, measure_weight,
-                                    continuous_mass_monitoring, save_mass_data):
+                                     measure_weight,
+                                    continuous_mass_monitoring, save_mass_data,
+                                    specified_tip=None):
         resolved = self._get_optimized_parameters(volume, liquid, parameters)
         self.transfers.append((volume, asdict(resolved)))
         self.mass_save_requests.append(save_mass_data)
@@ -68,11 +74,22 @@ def recording_validation(monkeypatch, tmp_path):
     monkeypatch.setattr(validation, 'MASTER_PIPETTING_SESSIONS_DB', str(tmp_path / 'sessions.csv'))
     monkeypatch.setattr(validation, 'PARAMETER_CORRECTIONS_LOG', str(tmp_path / 'corrections.csv'))
     monkeypatch.setattr(validation, '_create_validation_plots', lambda **kwargs: None)
-    monkeypatch.setattr(validation, '_update_calibration_csv', lambda *args: None)
+    monkeypatch.setattr(validation, '_update_calibration_csv', lambda *args, **kwargs: None)
     monkeypatch.setattr(validation, '_get_latest_environmental_data',
                         lambda: dict(temp_c=23., humidity_pct=45., pressure_pa=101000.))
     monkeypatch.setitem(sys.modules, 'slack_agent', SimpleNamespace(send_slack_message=lambda message: None))
     return validation
+
+
+def test_adaptive_correction_rejects_compensated_baseline(recording_validation):
+    robot = RecordingRobot([])
+    lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=logging.getLogger(__name__))
+    with pytest.raises(ValueError, match="uncompensated calibration parameters"):
+        recording_validation.validate_pipetting_accuracy(
+            lash, 'source', 'dest', 'water', [.1], adaptive_correction=True,
+            compensate_overvolume=True,
+        )
+    assert robot.transfers == []
 
 
 def test_real_raw_and_masters_match_actual_stage_parameters(recording_validation, tmp_path):
@@ -359,6 +376,8 @@ def test_embedded_validation_saves_selected_stage_not_highest(monkeypatch):
     robot = MagicMock()
     robot.simulate = True
     robot.nr_robot._get_optimized_parameters.return_value = PipettingParameters(overaspirate_vol=.004)
+    robot.nr_robot.resolve_pipetting_setup.return_value = (
+        PipettingParameters(overaspirate_vol=.004), 'small_tip')
     robot.nr_robot.dispense_from_vial_into_vial.side_effect = [.09, .097, .095]
     saved_measurements, saved_sessions = [], []
     monkeypatch.setattr(validation, '_append_to_master_measurements', lambda rows, kind, **kwargs: saved_measurements.extend(rows))
@@ -391,6 +410,8 @@ def test_deviant_replicate_is_saved_and_decision_matches_saved_rows(monkeypatch)
     robot = MagicMock()
     robot.simulate = False
     robot.nr_robot._get_optimized_parameters.return_value = PipettingParameters(overaspirate_vol=.004)
+    robot.nr_robot.resolve_pipetting_setup.return_value = (
+        PipettingParameters(overaspirate_vol=.004), 'small_tip')
     # Stage 1 x2, stage 2 first replicate far off target (stops that stage), stage 3 x2.
     robot.nr_robot.dispense_from_vial_into_vial.side_effect = [.092, .092, .15, .10, .10]
     saved = []

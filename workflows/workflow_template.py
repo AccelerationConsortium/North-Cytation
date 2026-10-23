@@ -10,6 +10,10 @@ Supplying config does not mean simulation: its SIMULATE value selects the mode.
 execute(show_gui=False) uses saved YAML without operator review.
 The example enables temperature control but not powder dispensing. If adding
 photoreactor steps, add supported per-reactor shutdown calls to cleanup too.
+For liquid dispensing, replace validation_sources with the real source vials,
+registry liquid names, and volumes from the final dispense plan. Set
+VALIDATE_LIQUIDS=True to run embedded gravimetric checks before the experiment,
+or VALIDATION_ONLY=True to run just those checks.
 Simulation runs every automation step, but may return no instrument data.
 Tasks without vial operations may set INPUT_VIAL_STATUS_FILE=None explicitly;
 this disables vial tracking, not shared robot/track state or config review.
@@ -38,6 +42,8 @@ _WORKFLOW_NAME = Path(__file__).stem
 # the full workflow body with SIMULATE=True is how bugs get caught. Only use
 # SIMULATE to skip file/folder creation or substitute synthetic instrument data.
 SIMULATE = True  # [REPLACE] Set to False only when running on real hardware
+VALIDATE_LIQUIDS = False  # Run embedded gravimetric dispense validation before the experiment
+VALIDATION_ONLY = False   # Run validation and return without executing the experiment
 INPUT_VIAL_STATUS_FILE = "status/your_vials.csv"  # [REPLACE] Create your own CSV
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Your_Protocol.prt"  # [REPLACE] Your Cytation protocol
 PARAM1 = 0.5  # [REPLACE] Example: volume in mL
@@ -47,7 +53,8 @@ REACTION_TIME = 30         # seconds
 VORTEX_TIME = 5            # seconds
 
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "MEASUREMENT_PROTOCOL_FILE",
+    "SIMULATE", "VALIDATE_LIQUIDS", "VALIDATION_ONLY",
+    "INPUT_VIAL_STATUS_FILE", "MEASUREMENT_PROTOCOL_FILE",
     "PARAM1", "PARAM2", "TARGET_TEMPERATURE", "REACTION_TIME", "VORTEX_TIME",
 ]
 
@@ -58,6 +65,7 @@ def validate_experiment(config, lash_e):
     Replace the example well-count/protocol constraints with this experiment's
     requirements. ConfigManager owns loading and required-key validation;
     this function does not load, merge or change configuration.
+
     """
     if not isinstance(config["SIMULATE"], bool):
         raise ValueError("SIMULATE must be a boolean.")
@@ -114,6 +122,21 @@ def execute(config=None, show_gui=True):
 
     try:
         validate_experiment(c, lash_e)
+        if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
+            from workflows.embedded_liquid_validations import run_liquid_validations
+
+            # [REPLACE] Build this list from the actual dispense plan. Each item
+            # is (source vial, exact liquid registry name, planned volumes in uL).
+            # Include every liquid and volume used for vial and well transfers;
+            # the helper resolves tips and runs gravimetric checks for each.
+            validation_sources = [
+                ("source_vial_a", "water", [c["PARAM1"] * 1000 / c["PARAM2"]]),
+            ]
+            validation_results = run_liquid_validations(
+                lash_e, validation_sources, Path("output") / _WORKFLOW_NAME,
+            )
+            if c["VALIDATION_ONLY"]:
+                return {"validation_results": validation_results}
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         mode_tag = "SIMULATION" if lash_e.simulate else "LIVE"
         run_name = f"{timestamp}_{mode_tag}_wells-{c['PARAM2']}"

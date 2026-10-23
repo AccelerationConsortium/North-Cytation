@@ -43,6 +43,8 @@ COLUMN_MAP = {
 
 def convert(new_run_csv, legacy_csv):
     new_df = pd.read_csv(new_run_csv).rename(columns=COLUMN_MAP)
+    if 'tip_type' not in new_df or not new_df['tip_type'].isin(('small_tip', 'large_tip')).all():
+        raise ValueError('Calibration run must have a confirmed small_tip or large_tip for every row')
     new_df['volume_ul'] = new_df['volume_target']
 
     # None is a runtime fallback (e.g. blowout_speed uses aspirate_speed),
@@ -53,7 +55,7 @@ def convert(new_run_csv, legacy_csv):
     legacy_path = Path(legacy_csv)
     if not legacy_path.is_file():
         # First calibration for this liquid -- nothing to merge with or back up.
-        columns = [c for c in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", *defaults])
+        columns = [c for c in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults])
                    if c in new_df.columns or c in defaults]
         created = new_df.reindex(columns=columns)
         defaulted = {}
@@ -75,12 +77,17 @@ def convert(new_run_csv, legacy_csv):
         return None
 
     legacy_df = pd.read_csv(legacy_csv)
+    if 'tip_type' not in legacy_df:
+        # Historical volumes alone do not prove which tip was actually used.
+        legacy_df['tip_type'] = 'unknown'
+    elif not legacy_df['tip_type'].isin(('small_tip', 'large_tip', 'unknown')).all():
+        raise ValueError('Existing calibration file has invalid tip_type values')
     # Preserve the legacy schema and add recognized calibration columns supplied
     # by this run. Never drop a mapped hardware parameter merely because the
     # production file predates it. Fill missing hardware values below using
     # the same defaults as the robot; measurement columns remain untouched.
     columns = list(legacy_df.columns)
-    for column in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", *defaults]):
+    for column in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults]):
         if (column in new_df.columns or column in defaults) and column not in columns:
             columns.append(column)
     new_df = new_df.reindex(columns=columns)
@@ -95,8 +102,8 @@ def convert(new_run_csv, legacy_csv):
     shutil.copy2(legacy_path, backup_path)
 
     merged = pd.concat([legacy_df, new_df], ignore_index=True)
-    merged = merged.drop_duplicates(subset='volume_target', keep='last')
-    merged = merged.sort_values('volume_target').reset_index(drop=True)
+    merged = merged.drop_duplicates(subset=['tip_type', 'volume_target'], keep='last')
+    merged = merged.sort_values(['volume_target', 'tip_type']).reset_index(drop=True)
     defaulted = {}
     for column, default in defaults.items():
         missing = merged[column].isna()

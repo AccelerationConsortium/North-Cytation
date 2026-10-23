@@ -306,6 +306,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         robot.return_vial_home.side_effect = return_home
         robot.PIPET_TIPS = {"large_tip": {"volume": 1.0}}
         robot._get_optimized_parameters.return_value = PipettingParameters()
+        robot.resolve_pipetting_setup.side_effect = lambda *args, **kwargs: (
+            North_Robot.resolve_pipetting_setup(robot, *args, **kwargs))
         robot.aspirate_from_vial.side_effect = lambda vial, *args, **kwargs: (
             North_Robot._ensure_vial_accessible_for_pipetting(robot, vial))
         robot.dispense_into_vial.side_effect = lambda vial, *args, **kwargs: (
@@ -449,6 +451,18 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         np.testing.assert_allclose(recipes.stock_ml + recipes.solvent_ml, 6)
         np.testing.assert_allclose(recipes.stock_ml, [0.6, 1.5, 3.0])
         np.testing.assert_allclose(recipes.solvent_ml, [5.4, 4.5, 3.0])
+
+    def test_volatile_solvent_keeps_target_medium_volume_and_skips_solvent_wells(self):
+        plan, recipes = build_plan({**self.config, "VOLATILE_SOLVENT": True,
+                                    "TOTAL_VOLUME_UL": 250, "DYE_VOLUME_UL": 20,
+                                    "STOCK_CONCENTRATION_UM": 100})
+        self.assertEqual(set(plan.medium), {"water", "surfactant"})
+        self.assertEqual(len(plan), 30)
+        np.testing.assert_allclose(plan.medium_volume_ul, 250)
+        np.testing.assert_allclose(plan.dye_volume_ul, 20)
+        np.testing.assert_allclose(plan.concentration_um, plan.dilution_factor * 8)
+        np.testing.assert_allclose(plan.solvent_fraction, 0)
+        self.assertEqual(len(recipes), 3)
 
     def test_selected_pair_generates_pair_specific_vials(self):
         config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}

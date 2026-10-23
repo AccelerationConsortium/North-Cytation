@@ -34,9 +34,9 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
             return_value=None))
 
         def calibration(wizard, liquid, volume, compensate_overvolume=True,
-                        smooth_overvolume=False):
+                         tip_type=None):
             self.lookup_volumes.append(volume)
-            self.lookup_flags.append((compensate_overvolume, smooth_overvolume))
+            self.lookup_flags.append(compensate_overvolume)
             if volume > 1.0:
                 wizard.logger.warning('Calibration requested above tip capacity')
                 return None
@@ -86,11 +86,11 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
     def test_partial_override_preserves_chunk_calibration_and_flags(self):
         overrides = {'aspirate_speed': 5}
         self.transfer(1.25, liquid='water', parameters=overrides,
-                      compensate_overvolume=False, smooth_overvolume=True)
+                      compensate_overvolume=False)
         parameters = self.aspirate.call_args.kwargs['parameters']
         self.assertEqual(parameters.aspirate_speed, 5)
         self.assertEqual(parameters.overaspirate_vol, 0.02)
-        self.assertEqual(self.lookup_flags, [(False, True)])
+        self.assertEqual(self.lookup_flags, [False])
         self.assertEqual(overrides, {'aspirate_speed': 5})
 
     def test_object_override_keeps_existing_semantics(self):
@@ -123,12 +123,12 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
     def test_rounded_aspiration_cannot_exceed_capacity(self):
         self.overhead = lambda volume: 0.0132
         self.transfer(0.5, liquid='water', specified_tip='small_tip')
-        self.assertEqual(self.lookup_volumes, [0.5 / 3, 0.125])
-        self.assert_transfers([0.125] * 4)
+        self.assertEqual(self.lookup_volumes, [0.5 / 3])
+        self.assert_transfers([0.5 / 3] * 3)
         for aspirate_call in self.aspirate.call_args_list:
             parameters = aspirate_call.kwargs['parameters']
             total = (aspirate_call.args[2] + parameters.overaspirate_vol +
-                     parameters.pre_asp_air_vol + parameters.post_asp_air_vol)
+                     parameters.post_asp_air_vol)
             self.assertLessEqual(total, 0.2)
 
     def test_no_liquid_uses_defaults_and_splits(self):
@@ -156,7 +156,7 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
 
     def test_exact_tip_capacity_splits_to_allow_air_gaps(self):
         self.transfer(1.0, liquid='water')
-        self.assertEqual(self.lookup_volumes, [1.0, 0.5])
+        self.assertEqual(self.lookup_volumes, [0.5])
         self.assert_transfers([0.5, 0.5])
 
     def test_unknown_specified_tip_stops_before_automation(self):
