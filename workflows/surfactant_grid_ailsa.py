@@ -8,7 +8,7 @@ replicates, randomization, and dye/solvent behavior can be added here without
 changing the baseline replay workflow.
 
 Current status:
-- Runtime behavior matches the replay workflow when DYE="pyrene".
+- DYE selects pyrene, nile-red, or coumarin-6, with its vial and protocol looked up automatically.
 - Study config fields are loaded through the standard workflow config system.
 - Dye dispensing is local to this workflow and uses DYE_SOLVENT as the dispense liquid.
 - coumarin-6 and nile-red protocols are real/implemented for hardware runs, but
@@ -71,11 +71,10 @@ _RECIPE_VOLUME_COLUMNS = (
     "surf_A_volume_ul", "surf_B_volume_ul", "water_volume_ul", "buffer_volume_ul",
 )
 
-# Study metadata/config scaffold. These values are loaded through the workflow
-# config system but do not yet change execution behavior.
+# Select one dye for this run. Its vial and fluorescence protocol are looked
+# up from the mappings below; solvent and dispense volume remain shared.
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
-DYE_VIAL = "dye_vial"
 DYE_VOLUME_UL = 5
 # "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
 DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
@@ -108,8 +107,8 @@ EXPERIMENT_TAG = "study"
 # historically persisted for this workflow) used by execute()/ConfigManager.
 _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
-    "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE", "DYE_SOLVENT", "DYE_VIAL",
-    "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
+    "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE",
+    "DYE_SOLVENT", "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
     "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
     "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
     "EXECUTION_BLOCK_SIZE", "REFILL_CHECK_CHUNK_SIZE",
@@ -160,6 +159,12 @@ _DYE_PROTOCOLS = {
     },
 }
 
+_DYE_VIALS = {
+    "pyrene": "dye_vial",
+    "nile-red": "dye_nile_red",
+    "coumarin-6": "dye_coumarin_6",
+}
+
 
 # ============================================================================
 # STUDY METADATA
@@ -170,15 +175,14 @@ def get_dye_protocol():
     if DYE not in _DYE_PROTOCOLS:
         valid_dyes = ", ".join(sorted(_DYE_PROTOCOLS))
         raise ValueError(f"Unknown DYE '{DYE}'. Valid dyes: {valid_dyes}")
-    if not DYE_VIAL:
-        raise ValueError("DYE_VIAL must be set to an actual robot vial name")
+    dye_vial = _DYE_VIALS[DYE]
     if DYE_VOLUME_UL <= 0:
         raise ValueError(f"DYE_VOLUME_UL must be positive, got {DYE_VOLUME_UL}")
 
     protocol = dict(_DYE_PROTOCOLS[DYE])
     protocol["dye"] = DYE
     protocol["dye_solvent"] = DYE_SOLVENT
-    protocol["dye_vial"] = DYE_VIAL
+    protocol["dye_vial"] = dye_vial
     protocol["dye_volume_ul"] = DYE_VOLUME_UL * get_volume_scale()
     return protocol
 
@@ -298,10 +302,10 @@ def get_study_config():
     """Return the current study configuration dictionary."""
     dye_protocol = get_dye_protocol()
     return {
-        "dye": DYE,
+        "dye": dye_protocol["dye"],
         "dye_solvent": DYE_SOLVENT,
-        "dye_vial": DYE_VIAL,
-        "dye_volume_ul": get_dye_protocol()["dye_volume_ul"],
+        "dye_vial": dye_protocol["dye_vial"],
+        "dye_volume_ul": dye_protocol["dye_volume_ul"],
         "base_dye_volume_ul": DYE_VOLUME_UL,
         "volume_scale": get_volume_scale(),
         "dispense_order": DISPENSE_ORDER,
@@ -322,11 +326,12 @@ def get_study_config():
 
 def add_study_metadata(results_df, preparation_replicate):
     """Add study metadata columns to the result table."""
+    dye_protocol = get_dye_protocol()
     results_df = results_df.copy()
-    results_df["dye"] = DYE
+    results_df["dye"] = dye_protocol["dye"]
     results_df["dye_solvent"] = DYE_SOLVENT
-    results_df["dye_vial"] = DYE_VIAL
-    results_df["dye_volume_ul"] = get_dye_protocol()["dye_volume_ul"]
+    results_df["dye_vial"] = dye_protocol["dye_vial"]
+    results_df["dye_volume_ul"] = dye_protocol["dye_volume_ul"]
     results_df["base_dye_volume_ul"] = DYE_VOLUME_UL
     results_df["volume_scale"] = get_volume_scale()
     results_df["dispense_order"] = "|".join(DISPENSE_ORDER)
@@ -921,7 +926,7 @@ def dispense_dye(lash_e, well_recipes_df):
     batch_df["dye_volume_ul"] = dye_protocol["dye_volume_ul"]
 
     lash_e.nr_robot.move_vial_to_location(
-        dye_protocol["dye_vial"], "main_8mL_rack", 47
+        dye_protocol["dye_vial"], "clamp", 0
     )
     dispense_study_component_to_wellplate(
         lash_e,
@@ -961,15 +966,16 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
                                          measurement_order=None):
     """Measure fluorescence using the active dye protocol."""
     dye_protocol = get_dye_protocol()
+    dye = dye_protocol["dye"]
     if not dye_protocol["implemented"]:
         raise NotImplementedError(
-            f"Fluorescence measurement for dye '{DYE}' is not implemented yet. "
+            f"Fluorescence measurement for dye '{dye}' is not implemented yet. "
             f"Add the Cytation protocol file and output-column mapping before running "
             f"this dye on hardware."
         )
 
     lash_e.logger.info(
-        f"Measuring fluorescence for dye {DYE} using protocol "
+        f"Measuring fluorescence for dye {dye} using protocol "
         f"{dye_protocol['fluorescence_protocol_file']} "
         f"(primary metric: {dye_protocol['primary_metric']})"
     )
@@ -1015,7 +1021,7 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
             experiment_name = getattr(lash_e, "current_experiment_name", "unknown_experiment")
             timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
             fluorescence_filename = (
-                f"fluorescence_{DYE}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_"
+                f"fluorescence_{dye}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_"
                 f"{timestamp}.csv"
             )
             sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
@@ -1059,9 +1065,10 @@ def measure_dye_fluorescence(
     one_well_at_a_time=False,
 ):
     """Measure fluorescence for the active dye using its configured protocol."""
+    dye = dye_protocol["dye"]
     shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
     lash_e.logger.info(
-        f"Measuring {DYE} fluorescence in wells {well_indices} ({shake_msg})"
+        f"Measuring {dye} fluorescence in wells {well_indices} ({shake_msg})"
     )
 
     position_study_wellplate_at_cytation(lash_e)
@@ -1143,38 +1150,104 @@ def measure_dye_fluorescence_protocol_only(lash_e, well_indices, batch_recipes, 
         ]
         if missing_columns:
             raise KeyError(
-                f"Dye protocol {DYE} did not produce expected columns {missing_columns}. "
+                f"Dye protocol {dye_protocol['dye']} did not produce expected columns {missing_columns}. "
                 f"Available columns: {list(fluorescence_data.columns)}"
             )
     else:
         fluorescence_data = simulate_dye_fluorescence(well_indices, batch_recipes, dye_protocol)
 
     fluorescence_data = calculate_dye_metric(fluorescence_data, dye_protocol)
-    lash_e.logger.info(f"Successfully measured {DYE} fluorescence for {len(well_indices)} wells")
+    lash_e.logger.info(
+        f"Successfully measured {dye_protocol['dye']} fluorescence for {len(well_indices)} wells"
+    )
     return fluorescence_data
 
 
 def calculate_dye_metric(fluorescence_data, dye_protocol):
     """Calculate the configured primary fluorescence metric when needed."""
     if dye_protocol["metric_kind"] == "ratio":
-        if DYE == "pyrene":
+        if dye_protocol["dye"] == "pyrene":
             numerator = "fluorescence_334_373"
             denominator = "fluorescence_334_384"
             if numerator in fluorescence_data.columns and denominator in fluorescence_data.columns:
                 fluorescence_data["ratio"] = fluorescence_data[numerator] / fluorescence_data[denominator]
                 return fluorescence_data
-        raise KeyError(f"Cannot calculate ratio metric for dye '{DYE}'")
+        raise KeyError(f"Cannot calculate ratio metric for dye '{dye_protocol['dye']}'")
 
     return fluorescence_data
 
 
 def simulate_dye_fluorescence(well_indices, batch_recipes, dye_protocol):
-    """Generate simulation data for the active dye protocol."""
-    if DYE != "pyrene":
-        raise NotImplementedError(
-            f"Simulation for dye '{DYE}' is not implemented yet. "
-            f"Add simulated output columns matching {dye_protocol['measurement_value_columns']}."
+    """Generate synthetic measurement data for the active dye protocol.
+
+    Intensity-dye values use a seeded concentration proxy for workflow testing,
+    not a calibrated model of the dye's response.
+    """
+    dye = dye_protocol["dye"]
+    if dye != "pyrene":
+        if dye_protocol["metric_kind"] != "intensity":
+            raise NotImplementedError(
+                f"Simulation for dye '{dye}' is not implemented for metric "
+                f"'{dye_protocol['metric_kind']}'."
+            )
+
+        import numpy as np
+
+        required_columns = (
+            "wellplate_index", "control_type", "surf_A_conc_mm", "surf_B_conc_mm",
         )
+        missing_columns = [column for column in required_columns if column not in batch_recipes]
+        if missing_columns:
+            raise KeyError(f"Recipes missing columns required for simulated fluorescence: {missing_columns}")
+        if batch_recipes["wellplate_index"].duplicated().any():
+            raise ValueError("Recipes must have unique wellplate_index values for simulated fluorescence")
+
+        recipes = batch_recipes.set_index("wellplate_index", verify_integrity=True)
+        missing_wells = pd.Index(well_indices).difference(recipes.index)
+        if not missing_wells.empty:
+            raise KeyError(f"Recipes missing requested wells: {missing_wells.tolist()}")
+
+        concentrations = []
+        for well_idx, row in recipes.iterrows():
+            component_concentrations = [
+                float(row[column])
+                for column in ("surf_A_conc_mm", "surf_B_conc_mm")
+                if pd.notna(row[column])
+            ]
+            if not component_concentrations:
+                if "water" not in str(row["control_type"]).lower():
+                    raise ValueError(
+                        f"Well {well_idx} lacks surfactant concentrations for simulated fluorescence"
+                    )
+                concentration = 0.0
+            else:
+                concentration = sum(component_concentrations)
+            if not math.isfinite(concentration) or concentration < 0:
+                raise ValueError(
+                    f"Well {well_idx} has invalid surfactant concentration {concentration}"
+                )
+            concentrations.append(concentration)
+
+        concentration_scale = max(concentrations)
+        if concentration_scale <= 0:
+            raise ValueError("Simulated fluorescence requires at least one positive surfactant concentration")
+        relative_concentration = pd.Series(
+            [concentration / concentration_scale for concentration in concentrations],
+            index=recipes.index,
+        )
+
+        simulated_data = {"wellplate_index": well_indices}
+        for column in dye_protocol["measurement_value_columns"]:
+            rng = np.random.default_rng(0)
+            noise = pd.Series(
+                rng.normal(0, 20, len(recipes)),
+                index=recipes.index,
+            )
+            simulated_data[column] = [
+                500 + relative_concentration.loc[well_idx] * 5000 + noise.loc[well_idx]
+                for well_idx in well_indices
+            ]
+        return pd.DataFrame(simulated_data)
 
     simulated_373 = []
     simulated_384 = []

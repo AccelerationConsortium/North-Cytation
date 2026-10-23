@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -76,3 +77,32 @@ def test_ordered_reads_use_singleton_requests_for_both_assays():
     assert enter.call_count == 2
     assert leave.call_count == 1  # Turbidity leaves the plate at Cytation for fluorescence.
     assert shake.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ("dye", "measurement_column"),
+    (
+        ("nile-red", "fluorescence_550_648"),
+        ("coumarin-6", "fluorescence_485_530"),
+    ),
+)
+def test_intensity_dye_simulation_returns_synthetic_protocol_data(
+    monkeypatch, dye, measurement_column
+):
+    monkeypatch.setattr(ailsa, "DYE", dye)
+    dye_protocol = ailsa.get_dye_protocol()
+    recipes = pd.DataFrame({
+        "wellplate_index": [0, 1, 2, 3],
+        "well_type": ["experiment", "experiment", "control", "control"],
+        "control_type": ["experiment", "experiment", "water_blank", "cmc_SDS_1"],
+        "surf_A_conc_mm": [2.0, 8.0, None, 4.0],
+        "surf_B_conc_mm": [1.0, 5.0, None, None],
+    })
+
+    simulated = ailsa.simulate_dye_fluorescence([0, 1, 2, 3], recipes, dye_protocol)
+
+    assert simulated["wellplate_index"].tolist() == [0, 1, 2, 3]
+    assert measurement_column in simulated.columns
+    values = pd.to_numeric(simulated[measurement_column], errors="raise")
+    assert values.map(math.isfinite).all()
+    assert values.nunique() > 1

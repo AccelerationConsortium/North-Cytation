@@ -1,0 +1,16 @@
+{
+  "scope": "Cleaned real-only masters before historical metadata repair",
+  "backup_verified_before_repair": true,
+  "files": {
+    "master_pipetting_measurements.csv": {
+      "rows": 7512,
+      "sha256": "c8ee8556918157c4617cd0cda9b78d57ff4ee3be38648621b2d5df61b24a365c"
+    },
+    "master_pipetting_sessions.csv": {
+      "rows": 1401,
+      "sha256": "7f2fb0bcf8d215d19e91fa018de7c045169b624015ffdc41875609f1b8a91bdf"
+    }
+  },
+  "repair_manifest": "recovery/pipetting_real_metadata_20261021/staged/manifest.json",
+  "note": "These backups already exclude simulated and unclear sessions. Restore both files as a pair during a coordinated pause in master writes, not just one."
+}

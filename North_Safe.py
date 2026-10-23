@@ -2135,6 +2135,7 @@ class North_Robot(North_Base):
             _SAFE_SMALL_TIP = {
                 'main_8mL_rack': range(43, 48),
                 'clamp': [0],
+                'clamp_2': [0],
                 'photoreactor_array': [0],
                 'heater': [2],  # fill in once confirmed
             }

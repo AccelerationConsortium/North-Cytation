@@ -61,12 +61,13 @@ SMALL_TIP_ASPIRATE_VOLUME_ML = 0.02  # 20 uL
 
 # Safe position set used by position_surfactant_vials_by_concentration.
 SAFE_POSITIONS_FOR_WATER_TEST = [
-#	("main_8mL_rack", 47),
-#	("main_8mL_rack", 46),
-#	("main_8mL_rack", 45),
-#	("main_8mL_rack", 44),
-#	("clamp", 0),
-#	("main_8mL_rack", 43),
+	("main_8mL_rack", 47),
+	("main_8mL_rack", 46),
+	("main_8mL_rack", 45),
+	("main_8mL_rack", 44),
+	("clamp", 0),
+	("clamp_2", 0),
+	("main_8mL_rack", 43),
 	("heater", 2),
 ]
 

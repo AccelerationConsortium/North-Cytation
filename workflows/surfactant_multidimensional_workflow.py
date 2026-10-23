@@ -1186,6 +1186,7 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
                 should_condition_tip=should_condition,
             )
         lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.home_robot_components()
         return_surfactant_vials_home(lash_e, sorted_vials, "A")
 
     # Water makeup (split across water + water_2 for tip-life balance)
@@ -1207,6 +1208,7 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         if ADD_BUFFER:
             dispense_component_to_wellplate(lash_e, well_recipes_df, active_buffer, "water", "buffer_volume_ul")
         lash_e.nr_robot.remove_pipet()
+       #lash_e.nr_robot.home_robot_components()
         return_water_vial_home(lash_e, "water")
         return_water_vial_home(lash_e, "water_2")
         if ADD_BUFFER:
