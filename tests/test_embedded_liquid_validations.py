@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from workflows.embedded_liquid_validations import run_liquid_validations, volume_groups
+from pipetting_data.embedded_liquid_validations import run_liquid_validations, volume_groups
 
 
 def test_volume_groups_keep_200_with_large_tip_and_use_planned_values():

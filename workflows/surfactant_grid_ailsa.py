@@ -1787,7 +1787,7 @@ def execute_study_workflow(
     wellplate_size = validate_execution_block_size(lash_e)
     well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
     if validate_liquids or validation_only:
-        from workflows.embedded_liquid_validations import run_liquid_validations
+        from pipetting_data.embedded_liquid_validations import run_liquid_validations
         sources = [("water", "water", well_recipes_df["water_volume_ul"]),
                    (DYE_VIAL, DYE_SOLVENT, [get_dye_protocol()["dye_volume_ul"]])]
         for label, column in ((surfactant_a_name, "surf_A_volume_ul"),

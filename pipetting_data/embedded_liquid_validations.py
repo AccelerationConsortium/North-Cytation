@@ -1,4 +1,4 @@
-"""Plan and run gravimetric checks at volumes used by a workflow."""
+"""Shared helper to plan and run gravimetric checks at workflow volumes."""
 
 import math
 from numbers import Real
@@ -23,17 +23,20 @@ def volume_groups(volumes_ul):
     return groups
 
 
-def run_liquid_validations(lash, sources, output_folder, replicates=3):
+def run_liquid_validations(lash, sources, output_folder, replicates=3, *, vial_transfers=()):
     """Run one session per source liquid and occupied tip range.
 
     ``sources`` contains (source vial, exact liquid registry name, expected uL).
+    ``vial_transfers`` has the same form, but its volumes are total vial-transfer
+    requests. Resolve these into executable chunks before choosing check volumes.
     Validate all liquid names before moving any hardware.
     """
     from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
     from pipetting_data.pipetting_wizard import PipettingWizard
 
-    planned = []
-    for source_vial, liquid_name, volumes_ul in sources:
+    planned = {}
+    operations = [(entry, False) for entry in sources] + [(entry, True) for entry in vial_transfers]
+    for (source_vial, liquid_name, volumes_ul), split in operations:
         values = sorted({float(v) for v in volumes_ul
                          if isinstance(v, Real) and not isinstance(v, bool)
                          and math.isfinite(v) and v > 0})
@@ -44,15 +47,19 @@ def run_liquid_validations(lash, sources, output_folder, replicates=3):
             raise ValueError(f"No calibration file for {liquid_name}; cannot validate tip-specific settings")
         by_tip = {}
         for volume in values:
-            _, tip = lash.nr_robot.resolve_pipetting_setup(
-                volume / 1000, liquid_name, compensate_overvolume=False)
-            by_tip.setdefault(tip, []).append(volume)
+            if split:
+                chunk, _, _, tip = lash.nr_robot.plan_vial_transfer(volume / 1000, liquid_name)
+                volume = chunk * 1000
+            else:
+                _, tip = lash.nr_robot.resolve_pipetting_setup(volume / 1000, liquid_name)
+            by_tip.setdefault(tip, set()).add(volume)
         for tip, selected in by_tip.items():
-            volumes = sorted({selected[0], selected[len(selected) // 2], selected[-1]})
-            planned.append((source_vial, liquid_name, tip, volumes))
+            planned.setdefault((source_vial, liquid_name, tip), set()).update(selected)
 
     results = {}
-    for source_vial, liquid_name, tip, volumes in planned:
+    for (source_vial, liquid_name, tip), selected in planned.items():
+        selected = sorted(selected)
+        volumes = sorted({selected[0], selected[len(selected) // 2], selected[-1]})
         lash.logger.info("Validating %s from %s (%s): %s uL", liquid_name, source_vial, tip, volumes)
         results[(source_vial, liquid_name, tip)] = validate_pipetting_accuracy(
             lash_e=lash,

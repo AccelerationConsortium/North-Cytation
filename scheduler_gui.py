@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import yaml
 from scheduler.console_output import ConsoleLogMirror
+from scheduler.config_lists import read_config_list
 from PySide6.QtCore import Qt, QProcess, QProcessEnvironment
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
@@ -323,6 +324,10 @@ class SchedulerWindow(QMainWindow):
         add.setIcon(self.style().standardIcon(QStyle.SP_FileDialogNewFolder))
         add.clicked.connect(lambda: self.add_row())
         toolbar.addWidget(add)
+        import_queue = QPushButton("Import Queue")
+        import_queue.setToolTip("Append workflows from an ordered YAML list of config files")
+        import_queue.clicked.connect(self.import_queue)
+        toolbar.addWidget(import_queue)
         for label, icon, action in (
             ("Remove selected workflow", QStyle.SP_TrashIcon, self.remove_row),
             ("Move selected workflow up", QStyle.SP_ArrowUp, lambda: self.move_row(-1)),
@@ -495,7 +500,43 @@ class SchedulerWindow(QMainWindow):
         elif self.shared_state_ready():
             self.statusBar().showMessage("Shared state reloaded; simulate again before Run")
 
-    def add_row(self, selected_workflow=None):
+    def import_queue(self):
+        if self._execution_busy or self.setup_window is not None or self.simulation_process is not None:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Queue", str(REPO_ROOT / "scheduler" / "config_lists"),
+            "YAML config lists (*.yaml *.yml)",
+        )
+        if not path:
+            return
+        try:
+            jobs = read_config_list(path, self.workflow_names)
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Cannot Import Queue", str(error))
+            return
+        # Validate the entire list before changing the current queue.
+        empty_row = (self.table.rowCount() == 1
+                     and self.table.cellWidget(0, 0).currentData() is None)
+        start = self.table.rowCount()
+        try:
+            for name, config_path in jobs:
+                self.add_row(name, config_file=config_path)
+        except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
+            while self.table.rowCount() > start:
+                self.table.removeRow(self.table.rowCount() - 1)
+            self.count_label.setText(f"{self.table.rowCount()} queued")
+            self.refresh_vial_layout()
+            QMessageBox.warning(self, "Cannot Import Queue", str(error))
+            return
+        if empty_row:
+            self.table.removeRow(0)
+        self.approved_simulation_inputs = None
+        self.pending_simulation_inputs = None
+        self.count_label.setText(f"{self.table.rowCount()} queued")
+        self.refresh_vial_layout()
+        self.statusBar().showMessage(f"Imported {len(jobs)} jobs. Review Setup, then simulate the queue.")
+
+    def add_row(self, selected_workflow=None, config_file=None):
         if self.setup_window is not None or self.simulation_process is not None:
             return
         row = self.table.rowCount()
@@ -531,7 +572,10 @@ class SchedulerWindow(QMainWindow):
         liquids.clicked.connect(lambda: self.show_liquid_review(notes))
         self.table.setCellWidget(row, 6, liquids)
         if selected_workflow in self.workflow_names:
-            self.initialize_row_config(selector, status, notes)
+            if config_file is None:
+                self.initialize_row_config(selector, status, notes)
+            else:
+                self.set_row_config(selector, config_file)
 
         def selection_changed():
             if self._moving_rows:

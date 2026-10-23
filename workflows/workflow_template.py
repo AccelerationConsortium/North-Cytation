@@ -121,9 +121,10 @@ def execute(config=None, show_gui=True):
     c = lash_e.workflow_config
 
     try:
+        lash_e.nr_robot.home_robot_components()
         validate_experiment(c, lash_e)
         if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
-            from workflows.embedded_liquid_validations import run_liquid_validations
+            from pipetting_data.embedded_liquid_validations import run_liquid_validations
 
             # [REPLACE] Build this list from the actual dispense plan. Each item
             # is (source vial, exact liquid registry name, planned volumes in uL).

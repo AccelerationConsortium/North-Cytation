@@ -5,6 +5,11 @@ This folder contains internal scheduler support, not another workflow entrypoint
 
 ## Per-Row Configuration
 
+Use **Import Queue** to append an ordered YAML list of workflow/config-file
+pairs. See [config_lists/README.md](config_lists/README.md) for the format and
+path rules. Each row gets an independent config snapshot and must pass the
+normal simulation review before live execution.
+
 Each selected workflow row owns a private configuration snapshot, copied once
 from `workflow_configs/<workflow>.yaml`. Repeated workflows have independent
 settings. The queue has five columns; all configuration actions are in Setup.

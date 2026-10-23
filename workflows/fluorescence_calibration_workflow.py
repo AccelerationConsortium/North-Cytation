@@ -36,6 +36,7 @@ DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
 SOLVENT_SOURCE_VIALS = ["DMSO"]
 SOLVENT_SOURCE_RESERVE_ML = 2.0
+VIAL_NAME_OVERRIDES = {}
 STOCK_CONCENTRATION_UM = None
 DILUTION_FACTORS = [0.0, 0.1, 0.25, 0.5, 1.0]
 DYE_VOLUME_UL = 5.0
@@ -74,7 +75,7 @@ TWO_RUNS_PER_PLATE = False
 # Names of the constants above; used to snapshot them into a plain config dict.
 _CONFIG_KEYS = [
     "SIMULATE", "VALIDATE_LIQUIDS", "VALIDATION_ONLY", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
-    "SOLVENT_SOURCE_VIALS", "SOLVENT_SOURCE_RESERVE_ML",
+    "SOLVENT_SOURCE_VIALS", "SOLVENT_SOURCE_RESERVE_ML", "VIAL_NAME_OVERRIDES",
     "STOCK_CONCENTRATION_UM", "DILUTION_FACTORS", "DYE_VOLUME_UL",
     "TOTAL_VOLUME_UL", "VOLATILE_SOLVENT", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
     "FRESH_SUBSTOCKS", "PREPARE_ONLY", "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN",
@@ -119,9 +120,20 @@ def substock_vial_name(pair_id, batch, level, fresh_substocks):
     return f"{pair_id}_{suffix}"
 
 
+def configured_vial(config, generated_name):
+    """Map a generated stock, substock or working name to physical inventory."""
+    return config.get("VIAL_NAME_OVERRIDES", {}).get(generated_name, generated_name)
+
+
 def build_plan(config):
     """Return well map and direct-from-parent substock recipes, without hardware."""
     c = config
+    overrides = c.get("VIAL_NAME_OVERRIDES", {})
+    if not isinstance(overrides, dict) or any(
+        not isinstance(name, str) or not name.strip()
+        for pair in overrides.items() for name in pair
+    ):
+        raise ValueError("VIAL_NAME_OVERRIDES must map nonempty vial names to nonempty vial names")
     sources = c["SOLVENT_SOURCE_VIALS"]
     if (not isinstance(sources, list) or not sources
             or any(not isinstance(source, str) or not source.strip() for source in sources)
@@ -197,7 +209,7 @@ def build_plan(config):
     for batch in range(1, sets + 1):
         for level, factor in enumerate(factors):
             if 0 < factor < 1:
-                recipes.append(dict(batch=batch, vial=substock_vial_name(pair_id, batch, level, c["FRESH_SUBSTOCKS"]),
+                recipes.append(dict(batch=batch, vial=configured_vial(c, substock_vial_name(pair_id, batch, level, c["FRESH_SUBSTOCKS"])),
                                     stock_ml=c["SUBSTOCK_VOLUME_ML"] * factor,
                                     solvent_ml=c["SUBSTOCK_VOLUME_ML"] * (1 - factor)))
     plate_offset = 0
@@ -209,6 +221,7 @@ def build_plan(config):
                 source = f"{solvent}_working" if factor == 0 else (
                     f"{pair_id}_stock" if factor == 1 else
                     substock_vial_name(pair_id, batch, level, c["FRESH_SUBSTOCKS"]))
+                source = configured_vial(c, source)
                 for replicate in range(1, c["REPLICATES"] + 1):
                     block.append(dict(repetition=repetition, substock_batch=batch,
                         replicate=replicate, medium=medium, dye_source=source,
@@ -389,24 +402,92 @@ def dispense_vial_to_vial(lash, source, destination, volume, liquid):
     return result
 
 
-def dispense_solvent(lash, sources, destination, volume, liquid, reserve):
-    """Use ordered solvent containers, retaining the configured reserve in each."""
+def plan_solvent_sources(source_volumes, volume, liquid, reserve):
+    """Use sources in order with a minimum 0.2 mL contribution per source."""
+    minimum = 0.2
+    if not math.isfinite(volume) or volume < minimum - 1e-9:
+        raise ValueError("Solvent additions must be finite and at least 0.2 mL")
     available = []
-    for source in sources:
-        current = lash.nr_robot.get_vial_info(source, "vial_volume")
+    for source, current in source_volumes.items():
         if not math.isfinite(current) or current < 0:
             raise ValueError(f"Invalid recorded solvent volume for {source}: {current}")
-        available.append((source, max(0.0, current - reserve)))
+        usable = math.floor(max(0.0, current - reserve) * 1000 + 1e-6) / 1000
+        available.append((source, usable if usable >= minimum - 1e-9 else 0.0))
     if sum(amount for _, amount in available) + 1e-9 < volume:
-        raise ValueError(f"Insufficient bulk {liquid}: need {volume:.3f} mL for {destination}, "
+        raise ValueError(f"Insufficient bulk {liquid}: need {volume:.3f} mL, "
                          f"have {sum(amount for _, amount in available):.3f} mL usable")
+    transfers = []
+    remaining = volume
     for source, amount in available:
-        if amount + 1e-9 >= volume:
-            lash.logger.info(f"Solvent transfer: {source} -> {destination}, {volume:.3f} mL")
-            return dispense_vial_to_vial(lash, source, destination, volume, liquid)
-    raise ValueError(
-        f"No single container of {liquid} can supply {volume:.3f} mL for {destination} "
-        f"while retaining {reserve:.3f} mL; refill a source before running")
+        take = min(amount, remaining)
+        if 1e-9 < remaining - take < minimum - 1e-9:
+            take = remaining - minimum
+        if take >= minimum - 1e-9:
+            transfers.append((source, take))
+            remaining -= take
+        if remaining <= 1e-9:
+            break
+    if remaining > 1e-9:
+        raise ValueError(f"Cannot allocate {volume:.3f} mL of {liquid} with at least "
+                         "0.2 mL per source while retaining source reserves")
+    return transfers
+
+
+def dispense_solvent(lash, sources, destination, volume, liquid, reserve):
+    """Transfer from one or more sources without drawing below their reserves."""
+    source_volumes = {source: lash.nr_robot.get_vial_info(source, "vial_volume")
+                      for source in sources}
+    for source, current in source_volumes.items():
+        if reserve < current < reserve + 0.2:
+            lash.logger.info(f"Leaving sub-200 uL usable remainder in solvent source {source}")
+    for source, amount in plan_solvent_sources(source_volumes, volume, liquid, reserve):
+        lash.logger.info(f"Solvent transfer: {source} -> {destination}, {amount:.3f} mL")
+        dispense_vial_to_vial(lash, source, destination, amount, liquid)
+
+
+def check_liquid_supply(config, plan, recipes, inventory, working_fill, surfactant_fill):
+    """Check the full run before refills or preparation, retaining 0.1 mL per vial.
+
+    Uses recorded inventory volumes; physical loading must match those records.
+    Solvent allocation uses the same source-pooling plan as dispensing.
+    """
+    c = config
+    pair_id, _, solvent = selected_pair(c)
+    stock = configured_vial(c, f"{pair_id}_stock")
+    working = configured_vial(c, f"{solvent}_working")
+    pending = recipes[recipes.vial.map(lambda vial: inventory.loc[vial, "vial_volume"] <= 1.0)]
+    required = {stock: float(pending.stock_ml.sum())}
+    available = {}
+    for recipe in recipes.itertuples():
+        available[recipe.vial] = (c["SUBSTOCK_VOLUME_ML"] if recipe.vial in set(pending.vial)
+                                  else inventory.loc[recipe.vial, "vial_volume"])
+    available[working] = inventory.loc[working, "vial_volume"] + working_fill
+    if not c["PREPARE_ONLY"]:
+        for source, amount in plan.groupby("dye_source").dye_volume_ul.sum().items():
+            required[source] = required.get(source, 0.0) + amount / 1000
+        for medium, amount in plan.groupby("medium").medium_volume_ul.sum().items():
+            source = working if medium == "solvent" else medium
+            required[source] = required.get(source, 0.0) + amount / 1000
+        if c["TEST_WATER"]:
+            available["water"] = max(8.0, inventory.loc["water", "vial_volume"])
+        if c["TEST_SURFACTANT"]:
+            available["surfactant"] = inventory.loc["surfactant", "vial_volume"] + (
+                surfactant_fill if surfactant_fill > 0.1 else 0.0)
+    for source, demand in required.items():
+        volume = available.get(source, inventory.loc[source, "vial_volume"])
+        if not math.isfinite(volume) or volume < 0:
+            raise ValueError(f"Invalid recorded liquid volume for {source}: {volume}")
+        if demand > 0 and demand + 0.1 > volume + 1e-9:
+            raise ValueError(f"Insufficient liquid in {source}: need {demand:.3f} mL "
+                             f"plus 0.1 mL reserve, have {volume:.3f} mL after startup refills")
+    remaining = {source: inventory.loc[source, "vial_volume"]
+                 for source in c["SOLVENT_SOURCE_VIALS"]}
+    for addition in [working_fill, *pending.solvent_ml]:
+        if addition <= 0:
+            continue
+        for source, amount in plan_solvent_sources(
+                remaining, addition, solvent, c["SOLVENT_SOURCE_RESERVE_ML"]):
+            remaining[source] -= amount
 
 
 def execute(config=None, show_gui=True):
@@ -419,6 +500,7 @@ def execute(config=None, show_gui=True):
 
     from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
+        lash.nr_robot.home_robot_components()
         c = lash.workflow_config
         plan, recipes = build_plan(c)
         from workflows import two_run_plate
@@ -433,7 +515,8 @@ def execute(config=None, show_gui=True):
                 lambda index: f"{chr(65 + index // columns)}{index % columns + 1}")
             plan["plate_half"] = half + 1
         pair_id, dye, solvent = selected_pair(c)
-        working_vial = f"{solvent}_working"
+        working_vial = configured_vial(c, f"{solvent}_working")
+        stock_vial = configured_vial(c, f"{pair_id}_stock")
         protocol, channels = _PROTOCOLS[dye]
         protocol = c["PROTOCOL_FILE"] or protocol
         channels = c["RAW_CHANNELS"] or channels
@@ -451,7 +534,10 @@ def execute(config=None, show_gui=True):
         inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
         solvent_sources = c["SOLVENT_SOURCE_VIALS"]
         reserve = c["SOLVENT_SOURCE_RESERVE_ML"]
-        required_vials = {*solvent_sources, working_vial, f"{pair_id}_stock", *recipes.vial}
+        required_vials = {*solvent_sources, working_vial, stock_vial, *recipes.vial}
+        generated_roles = [working_vial, stock_vial, *recipes.vial]
+        if len(generated_roles) != len(set(generated_roles)) or set(generated_roles) & {"water", "surfactant", "surfactant_refill"}:
+            raise ValueError("Stock, substock and working-solvent roles must use distinct vials")
         if c["TEST_WATER"]:
             required_vials.add("water")
         if c["TEST_SURFACTANT"]:
@@ -461,24 +547,7 @@ def execute(config=None, show_gui=True):
             raise ValueError(f"Missing vials for {pair_id}: {', '.join(missing_vials)}")
         if not inventory.index.is_unique:
             raise ValueError("Vial names must be unique in the selected inventory")
-        if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
-            from workflows.embedded_liquid_validations import run_liquid_validations
-            validation_sources = []
-            solvent_volumes = plan.loc[plan.medium == "solvent", "medium_volume_ul"].tolist()
-            solvent_volumes += plan["dye_volume_ul"].tolist()
-            solvent_volumes += [v * 1000 for recipe in recipes.itertuples()
-                                for v in (recipe.stock_ml, recipe.solvent_ml) if 0 < v <= 1]
-            validation_sources.append((working_vial, solvent, solvent_volumes))
-            if c["TEST_WATER"]:
-                validation_sources.append(("water", "water", plan.loc[plan.medium == "water", "medium_volume_ul"]))
-            if c["TEST_SURFACTANT"]:
-                validation_sources.append(("surfactant", c["SURFACTANT_LIQUID"],
-                                           plan.loc[plan.medium == "surfactant", "medium_volume_ul"]))
-            validation_results = run_liquid_validations(
-                lash, validation_sources, Path("output") / "fluorescence_calibration",)
-            if c["VALIDATION_ONLY"]:
-                return {"validation_results": validation_results}
-        if set(solvent_sources) & {working_vial, f"{pair_id}_stock", *recipes.vial,
+        if set(solvent_sources) & {working_vial, stock_vial, *recipes.vial,
                                   "water", "surfactant", "surfactant_refill"}:
             raise ValueError("SOLVENT_SOURCE_VIALS must contain only separate pure-solvent containers")
         source_volumes = pd.to_numeric(inventory.loc[solvent_sources, "vial_volume"], errors="raise")
@@ -507,14 +576,19 @@ def execute(config=None, show_gui=True):
         # Fill enough for this plan, with reserve, without exceeding the 8 mL vial.
         if working_required + 0.1 > 8.0:
             raise ValueError("Insufficient working solvent capacity: scaled plan needs more than one 8 mL vial fill")
-        working_target = max(6.0, working_required + 0.1)
-        working_fill = (0.0 if working.vial_volume >= max(5.9, working_required + 0.1)
-                        else max(0.0, working_target - working.vial_volume))
-        if working_required + 0.1 > working.vial_volume + working_fill:
-            raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
         pending_solvent = sum(recipe.solvent_ml for recipe in recipes.itertuples()
                               if inventory.loc[recipe.vial, "vial_volume"] <= 1.0)
-        usable_solvent = (source_volumes - reserve).clip(lower=0).sum()
+        usable_amounts = [math.floor(max(0.0, v - reserve) * 1000 + 1e-6) / 1000
+                          for v in source_volumes]
+        usable_solvent = sum(v for v in usable_amounts if v >= 0.2 - 1e-9)
+        working_target = max(6.0, working_required + 0.1)
+        validation_enabled = c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]
+        working_minimum = working_target if validation_enabled else working_required + 0.1
+        working_fill = (0.0 if working.vial_volume >= working_minimum
+                        else min(max(0.0, working_target - working.vial_volume),
+                                 max(0.0, usable_solvent - pending_solvent)))
+        if working_required + 0.1 > working.vial_volume + working_fill + 1e-9:
+            raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
         if usable_solvent + 1e-9 < pending_solvent + working_fill:
             raise ValueError(
                 f"Insufficient bulk solvent: need {pending_solvent + working_fill:.3f} mL "
@@ -526,6 +600,29 @@ def execute(config=None, show_gui=True):
             surfactant_fill = max(0.0, 7.5 - lash.nr_robot.get_vial_info("surfactant", "vial_volume"))
             if surfactant_fill > 0.1 and lash.nr_robot.get_vial_info("surfactant_refill", "vial_volume") < surfactant_fill:
                 raise ValueError("Insufficient surfactant_refill volume to top up surfactant to 7.5 mL")
+        check_liquid_supply(c, plan, recipes, inventory, working_fill, surfactant_fill)
+        if c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]:
+            from pipetting_data.embedded_liquid_validations import run_liquid_validations
+            validation_sources = []
+            pending = recipes[recipes.vial.map(lambda vial: inventory.loc[vial, "vial_volume"] <= 1.0)]
+            preparation_volumes = [v * 1000 for v in pending.stock_ml if v > 0]
+            remaining = source_volumes.to_dict()
+            for addition in [working_fill, *pending.solvent_ml]:
+                if addition <= 0:
+                    continue
+                for source, amount in plan_solvent_sources(remaining, addition, solvent, reserve):
+                    preparation_volumes.append(amount * 1000)
+                    remaining[source] -= amount
+            vial_transfers = [(working_vial, solvent, preparation_volumes)]
+            if not c["PREPARE_ONLY"]:
+                solvent_volumes = plan.loc[plan.medium == "solvent", "medium_volume_ul"].tolist()
+                solvent_volumes += plan["dye_volume_ul"].tolist()
+                validation_sources.append((working_vial, solvent, solvent_volumes))
+                if c["TEST_WATER"]:
+                    validation_sources.append(("water", "water", plan.loc[plan.medium == "water", "medium_volume_ul"]))
+                if c["TEST_SURFACTANT"]:
+                    validation_sources.append(("surfactant", c["SURFACTANT_LIQUID"],
+                                               plan.loc[plan.medium == "surfactant", "medium_volume_ul"]))
         if c["TEST_WATER"]:
             water_fill = 8.0 - lash.nr_robot.get_vial_info("water", "vial_volume")
             if water_fill > 0.1:
@@ -538,6 +635,24 @@ def execute(config=None, show_gui=True):
                                  liquid=c["SURFACTANT_LIQUID"])
         if working_fill > 0:
             dispense_solvent(lash, solvent_sources, working_vial, working_fill, solvent, reserve)
+        if validation_enabled:
+            validation_results = run_liquid_validations(
+                lash, validation_sources, Path("output") / "fluorescence_calibration",
+                vial_transfers=vial_transfers)
+            if c["VALIDATION_ONLY"]:
+                return {"validation_results": validation_results}
+            inventory = lash.nr_robot.VIAL_DF.copy().set_index("vial_name", drop=False)
+            current = inventory.loc[working_vial, "vial_volume"]
+            additional_fill = 0.0
+            if not c["PREPARE_ONLY"] and current < working_required + 0.1:
+                additional_fill = max(0.2, working_required + 0.1 - current)
+            check_liquid_supply(c, plan, recipes, inventory, additional_fill, 0.0)
+            if c["TEST_WATER"] and not c["PREPARE_ONLY"]:
+                demand = plan.loc[plan.medium == "water", "medium_volume_ul"].sum() / 1000
+                if inventory.loc["water", "vial_volume"] < demand + 0.1:
+                    raise ValueError("Insufficient water after validation for plate dispensing")
+            if additional_fill > 0:
+                dispense_solvent(lash, solvent_sources, working_vial, additional_fill, solvent, reserve)
         output = None
         if not lash.simulate or _SAVE_FILES_ON_SIMULATE:
             suffix = "_simulate" if lash.simulate else ""
@@ -561,7 +676,7 @@ def execute(config=None, show_gui=True):
                         lash.logger.info(f"Skipping already-prepared substock {recipe.vial}")
                         continue
                     dispense_solvent(lash, solvent_sources, recipe.vial, recipe.solvent_ml, solvent, reserve)
-                    dispense_vial_to_vial(lash, f"{pair_id}_stock", recipe.vial, recipe.stock_ml, liquid=solvent)
+                    dispense_vial_to_vial(lash, stock_vial, recipe.vial, recipe.stock_ml, liquid=solvent)
                     lash.nr_robot.vortex_vial(recipe.vial, c["VORTEX_SECONDS"])
                     lash.nr_robot.return_vial_home(recipe.vial)
                 prepared.add(batch)

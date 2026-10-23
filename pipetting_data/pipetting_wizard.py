@@ -218,6 +218,9 @@ class PipettingWizard:
         target_volume_ul = target_volume_ml * 1000
         
         volumes = df['volume_target'].values  # These are in uL
+        matches = np.isclose(volumes, target_volume_ul, rtol=0, atol=1e-9)
+        if matches.any():
+            target_volume_ul = float(volumes[matches][0])
         min_vol, max_vol = volumes.min(), volumes.max()
         
         # Check if we need to extrapolate and warn user
@@ -379,14 +382,19 @@ class PipettingWizard:
         min_vol, max_vol = volumes.min(), volumes.max()
         if (target_volume_ul < min_vol * (1 - MAX_EXTRAPOLATION_FRACTION)
                 or target_volume_ul > max_vol * (1 + MAX_EXTRAPOLATION_FRACTION)):
+            if tip_type is not None:
+                self.logger.debug(
+                    "Rejecting %s calibration candidate for %s at %g uL: "
+                    "outside the 25%% extrapolation limit (%g-%g uL)",
+                    tip_type, liquid, target_volume_ul, min_vol, max_vol,
+                )
+                raise ValueError(f"{liquid} {tip_type} calibration is outside the 25% extrapolation limit")
             self.logger.warning(
                 f"Target volume {volume_ml}mL ({target_volume_ul}uL) is more than "
                 f"{MAX_EXTRAPOLATION_FRACTION:.0%} outside the calibrated range "
                 f"({min_vol}-{max_vol}uL) for '{liquid}' in {file_path.name}; "
                 f"using default pipetting parameters instead of extrapolating."
             )
-            if tip_type is not None:
-                raise ValueError(f"{liquid} {tip_type} calibration is outside the 25% extrapolation limit")
             return None
         
         # Apply overvolume compensation before interpolation if requested

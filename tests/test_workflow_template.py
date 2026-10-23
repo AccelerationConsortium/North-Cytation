@@ -18,7 +18,7 @@ class WorkflowTemplateTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.vials = Path(self.temporary.name) / "vials.csv"
         self.vials.touch()
-        self.robot = Mock(spec_set=["VIAL_FILE", "move_home"])
+        self.robot = Mock(spec_set=["VIAL_FILE", "move_home", "home_robot_components"])
         self.robot.VIAL_FILE = str(self.vials)
         self.temperature = Mock(spec_set=["set_temp", "turn_off_heating", "turn_off_stirring"])
         self.lash = types.SimpleNamespace(
@@ -55,6 +55,7 @@ class WorkflowTemplateTests(unittest.TestCase):
         self.assertNotIn("simulate", kwargs)
         self.assertFalse(kwargs["show_gui"])
         self.assertFalse(kwargs["initialize_p2"])
+        self.robot.home_robot_components.assert_called_once_with()
         self.lash.grab_new_wellplate.assert_called_once()
         self.lash.measure_wellplate.assert_called_once_with(
             self.config["MEASUREMENT_PROTOCOL_FILE"], list(range(self.config["PARAM2"]))
@@ -102,7 +103,7 @@ class WorkflowTemplateTests(unittest.TestCase):
 
     def test_embedded_validation_uses_confirmed_dispense_volume_and_can_run_alone(self):
         config = {**self.config, "PARAM1": 0.6, "PARAM2": 3, "VALIDATION_ONLY": True}
-        with patch("workflows.embedded_liquid_validations.run_liquid_validations",
+        with patch("pipetting_data.embedded_liquid_validations.run_liquid_validations",
                    return_value={"checked": True}) as validate:
             self.assertEqual(self.execute(config, show_gui=False),
                              {"validation_results": {"checked": True}})

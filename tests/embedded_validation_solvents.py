@@ -27,7 +27,7 @@ INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 LIQUIDS = ["acetone", "ethyl_acetate"]
 SMALL_VOLUMES_ML = [0.010, 0.020, 0.050]
 LARGE_VOLUMES_ML = [0.200, 0.500, 0.800]
-REPLICATES = 3
+REPLICATES = 5
 SMALL_CONDITIONING_UL = 150
 LARGE_CONDITIONING_UL = 900
 
@@ -70,6 +70,9 @@ def execute(config=None, show_gui=True):
                 lash_e.logger.info(f"Starting {name}: {[v * 1000 for v in volumes]} uL")
                 if robot.HELD_PIPET_TYPE is not None:
                     robot.remove_pipet()
+                # Rack positions 36/38 cannot be reached while holding a tip.
+                # Position the vial before pickup; validation then keeps it in clamp.
+                robot.move_vial_to_location(liquid, "clamp", 0)
                 robot.get_pipet(f"{size}_tip")
                 try:
                     results[name] = validate_pipetting_accuracy(
@@ -86,6 +89,8 @@ def execute(config=None, show_gui=True):
                         condition_tip_enabled=True,
                         conditioning_volume_ul=conditioning_ul,
                         adaptive_correction=True,
+                        compensate_overvolume=False,
+                        tip_type=f"{size}_tip",
                     )
                 finally:
                     if robot.HELD_PIPET_TYPE is not None:

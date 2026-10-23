@@ -25,6 +25,62 @@ from vial_manager_gui import VIAL_MOVE_MIME, VialManagerMainWindow
 
 
 class SchedulerSetupTests(unittest.TestCase):
+    def test_import_queue_preserves_order_and_private_configs(self):
+        window, selector = self.row_window()
+        window.table.removeRow(0)
+        window.add_row()
+        queue = self.root / "queue.yaml"
+        before = self.config.read_bytes()
+        queue.write_text(yaml.safe_dump([
+            {"workflow": "surfactant_grid_ailsa", "config_file": str(self.config)},
+            {"workflow": "surfactant_grid_ailsa", "config_file": str(self.config)},
+        ]))
+        window.approved_simulation_inputs = {"previous": "approval"}
+        with patch.object(scheduler_gui.QFileDialog, "getOpenFileName", return_value=(str(queue), "")):
+            window.import_queue()
+        self.assertEqual(window.table.rowCount(), 2)
+        paths = [Path(window.row_config_path(window.table.cellWidget(row, 0))) for row in range(2)]
+        self.assertNotEqual(paths[0], paths[1])
+        self.assertTrue(all(path.read_bytes() == before for path in paths))
+        paths[0].write_text("INPUT_VIAL_STATUS_FILE: null\n")
+        self.assertEqual(paths[1].read_bytes(), before)
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertIsNone(window.approved_simulation_inputs)
+        self.assertFalse(window.run_button.isEnabled())
+
+    def test_invalid_import_keeps_existing_queue(self):
+        window, selector = self.row_window()
+        original = Path(window.row_config_path(selector)).read_bytes()
+        queue = self.root / "queue.yaml"
+        queue.write_text(yaml.safe_dump([
+            {"workflow": "surfactant_grid_ailsa", "config_file": str(self.config)},
+            {"workflow": "surfactant_grid_ailsa", "config_file": "missing.yaml"},
+        ]))
+        with patch.object(scheduler_gui.QFileDialog, "getOpenFileName", return_value=(str(queue), "")), \
+                patch.object(QMessageBox, "warning") as warning:
+            window.import_queue()
+        warning.assert_called_once()
+        self.assertIn("Entry 2", warning.call_args.args[2])
+        self.assertEqual(window.table.rowCount(), 1)
+        self.assertIs(window.table.cellWidget(0, 0), selector)
+        self.assertEqual(Path(window.row_config_path(selector)).read_bytes(), original)
+
+    def test_import_appends_without_requiring_a_workflow_preset(self):
+        window, original_selector = self.row_window()
+        supplied = self.root / "supplied.yaml"
+        supplied.write_bytes(self.config.read_bytes())
+        self.config.unlink()
+        queue = self.root / "queue.yaml"
+        queue.write_text(yaml.safe_dump([
+            {"workflow": "surfactant_grid_ailsa", "config_file": "supplied.yaml"},
+        ]))
+        with patch.object(scheduler_gui.QFileDialog, "getOpenFileName", return_value=(str(queue), "")):
+            window.import_queue()
+        self.assertEqual(window.table.rowCount(), 2)
+        self.assertIs(window.table.cellWidget(0, 0), original_selector)
+        imported = window.table.cellWidget(1, 0)
+        self.assertEqual(Path(window.row_config_path(imported)).read_bytes(), supplied.read_bytes())
+
     def test_dialog_position_edit_relocates_grid(self):
         editor = self.editor()
         rack = editor.rack_widgets["main_8mL_rack"]

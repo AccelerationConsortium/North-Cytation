@@ -1,5 +1,10 @@
 # Fluorescence calibration
 
+After startup confirmation, every run calls `home_robot_components()` before
+planning, validation, or liquid handling. This includes each queued preparation
+and measurement job. The existing controller method homes the carousel, robot
+axes, pumps, and configured track axes; simulation logs the call without motion.
+
 Run from the repository root:
 
 ```powershell
@@ -41,6 +46,50 @@ the workflow does not measure or wait for evaporation. Lower the physical parent
 stock concentration, set `STOCK_CONCENTRATION_UM` to its actual value, or adjust
 `DILUTION_FACTORS` when increasing the dye addition. With
 `VOLATILE_SOLVENT: false`, the original total-dispensed-volume behavior applies.
+
+The local Nile Red / ethyl acetate preset preserves the former 5 uL dye
+concentrations with 20 uL additions by using factors 0, 0.025, 0.0625, 0.125
+and 0.25. All four nonzero levels now require substocks. The fourth destination,
+`nilered_ethylacetate_s4`, is assigned to main-rack slot 35. The four 6 mL
+recipes consume 2.775 mL parent stock and 21.225 mL pure ethyl acetate.
+Each run uses 3.75 mL water, 3.75 mL surfactant solution, 0.12 mL of each
+substock and 0.12 mL working solvent for blanks.
+
+The bulk rack is occupied, so pure-solvent sources `ethyl_acetate` through
+`ethyl_acetate_4` are assigned to main-rack slots 2, 3, 4 and 5. Load each
+with 8 mL and enter the actual loaded volumes in the vial CSV; new entries
+start at zero. This supplies every preparation addition while retaining the
+configured 2 mL per-source reserve. Keep main-rack slots 0 and 1 empty for
+closed-cap transfer staging. The existing working solvent is recorded at
+7.77 mL, so it does not need an initial refill for this run.
+
+Startup solvent, water, and surfactant refills occur before liquid validation.
+Validated runs prefer filling the working solvent to its normal target before
+checks, rather than validating from a nearly empty working vial. After validation,
+the workflow re-reads controller inventory, checks supply again, and adds working
+solvent if required to cover plate dispensing plus 0.1 mL. Validation-only runs
+also perform the prerequisite refills.
+
+Without validation, working solvent is refilled only when its recorded volume cannot cover the
+upcoming plate demand plus 0.1 mL. A 6 mL fill is preferred, not mandatory:
+the refill can stop below that target if it still covers the run, while
+reserving solvent needed for pending substocks. Each solvent addition draws
+from sources in configured order, using each down to its reserve before moving
+to the next. Source allocations retain the configured
+per-container reserve and use whole-uL amounts. Validation includes the
+source-specific additions before resolving their executable pipetting chunks.
+Each source contribution must be at least 200 uL. Smaller usable leftovers
+remain in their source; splits leave at least 200 uL for the final contribution.
+The total requested addition is unchanged, or allocation fails before transfers.
+
+Before startup refills and preparation, the workflow checks the whole run's
+parent-stock demand, prepared or reused substock supply, aqueous supply after
+startup refills, and solvent allocation in actual transfer order. It retains
+0.1 mL in plate/stock sources and the configured reserve in bulk solvent
+sources. Plans requiring more aqueous liquid than the startup fill provides
+are rejected; there are no automatic mid-run aqueous refills. These checks
+depend on accurate inventory records and do not measure evaporation losses.
+
 `TOTAL_VOLUME_UL` and `DYE_VOLUME_UL` are base 96-well values. Selecting a
 different `WELLPLATE_TYPE` applies `VOLUME_SCALE_BY_PLATE` to both volumes:
 1x for 96 wells, 2x for 48 wells, and 4x for 24 wells by default. The plan
@@ -67,12 +116,20 @@ in mM to check that the final diluted surfactant remains above the supplied CMC.
 The workflow uses a pre-made surfactant solution; it does not prepare this stock.
 
 Each workflow row specifies one pair with `DYE` and `DYE_SOLVENT`.
+`VIAL_NAME_OVERRIDES` optionally maps generated stock, substock and working
+solvent names to the names already used in the inventory. For example,
+`{DMSO_working: DMSO_rf_1}` selects that physical vial for blanks and native
+solvent wells. It is separate from `SOLVENT_SOURCE_VIALS`; the working vial
+cannot also be a preparation source in the same config. Empty overrides
+preserve the generated names. Paired preparation/measurement jobs must use
+the same mappings and recipes.
 `SOLVENT_SOURCE_VIALS` is an ordered list of pure-solvent inventory names
 (default `[DMSO]`); set it explicitly for the selected solvent. For example,
-`[DMSO, DMSO_2, DMSO_3]` selects the first container able to supply the entire
-solvent addition while retaining its reserve. Additions are not split between
-containers, avoiding tiny transfers of leftover solvent. If no single source
-can supply an addition, execution stops with a refill error.
+`[DMSO, DMSO_2, DMSO_3]` uses DMSO first, then DMSO_2, then DMSO_3.
+Additions can span containers, retaining each source's reserve. The six-pair
+queue puts open bulk ethyl acetate first during preparation, but excludes both
+open bulk sources from measurement configs: later jobs can only refill from
+the capped ethyl-acetate supplies, not evaporation-sensitive open containers.
 `DYE_SOLVENT` remains the chemical identity used for
 pipetting parameters and stock/working-vial names. Every source must contain
 that same pure solvent. `SOLVENT_SOURCE_RESERVE_ML` (default 2 mL) is retained
@@ -211,4 +268,3 @@ checked volumes are the minimum, middle, and maximum values used by each tip.
 exact liquid registry name (`water`, `DMSO`, or `SURFACTANT_LIQUID`), while the
 source vial identifies the physical container. Validation uses three replicates
 per volume and may consume liquid. Simulations do not save validation data.
-

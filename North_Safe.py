@@ -2477,6 +2477,41 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
+    def plan_vial_transfer(self, volume, liquid=None, parameters=None, specified_tip=None,
+                           compensate_overvolume=True):
+        """Resolve a vial transfer into equal executable chunks without moving hardware.
+
+        Return chunk volume (mL), repeat count, parameters and tip identity.
+        Validation and dispensing share this capacity/calibration calculation.
+        """
+        if not math.isfinite(volume) or volume <= 0:
+            raise ValueError("Transfer volume must be finite and positive")
+        max_system_volume = (self.PIPET_TIPS[specified_tip]['volume'] if specified_tip
+                             else max(tip['volume'] for tip in self.PIPET_TIPS.values()))
+        if max_system_volume <= 0:
+            raise ValueError("Pipet tip capacity must be positive")
+        transfer_limit = max_system_volume
+        if liquid is not None:
+            calibrated_max = PipettingWizard(logger=self.logger).get_max_calibrated_volume(liquid)
+            if calibrated_max is not None:
+                transfer_limit = min(transfer_limit, calibrated_max)
+        repeats = max(1, math.ceil(volume / transfer_limit))
+        for _ in range(10):
+            sub_volume = volume / repeats
+            try:
+                resolved_parameters, resolved_tip = self.resolve_pipetting_setup(
+                    sub_volume, liquid, parameters, specified_tip, compensate_overvolume)
+            except ValueError:
+                repeats += 1
+                continue
+            tip_load = (max(sub_volume, round(sub_volume, 3)) +
+                        resolved_parameters.overaspirate_vol + resolved_parameters.post_asp_air_vol)
+            if tip_load < self.PIPET_TIPS[resolved_tip]['volume']:
+                return sub_volume, repeats, resolved_parameters, resolved_tip
+            repeats += 1
+        raise ValueError(f"Cannot split {volume:.3f} mL into transfers within pipet tip capacity "
+                         f"({max_system_volume:.3f} mL) with the resolved pipetting parameters")
+
     def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, 
                                      remove_tip=True, use_safe_location=False, return_vial_home=True, move_speed=None, 
                                       compensate_overvolume=True, measure_weight=False,
@@ -2502,40 +2537,8 @@ class North_Robot(North_Base):
             self.logger.warning("Cannot dispense <=0 mL")
             return
 
-        user_parameters = parameters
-        if specified_tip is not None:
-            max_system_volume = self.PIPET_TIPS[specified_tip]['volume']
-        else:
-            max_system_volume = max(tip_config['volume'] for tip_config in self.PIPET_TIPS.values())
-        if max_system_volume <= 0:
-            raise ValueError("Pipet tip capacity must be positive")
-
-        transfer_limit = max_system_volume
-        if liquid is not None:
-            calibrated_max = PipettingWizard(logger=self.logger).get_max_calibrated_volume(liquid)
-            if calibrated_max is not None:
-                transfer_limit = min(transfer_limit, calibrated_max)
-
-        repeats = max(1, math.ceil(volume / transfer_limit))
-        for _ in range(10):
-            sub_volume = volume / repeats
-            try:
-                parameters, resolved_tip = self.resolve_pipetting_setup(
-                    sub_volume, liquid, user_parameters, specified_tip,
-                    compensate_overvolume)
-            except ValueError:
-                repeats += 1
-                continue
-            total_tip_volume_required = (max(sub_volume, round(sub_volume, 3)) +
-                                         parameters.overaspirate_vol +
-                                         parameters.post_asp_air_vol)
-            if total_tip_volume_required < self.PIPET_TIPS[resolved_tip]['volume']:
-                break
-            repeats += 1
-        else:
-            raise ValueError(
-                f"Cannot split {volume:.3f} mL into transfers within pipet tip capacity "
-                f"({max_system_volume:.3f} mL) with the resolved pipetting parameters")
+        sub_volume, repeats, parameters, resolved_tip = self.plan_vial_transfer(
+            volume, liquid, parameters, specified_tip, compensate_overvolume)
 
         if repeats > 1:
             self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit transfer limits")

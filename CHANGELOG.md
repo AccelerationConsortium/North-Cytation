@@ -1,5 +1,74 @@
 # Changelog
 
+## [2026-10-23] - Validation Source Refill Ordering
+
+- FIXED: Startup refills precede liquid validation, including validation-only
+  runs. Validated runs prefer the normal working-solvent fill target.
+- FIXED: After validation, re-read controller inventory, recheck supply, and
+  replenish working solvent when needed before plate dispensing.
+
+## [2026-10-23] - Calibration Selection Diagnostics
+
+- FIXED: Floating-point roundoff within 1e-9 uL of a calibration point uses
+  that point rather than emitting an extrapolation warning.
+- FIXED: Rejected tip-specific range candidates log at debug level instead
+  of incorrectly claiming default parameters will be used. Actual fallback
+  warnings and calibration rejection errors are retained.
+
+## [2026-10-23] - Minimum Solvent Source Contribution
+
+- FIXED: Solvent allocation requires at least 200 uL per source contribution,
+  skips smaller leftovers, and avoids sub-200 uL final split portions without
+  changing the requested addition. Supply checks and validation share the rule.
+
+## [2026-10-23] - Volatile Solvent Source Priority
+
+- FIXED: Solvent allocation follows source order without skipping usable
+  earlier remainders in favor of a container that can supply a whole addition.
+- CHANGED: The three ethyl-acetate measurement presets exclude the open bulk
+  sources, retaining only capped refill supplies for later workflows.
+
+## [2026-10-23] - Fluorescence Solvent Refill Allocation
+
+- FIXED: Solvent transfers can combine usable amounts from multiple sources;
+  supply checks and validation use the same allocation calculation.
+- CHANGED: Skip working-solvent refills when the upcoming run already has
+  enough. Prefer 6 mL when refilling, but accept a lower fill that covers the
+  run plus 0.1 mL while preserving solvent for pending substock preparation.
+- TESTED: All twelve queued jobs completed with clean handoff in isolated
+  simulation; simulation does not account for evaporation.
+
+## [2026-10-23] - Fluorescence Queue Solvent Reserve
+
+- CHANGED: Enabled pure-solvent measurement conditions in all six DMSO queue
+  presets to match the operator's intended experiment.
+- CHANGED: Set the solvent source reserve to the operator-selected 1.0 mL in
+  all twelve queue presets. Working-vial targets and source-selection behavior
+  are unchanged.
+
+## [2026-10-23] - Fluorescence Startup Homing
+
+- CHANGED: The workflow template also calls robot-component homing after startup
+  confirmation, before experiment validation and execution.
+- CHANGED: Every fluorescence preparation and measurement run calls the existing
+  robot-component homing method after startup confirmation, before planning,
+  validation, and liquid handling. Simulation uses the controller's simulated
+  homing behavior.
+
+## [2026-10-23] - Fluorescence Queue Stock Concentrations
+
+- CHANGED: Updated both preparation and measurement presets for all six
+  dye/solvent pairs to the supplied stock concentrations, without changing
+  dilution factors or transfer volumes.
+
+## [2026-10-23] - Pipetting Validation Helper Location
+
+- CHANGED: Enabled liquid validation in all six fluorescence preparation presets;
+  the six measurement presets already enable it.
+- CHANGED: Moved the shared embedded liquid-validation helper from workflows
+  to pipetting_data and updated workflow and test imports. Validation behavior
+  and existing local changes are preserved.
+
 ## [2026-10-21] - Real Pipetting Validation Metadata Repair
 
 - RESTORED: Stage and selected-stage decisions for the cleaned real-only dataset,
