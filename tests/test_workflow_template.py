@@ -100,6 +100,19 @@ class WorkflowTemplateTests(unittest.TestCase):
             self.execute(incomplete, show_gui=False)
         self.lash.grab_new_wellplate.assert_not_called()
 
+    def test_embedded_validation_uses_confirmed_dispense_volume_and_can_run_alone(self):
+        config = {**self.config, "PARAM1": 0.6, "PARAM2": 3, "VALIDATION_ONLY": True}
+        with patch("workflows.embedded_liquid_validations.run_liquid_validations",
+                   return_value={"checked": True}) as validate:
+            self.assertEqual(self.execute(config, show_gui=False),
+                             {"validation_results": {"checked": True}})
+        validate.assert_called_once_with(
+            self.lash, [("source_vial_a", "water", [200.0])],
+            Path("output") / "workflow_template",
+        )
+        self.temperature.set_temp.assert_not_called()
+        self.lash.grab_new_wellplate.assert_not_called()
+
     def test_gui_can_correct_launch_values_before_experiment_validation(self):
         def review(*args, **kwargs):
             self.assertEqual(args, ())
