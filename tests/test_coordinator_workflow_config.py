@@ -132,6 +132,17 @@ class CoordinatorConfigTests(unittest.TestCase):
         self.assertEqual(coordinator.nr_robot.VIAL_FILE, str(self.original))
         self.assertIsNone(coordinator.workflow_config)
 
+    def test_dispense_recording_policy_is_passed_to_robot(self):
+        coordinator = self.start(vial_file=str(self.original), simulate=True,
+                                 show_gui=False, dispense_recording='auto')
+        self.assertEqual(coordinator.dispense_recording, 'auto')
+        self.assertEqual(self.robot.call_args.kwargs['dispense_recording'], 'auto')
+
+    def test_invalid_dispense_recording_fails_before_hardware(self):
+        with self.assertRaisesRegex(ValueError, 'dispense_recording'):
+            self.start(dispense_recording='required')
+        self.robot.assert_not_called()
+
     def test_corrupted_yaml_does_not_silently_replace_reviewed_settings(self):
         folder = Path(ConfigManager.CONFIG_DIR)
         folder.mkdir()

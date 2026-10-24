@@ -358,7 +358,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                     
                     # Dispense into measurement vial and measure weight
                     dispense_result = lash_e.nr_robot.dispense_into_vial(
-                        measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True, 
+                        measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True,
                         continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data
                     )
                     

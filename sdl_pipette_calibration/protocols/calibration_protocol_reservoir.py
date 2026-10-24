@@ -240,7 +240,7 @@ class ReservoirCalibrationProtocol(CalibrationProtocolBase):
                     # Dispense from reservoir into measurement vial and measure weight
                     dispense_result = lash_e.nr_robot.dispense_into_vial_from_reservoir(
                         reservoir_index, current_measurement_vial, volume_mL, 
-                        reservoir_params=reservoir_params, measure_weight=True, 
+                        reservoir_params=reservoir_params, measure_weight=True,
                         continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data, return_home=False
                     )
                     

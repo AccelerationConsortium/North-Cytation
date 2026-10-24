@@ -33,19 +33,21 @@ def test_independent_switches_and_hardware_defaults(raw, simulate, save_files, b
     raw["output"]["save_files"] = save_files
     raw["optimization"]["use_bayesian"] = bayesian
     config = ExperimentConfig(raw)
-    assert config.should_save_files() == (not simulate or save_files)
+    assert config.should_save_files() == (not simulate)
     assert config.use_bayesian_optimization() == (not simulate or bayesian)
 
 
-def test_standalone_defaults_remain_enabled(raw):
+def test_standalone_simulation_defaults_never_allow_saving(raw):
     del raw["output"]["save_files"]
     del raw["optimization"]["use_bayesian"]
     config = ExperimentConfig(raw)
-    assert config.should_save_files()
+    assert not config.should_save_files()
     assert config.use_bayesian_optimization()
 
 
-def test_all_calibration_output_sinks_are_disabled(raw, tmp_path):
+@pytest.mark.parametrize("save_files", [True, False])
+def test_all_calibration_output_sinks_are_disabled(raw, tmp_path, save_files):
+    raw["output"]["save_files"] = save_files
     raw["output"]["base_directory"] = str(tmp_path)
     experiment = CalibrationExperiment(ExperimentConfig(raw))
     assert experiment.output_dir is None

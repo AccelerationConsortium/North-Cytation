@@ -972,9 +972,9 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         
         for cycle in range(cycles):
             # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type, parameters=dummy_params)
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
             # Dispense back into same vial
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type, parameters=dummy_params)
+            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
         
         lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
         

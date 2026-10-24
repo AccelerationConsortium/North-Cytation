@@ -1,5 +1,6 @@
 main_8mL_rack:
   rack_present: true
+  release_height_offset_mm: 4.0  # Positive raises release above the Locator pickup position
   vial_positions_in_Locator: rack  # Variable name in Locator.py for gripper positions
   pipetting_positions_in_Locator: rack_pip  # Variable name in Locator.py for pipetting positions
   rack_size: 48  # Number of positions in the rack
@@ -15,6 +16,7 @@ main_8mL_rack:
 
 large_vial_rack:
   rack_present: true
+  release_height_offset_mm: 0.0
   vial_positions_in_Locator: null  # No gripper positions defined - vials not movable
   pipetting_positions_in_Locator: large_vial_pip  # Variable name in Locator.py for pipetting positions
   rack_size: 4  # Number of positions in the rack
@@ -30,6 +32,7 @@ large_vial_rack:
 
 clamp_2:
   rack_present: true
+  release_height_offset_mm: 3.0
   vial_positions_in_Locator: clamp_2  # Single clamp position for gripper
   pipetting_positions_in_Locator: clamp_2_pip  # No pipetting position defined for this clamp
   rack_size: 1  # Single position
@@ -74,6 +77,7 @@ clamp_2:
 
 photoreactor_array:
   rack_present: true
+  release_height_offset_mm: 3.0
   vial_positions_in_Locator: photo_reactor_0  # Single photoreactor (could be made into array later if needed)
   pipetting_positions_in_Locator: PR_PIP_0  # Single pipetting position for photoreactor
   rack_size: 1  # Currently only one photoreactor in use
@@ -89,6 +93,7 @@ photoreactor_array:
 
 clamp:
   rack_present: true
+  release_height_offset_mm: 0.0
   vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper
   pipetting_positions_in_Locator: vial_clamp_pip  # Single clamp position for pipetting
   rack_size: 1  # Single position
@@ -104,6 +109,7 @@ clamp:
 
 heater:
   rack_present: true
+  release_height_offset_mm: 3.0
   vial_positions_in_Locator: heater_grid  # Variable name in Locator.py for gripper positions
   pipetting_positions_in_Locator: heater_grid_pip  # Variable name in Locator.py for pipetting positions
   rack_size: 12  # Number of positions in the heater grid

@@ -22,7 +22,7 @@ _PROTOCOL_NAME = "calibration_protocol_northrobot"
 SIMULATE = True
 # Internal development switches; excluded from GUI/YAML configuration.
 # Hardware always saves files and uses the configured Bayesian optimizer.
-_SAVE_FILES_ON_SIMULATE = False
+_SAVE_FILES_ON_SIMULATE = False  # Legacy switch; simulated data is never saved.
 _USE_BAYES_OPT_ON_SIMULATE = False
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 TARGET_VIAL = "acetone"
@@ -252,7 +252,7 @@ def _effective_config(config, base_path):
     raw["validation"]["replicates_per_volume"] = config["REPLICATES_PER_VOLUME"]
     if raw["output"]["export_optimal_conditions"] is not True:
         raise ValueError("Base config must enable optimal-conditions export")
-    raw["output"]["save_files"] = not config["SIMULATE"] or _SAVE_FILES_ON_SIMULATE
+    raw["output"]["save_files"] = not config["SIMULATE"]
     raw["optimization"]["use_bayesian"] = not config["SIMULATE"] or _USE_BAYES_OPT_ON_SIMULATE
     return raw
 

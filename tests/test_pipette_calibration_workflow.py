@@ -571,7 +571,7 @@ class WorkflowExecutionTests(unittest.TestCase):
                 self.assertEqual(echo[name], expected)
             self.assertEqual(echo['overaspirate_vol'], parameters['overaspirate_vol'])
             self.assertEqual(echo['measurement_budget_consumed'], 1)
-        if save_files:
+        if save_files and not self.config['SIMULATE']:
             artifact = Path(experiment.output_dir).resolve() / 'optimal_conditions_water.csv'
             self.assertTrue(artifact.is_file())
             self.assertEqual(result['optimal_conditions_file'], str(artifact))

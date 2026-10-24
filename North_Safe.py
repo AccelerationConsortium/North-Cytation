@@ -12,6 +12,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirPa
 from pipetting_data.pipetting_wizard import PipettingWizard
 import matplotlib.patches as patches
 import threading
+import traceback
 import json
 
 class North_Base:
@@ -996,6 +997,8 @@ class North_Robot(North_Base):
         self.simulate = simulate
 
         self.logger.info("Initializing North Robot...")
+        if not self.simulate:
+            self._install_gripper_transport_trace()
         if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
             from scheduler.simulation_state import configure_controller
             configure_controller(self, "robot")
@@ -1008,6 +1011,46 @@ class North_Robot(North_Base):
         # Note: load_pumps() is now called after homing in reset_after_initialization()
         self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
         
+    def _install_gripper_transport_trace(self):
+        """Trace each transport attempt, including SDK retries, without changing packets."""
+        network = self.c9.network
+        original_send = network.send
+        logger = self.logger
+
+        def traced_send(data, *args, **kwargs):
+            command = data.split(b' ')[1]
+            if command not in (b'GRPR', b'SETO', b'CAPV', b'UCAP'):
+                return original_send(data, *args, **kwargs)
+            started = time.monotonic()
+            thread_id = threading.get_ident()
+            caller = " -> ".join(
+                f"{os.path.basename(frame.filename)}:{frame.lineno}:{frame.name}"
+                for frame in traceback.extract_stack(limit=7)[:-1]
+            )
+            logger.info(
+                "GRIPPER TRANSPORT begin t=%.6f thread=%s request=%r caller=%s",
+                started, thread_id, data, caller,
+            )
+            try:
+                response = original_send(data, *args, **kwargs)
+            except BaseException:
+                logger.exception(
+                    "GRIPPER TRANSPORT failed t=%.6f thread=%s request=%r elapsed_s=%.6f",
+                    started, thread_id, data, time.monotonic() - started,
+                )
+                raise
+            logger.info(
+                "GRIPPER TRANSPORT returned t=%.6f thread=%s request=%r response=%r elapsed_s=%.6f",
+                started, thread_id, data, response, time.monotonic() - started,
+            )
+            return response
+
+        network.send = traced_send
+        logger.info(
+            "Gripper transport tracing enabled for GRPR, SETO, CAPV and UCAP; "
+            "responses are not physical jaw or output feedback"
+        )
+
     def _load_configuration_files(self):
         """Load all robot configuration YAML files (static config, not state)"""
         self.logger.debug("Loading robot configuration files...")
@@ -1513,6 +1556,9 @@ class North_Robot(North_Base):
 
     #Remove the pipet tip
     def remove_pipet(self):
+        if self.HELD_PIPET_TYPE is None:
+            self.logger.debug("Skipping pipet removal: no tip held")
+            return
         self.logger.info("Removing pipet")
         self.c9.goto_safe(p_remove_approach, vel=self.get_speed('fast_approach'))
         #Get removal location from YAML config based on tip type
@@ -3840,20 +3886,56 @@ class North_Robot(North_Base):
 
     #Drop off a vial at a location that you already have
     def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
+        from north.n9_kinematics import counts_to_mm, mm_to_counts
 
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
-        destination = self.get_location(False,location,location_index)
+        destination = list(self.get_location(False,location,location_index))
+        release_offset_mm = self.get_config_parameter(
+            'vial_positions', location, 'release_height_offset_mm', error_on_missing=True
+        )
+        z_axis = self.get_config_parameter(
+            'robot_hardware', 'robot_axes', 'z_axis', error_on_missing=True
+        )
+        release_height_mm = counts_to_mm(z_axis, destination[z_axis]) + release_offset_mm
+        destination[z_axis] = mm_to_counts(z_axis, release_height_mm)
         occupying_vial = self.get_vial_in_location(location,location_index)
         # Allow drop-off if the location is empty or occupied by the same vial
         destination_empty = (occupying_vial is None) or (occupying_vial == vial_index)
 
         self.check_for_errors([[destination_empty, True, "Cannot move vial to destination, destination full"]],True)
 
+        release_settle_time_s = self.get_config_parameter(
+            'robot_hardware', 'gripper_timing', 'release_settle_time_s', error_on_missing=True
+        )
+        release_motion = {
+            key: self.get_config_parameter(
+                'robot_hardware', 'vial_release_motion', key, error_on_missing=True
+            )
+            for key in ('lift_mm', 'x_mm', 'y_mm', 'cycles')
+        }
+        release_speed = self.get_speed('precise_movement')
         self.c9.goto_safe(destination, vel=move_speed if move_speed is not None else self.get_speed('default_robot')) #move vial to destination
-        self.c9.open_gripper() #release vial
+        self.logger.info("Vial release: GRPR open at %s[%s]", location, location_index)
+        self.c9.open_gripper()
+        if not self.simulate:
+            time.sleep(release_settle_time_s)
+        self.logger.info("Vial release: SETO output 0 OFF at %s[%s]", location, location_index)
+        self.c9.set_output(0, False)
+        if not self.simulate:
+            time.sleep(release_settle_time_s)
+        self.move_rel_xyz(z_distance=release_motion['lift_mm'], vel=release_speed)
+        for _ in range(release_motion['cycles']):
+            self.move_rel_xyz(
+                x_distance=release_motion['x_mm'], y_distance=release_motion['y_mm'],
+                vel=release_speed,
+            )
+            self.move_rel_xyz(
+                x_distance=-release_motion['x_mm'], y_distance=-release_motion['y_mm'],
+                vel=release_speed,
+            )
         
         self.VIAL_DF.at[vial_index, 'location']=location
         self.VIAL_DF.at[vial_index, 'location_index']=location_index
@@ -3879,9 +3961,14 @@ class North_Robot(North_Base):
 
         self.check_for_errors(error_check_list,True) #Check for an error, and pause if there's an issue
 
+        grab_settle_time_s = self.get_config_parameter(
+            'robot_hardware', 'gripper_timing', 'grab_settle_time_s', error_on_missing=True
+        )
         #self.open_gripper()
         self.goto_location_if_not_there(initial_location, move_speed=move_speed) #move to vial
         self.c9.close_gripper() #grip vial
+        if not self.simulate:
+            time.sleep(grab_settle_time_s)
         
         self.GRIPPER_STATUS = "Vial" #Update the status of the robot
         self.GRIPPER_VIAL_INDEX = vial_index
@@ -3914,8 +4001,6 @@ class North_Robot(North_Base):
 
         self.logger.info(f"Moving vial {self.get_vial_info(vial_index, 'vial_name')} to {location}: {location_index}")
         self.grab_vial(vial_index, move_speed=move_speed) #Grab the vial
-        if not self.simulate:
-            time.sleep(0.5)
         self.drop_off_vial(vial_index,location,location_index, move_speed=move_speed) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):
@@ -3941,12 +4026,19 @@ class North_Robot(North_Base):
 
         self.check_for_errors(error_check_list,True) #Check for an error and pause if there is one
         
-        
+        position_settle_time_s = self.get_config_parameter(
+            'robot_hardware', 'gripper_timing', 'uncap_position_settle_time_s', error_on_missing=True
+        )
+        grip_settle_time_s = self.get_config_parameter(
+            'robot_hardware', 'gripper_timing', 'uncap_grip_settle_time_s', error_on_missing=True
+        )
         self.c9.close_clamp() #clamp vial
         self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
         if not self.simulate:
-            time.sleep(0.5) 
+            time.sleep(position_settle_time_s)
         self.c9.close_gripper()
+        if not self.simulate:
+            time.sleep(grip_settle_time_s)
         self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
         self.move_rel_xyz(z_distance=5)
@@ -3971,11 +4063,13 @@ class North_Robot(North_Base):
         
         self.check_for_errors(error_check_list,True) #Let's pause if there is an error
 
-        
+        position_settle_time_s = self.get_config_parameter(
+            'robot_hardware', 'gripper_timing', 'recap_position_settle_time_s', error_on_missing=True
+        )
         self.c9.close_clamp() #Make sure vial is clamped
         self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
         if not self.simulate:
-            time.sleep(0.5)
+            time.sleep(position_settle_time_s)
 
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap

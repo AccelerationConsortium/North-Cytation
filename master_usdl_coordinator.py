@@ -193,7 +193,7 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None, show_gui=True, config=None):
+    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None, show_gui=True, config=None, dispense_recording="off"):
         """
         Initialize Lash_E coordinator.
         
@@ -204,10 +204,17 @@ class Lash_E:
             config (mapping): Complete automated workflow settings. Requires
                               show_gui=False; saved YAML is not read or written.
                               Provide workflow_globals/name to identify required keys.
+            dispense_recording (str): "auto" records known-liquid additions at
+                                      clamp 0; "off" disables routine recording.
+                                      Simulation never saves measurements.
             workflow_config (attribute): Confirmed settings after review. Build
                                          experiment plans from this snapshot.
         """
         
+        if dispense_recording not in ("off", "auto"):
+            raise ValueError("dispense_recording must be 'off' or 'auto'")
+        self.dispense_recording = dispense_recording
+
         # Handle workflow config loading before any other initialization
         self.workflow_config = None
         launch_config = None

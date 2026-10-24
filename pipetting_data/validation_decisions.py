@@ -2,8 +2,11 @@
 from pathlib import Path
 import csv
 import os
+import threading
 
 import pandas as pd
+
+_APPEND_LOCK = threading.Lock()
 
 DECISION_COLUMNS = ["optimization_stage", "accepted", "adaptive_correction",
                     "within_tolerance", "tolerance_ul", "decision_reason", "decision_source"]
@@ -66,8 +69,9 @@ def write_csv(frame, path):
 
 def append_csv(frame, path):
     """Align by column name; adding fields must never corrupt an old CSV header."""
-    path = Path(path)
-    if path.exists():
-        old = read_csv(path)
-        frame = pd.concat([old, frame], ignore_index=True)
-    write_csv(frame, path)
+    with _APPEND_LOCK:
+        path = Path(path)
+        if path.exists():
+            old = read_csv(path)
+            frame = pd.concat([old, frame], ignore_index=True)
+        write_csv(frame, path)

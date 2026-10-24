@@ -130,8 +130,8 @@ LIQUID_DENSITIES = {name: properties["density"] for name, properties in LIQUIDS.
 # === MASTER DATABASE PATHS ===
 MASTER_PIPETTING_MEASUREMENTS_DB = os.path.join("pipetting_data", "master_pipetting_measurements.csv")
 MASTER_PIPETTING_SESSIONS_DB = os.path.join("pipetting_data", "master_pipetting_sessions.csv")
-MASTER_RESERVOIR_MEASUREMENTS_DB = os.path.join("pipetting_data", "master_reservoir_measurements.csv")
-MASTER_RESERVOIR_SESSIONS_DB = os.path.join("pipetting_data", "master_reservoir_sessions.csv")
+MASTER_RESERVOIR_MEASUREMENTS_DB = MASTER_PIPETTING_MEASUREMENTS_DB
+MASTER_RESERVOIR_SESSIONS_DB = MASTER_PIPETTING_SESSIONS_DB
 
 # === PARAMETER CORRECTION LOGGING ===
 PARAMETER_CORRECTIONS_LOG = os.path.join("pipetting_data", "parameter_corrections.csv")
@@ -814,7 +814,7 @@ def validate_pipetting_accuracy(
                 if isinstance(transfer_result, tuple):
                     mass_difference, stability_info = transfer_result
                     # Evaluate measurement quality for calibration/validation
-                    measurement_acceptable = _evaluate_measurement(stability_info, current_threshold)
+                    measurement_acceptable = lash_e.simulate or _evaluate_measurement(stability_info, current_threshold)
                 else:
                     # Backwards compatibility - old format returns just mass
                     mass_difference = transfer_result
@@ -832,7 +832,7 @@ def validate_pipetting_accuracy(
             # Handle simulation mode - generate realistic simulated mass
             # CRITICAL SAFETY: Multiple checks to prevent fake data in real runs
             if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
-                mass_difference == 0 and 
+                (mass_difference is None or mass_difference == 0) and
                 getattr(lash_e, 'simulate', False) is True):  # Double-check simulate flag
                 
                 # Set environment variable for additional safety
@@ -987,7 +987,7 @@ def validate_pipetting_accuracy(
                         
                         # Handle simulation mode with safety checks
                         if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
-                            stage2_mass == 0 and getattr(lash_e, 'simulate', False) is True):
+                            (stage2_mass is None or stage2_mass == 0) and getattr(lash_e, 'simulate', False) is True):
                             
                             import os
                             os.environ['ROBOT_SIMULATION_MODE'] = 'TRUE'
@@ -1109,7 +1109,7 @@ def validate_pipetting_accuracy(
                         
                         # Handle simulation mode with safety checks
                         if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
-                            stage3_mass == 0 and getattr(lash_e, 'simulate', False) is True):
+                            (stage3_mass is None or stage3_mass == 0) and getattr(lash_e, 'simulate', False) is True):
                             
                             import os
                             os.environ['ROBOT_SIMULATION_MODE'] = 'TRUE'
@@ -1662,7 +1662,7 @@ def validate_reservoir_accuracy(
                 # Handle new return format with quality control
                 if isinstance(transfer_result, tuple) and len(transfer_result) == 2:
                     mass_difference, stability_info = transfer_result
-                    measurement_acceptable = _evaluate_measurement(stability_info, quality_std_threshold)
+                    measurement_acceptable = lash_e.simulate or _evaluate_measurement(stability_info, quality_std_threshold)
                 else:
                     # Backwards compatibility - old format returns just mass
                     mass_difference = transfer_result
@@ -1678,7 +1678,7 @@ def validate_reservoir_accuracy(
                 print(f"    WARNING: Measurement still poor quality after {max_retries} retries")
 
             # Handle simulation mode - generate realistic simulated mass for reservoir
-            if hasattr(lash_e, 'simulate') and lash_e.simulate and mass_difference == 0:
+            if hasattr(lash_e, 'simulate') and lash_e.simulate and (mass_difference is None or mass_difference == 0):
                 import random
                 # Reservoir dispensing typically more accurate than pipetting
                 base_accuracy = random.uniform(0.95, 1.02)  # 95-102% accuracy

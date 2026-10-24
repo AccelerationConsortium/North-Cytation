@@ -21,4 +21,4 @@ def reset(input_vial_status_file):
 
     #lash_e.nr_robot.c9.move_pump(1, 0)
 
-reset(None)
+reset("status/fluorescence_calibration_vials.csv")

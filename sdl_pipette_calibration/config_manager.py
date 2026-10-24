@@ -478,8 +478,8 @@ class ExperimentConfig:
         return self._config.get('optimization', {}).get('use_range_based_variability', False)
     
     def should_save_files(self) -> bool:
-        """Disable artifacts only for an explicitly configured simulation."""
-        return not self.is_simulation() or self._config.get('output', {}).get('save_files', True)
+        """Simulated pipetting data must never be persisted, even on request."""
+        return not self.is_simulation()
 
     def use_bayesian_optimization(self) -> bool:
         """Hardware always uses the configured Bayesian optimizer."""

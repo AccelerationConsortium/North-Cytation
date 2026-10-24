@@ -56,7 +56,8 @@ class RecordingRobot:
                                     return_vial_home, compensate_overvolume,
                                      measure_weight,
                                     continuous_mass_monitoring, save_mass_data,
-                                    specified_tip=None):
+                                    specified_tip=None, record_measurement=True):
+        assert record_measurement is False, "Calibration must own its records"
         resolved = self._get_optimized_parameters(volume, liquid, parameters)
         self.transfers.append((volume, asdict(resolved)))
         self.mass_save_requests.append(save_mass_data)
@@ -90,6 +91,32 @@ def test_adaptive_correction_rejects_compensated_baseline(recording_validation):
             compensate_overvolume=True,
         )
     assert robot.transfers == []
+
+
+@pytest.mark.parametrize('adaptive', [False, True])
+def test_simulated_validation_with_no_balance_completes_without_saving(
+        recording_validation, tmp_path, monkeypatch, adaptive):
+    validation = recording_validation
+
+    class NoBalanceRobot(RecordingRobot):
+        def dispense_from_vial_into_vial(self, *args, **kwargs):
+            mass, info = super().dispense_from_vial_into_vial(*args, **kwargs)
+            info.update(pre_stable_count=0, pre_total_count=0,
+                        post_stable_count=0, post_total_count=0,
+                        pre_baseline_std=float('nan'), post_baseline_std=float('nan'))
+            return mass, info
+
+    robot = NoBalanceRobot([None] * 12)
+    lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=logging.getLogger(__name__))
+    generated = iter([.092, .098, .100])
+    monkeypatch.setattr(validation, '_generate_simulated_mass', lambda **kwargs: next(generated))
+    result = validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.1], replicates=1,
+        output_folder=str(tmp_path / 'raw'), adaptive_correction=adaptive)
+    assert result['success']
+    assert len(robot.transfers) == (3 if adaptive else 1)
+    assert not any(robot.mass_save_requests)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_real_raw_and_masters_match_actual_stage_parameters(recording_validation, tmp_path):
@@ -242,7 +269,8 @@ def test_reservoir_records_resolved_parameters_and_isolates_simulation(
 
         def dispense_into_vial_from_reservoir(
                 self, reservoir_index, vial_index, volume, reservoir_params, liquid,
-                measure_weight, continuous_mass_monitoring, save_mass_data):
+                measure_weight, continuous_mass_monitoring, save_mass_data, record_measurement=True):
+            assert record_measurement is False, "Calibration must own its records"
             self.transfers.append((volume, asdict(reservoir_params)))
             return next(self.masses)
     monkeypatch.setattr(validation, 'MASTER_RESERVOIR_MEASUREMENTS_DB', str(tmp_path / 'rm.csv'))

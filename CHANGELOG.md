@@ -1,5 +1,188 @@
 # Changelog
 
+## [2026-10-24] - Promote Tested Output OFF Release Sequence
+
+- CHANGED: With operator approval after the roundtrip trial, shared production
+  vial drop-off now sends normal open, waits, sends output 0 OFF, waits, lifts
+  10 mm and performs two 1 mm diagonal X/Y out-and-back cycles at precise speed.
+  Motion settings are in hardware YAML; simulation executes the full sequence.
+- Removed the diagnostic-only duplicate and confirmation dialog. All movable
+  vial destinations inherit the sequence; recap cap release is unchanged.
+
+## [2026-10-24] - Diagnostic Output OFF Release Trial
+
+- ADDED: Clamp roundtrip diagnostic tries output 0 OFF after normal rack release.
+  Live operator confirmation of open jaws and a seated vial is required before
+  a 10 mm lift and two 1 mm X/Y out-and-back cycles. Declining stops without
+  further motion. Simulation executes the trial and motion without the dialog.
+- Production drop-off is unchanged; output polarity remains physically unverified.
+
+## [2026-10-24] - Remove Direct Output Release Trial
+
+- REMOVED: Extra SETO output command and second wait from shared vial drop-off
+  following an observed unexpected re-grip. Restored one normal GRPR open and
+  its configured settling wait. Transport tracing and staging helper fixes remain.
+
+## [2026-10-24] - Restore Fluorescence Validation Replicates
+
+- CHANGED: Restored three replicates per selected volume in fluorescence
+  embedded validation. Release commands and staging tip-removal changes remain unchanged.
+
+## [2026-10-24] - Direct Output Vial Release Trial
+
+- CHANGED: Shared vial drop-off replaces the second GRPR open with SETO output
+  0 ON, the API-documented N9 gripper-open state. Both release waits and transport
+  tracing remain; no closing action or additional motion is introduced.
+- Operator-approved diagnostic workaround; physical effectiveness is unverified.
+
+## [2026-10-24] - Shorter Fluorescence Embedded Validation
+
+- CHANGED: Fluorescence embedded liquid validation requests one replicate per
+  selected volume instead of three. Other workflows retain the shared default.
+  Conditioning, adaptive correction and measurement-quality retries are unchanged.
+
+## [2026-10-24] - Remove Redundant Staging Tip Removal
+
+- FIXED: Fluorescence staging only requests pre-staging tip removal when a tip
+  is held. Removed its duplicate post-transfer removal; the standard transfer
+  already removes the tip by default.
+
+## [2026-10-24] - Skip Empty Pipet Removal
+
+- FIXED: Shared pipet removal returns without motion or state writes when no
+  tip is held, eliminating redundant removal-station trips from workflow helpers.
+  Removal with a held tip is unchanged.
+
+## [2026-10-24] - Remove Vial Release Wiggle
+
+- REMOVED: Added post-release lift/wiggle and its hardware YAML settings.
+  Shared drop-off retains two open commands and their settling waits, with
+  transport tracing unchanged. Clamp diagnostic inherits the same behavior.
+
+## [2026-10-24] - Double Vial Release Command
+
+- CHANGED: Shared vial drop-off sends two open commands, each followed by the
+  configured release settling wait, before the existing lift/wiggle. No close
+  command is inserted. Simulation executes both opens without elapsed waits.
+- This is an operator-requested release workaround, not a verified root-cause
+  fix or physical release detection. Cap release during recapping is unchanged.
+
+## [2026-10-24] - Shared Gripper Transport Diagnostics
+
+- ADDED: Live robot initialization enables shared transport tracing for gripper,
+  digital-output, cap and uncap commands in normal workflows and diagnostics.
+  Each SDK retry records the unchanged request, raw response or exception,
+  monotonic timestamp, elapsed time, thread and calling code.
+- No additional controller queries, pauses, retries or motion changes are added.
+  Command responses do not establish electrical output state or physical release.
+
+## [2026-10-24] - Shared Vial Release Lift and Wiggle
+
+- ADDED: Every shared vial drop-off now opens, waits, lifts 10 mm and performs
+  two diagonal 1 mm X/Y out-and-back cycles at precise speed. Motion values
+  are explicit hardware YAML settings; simulation executes motion calls too.
+- CHANGED: Clamp diagnostic uses shared release motion rather than duplicating
+  it. Applies to rack, clamp, heater and photoreactor vial drop-offs, not cap release.
+
+## [2026-10-24] - Diagnostic Final Home
+
+- CHANGED: Clamp diagnostic moves to normal home after all repetitions finish
+  successfully. Failures still stop without recovery motion.
+
+## [2026-10-24] - Diagonal Diagnostic Release Wiggle
+
+- CHANGED: Diagnostic release wiggle now defaults to 2 mm in X and Y
+  simultaneously, out and back twice, following the 10 mm lift. Three full
+  diagnostic repetitions and precise speed are unchanged.
+
+## [2026-10-24] - Repeated Clamp Diagnostic
+
+- ADDED: Configurable complete clamp diagnostic repetitions, defaulting to
+  three. Release lift, wiggle amplitude, and precise speed are unchanged;
+  any failure stops remaining repetitions.
+
+## [2026-10-24] - Diagnostic Release Clearance and Wiggle
+
+- ADDED: Clamp diagnostic lifts 10 mm after the shared release wait, then
+  performs one 1 mm robot-X out-and-back at configured precise speed.
+  Production drop-off behavior is unchanged; no automatic retry is added.
+
+## [2026-10-24] - Fluorescence Recovery Inventory
+
+- FIXED: Reset script supplies the fluorescence vial inventory for cleanup.
+- Reconciled the stale tip-liquid record to empty following operator confirmation;
+  preserved the recorded held cap, tip, and vial positions.
+
+## [2026-10-24] - Isolated Clamp Cap/Return Diagnostic
+
+- ADDED: Simulation-default supervised DMSO clamp/uncap/recap/return test,
+  with gripper packet requests/responses, implementation paths, and post-recap
+  pose logging. No liquid transfer, tip removal, or movement after return.
+
+## [2026-10-24] - Longer Vial Release Wait
+
+- CHANGED: Additional shared vial drop-off release wait increased from
+  0.5 to 2 seconds. Other gripper timings and staging logic are unchanged.
+
+## [2026-10-24] - Cap Handling Settling Configuration
+
+- ADDED: A YAML-controlled 2-second wait after gripping the cap, before
+  unscrewing. Existing pre-uncap and pre-recap positioning waits are now
+  YAML-controlled and remain 0.5 seconds. Simulation skips waits, not actions.
+
+## [2026-10-24] - Main Rack Y Alignment
+
+- CHANGED: Translated all 48 main-rack gripper positions +1 mm in robot Y
+  using North forward/inverse kinematics, preserving Z and tool orientation
+  within encoder resolution. Previous array retained as a Locator comment.
+  Pipetting positions are unchanged.
+
+## [2026-10-24] - Shared Vial Settling Configuration
+
+- CHANGED: Vial drop-off reads its release settling time from hardware YAML,
+  matching shared pickup timing. Both remain 0.5 seconds beyond the SDK delay
+  for every physical vial grab/drop-off; simulation skips elapsed waits only.
+
+## [2026-10-24] - Shared Grab Wait and Additional Pickup Heights
+
+- CHANGED: Shared vial pickup now includes the configured additional 0.5-second
+  closing wait, including direct diagnostic grabs. Removed the duplicate wait
+  from normal transfers; simulation skips the wait.
+- CHANGED: Lowered heater, clamp 2, and photoreactor pickup positions by 3 mm.
+  Their 3 mm upward release offsets preserve previous release heights.
+  Original clamp and all pipetting coordinates are unchanged.
+
+## [2026-10-24] - Location-Specific Vial Release Height
+
+- CHANGED: Lowered main-rack pickup positions another 2 mm (Z 22300 -> 22500).
+- ADDED: Explicit per-location release-height offsets in millimetres. Main-rack
+  release is 4 mm above pickup (Z 22100); other locations use zero offset.
+  Drop-off uses SDK unit conversion without modifying Locator coordinates.
+
+## [2026-10-24] - Vial Release Settling Delay
+
+- CHANGED: Added a 0.5-second pause after opening the gripper during vial
+  drop-off, including the rack diagnostic. Simulation skips the added wait.
+
+## [2026-10-24] - Main Rack Gripper Height
+
+- CHANGED: Lowered all 48 main-rack gripper pickup/drop-off positions by
+  1 mm (Z counts 22200 -> 22300). Pipetting and clamp positions are unchanged.
+
+## [2026-10-24] - Supervised Rack Vial Roundtrip Diagnostic
+
+- ADDED: Simulation-default rack diagnostic using the fluorescence vial inventory.
+  Visits only recorded occupied main-rack positions, picks each movable vial up,
+  moves to normal home, and returns it to its original home slot. Stops on errors
+  without recovery motion. No clamp mass-check or release behavior was changed.
+
+## [2026-10-24] - Remaining Fluorescence Queue
+
+- CHANGED: Removed the three completed ethyl-acetate preparation jobs from
+  the queue, retaining three DMSO preparations and all six measurements.
+- CHANGED: Removed the 480-minute measurement point from all twelve six-pair
+  presets; the last scheduled point is now 360 minutes.
+
 ## [2026-10-23] - Validation Source Refill Ordering
 
 - FIXED: Startup refills precede liquid validation, including validation-only

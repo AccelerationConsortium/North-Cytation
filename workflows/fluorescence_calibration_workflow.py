@@ -382,7 +382,8 @@ def dispense_vial_to_vial(lash, source, destination, volume, liquid):
                        robot.get_vial_info(vial, "home_location"),
                        robot.get_vial_info(vial, "home_location_index")))
 
-    robot.remove_pipet()
+    if robot.HELD_PIPET_TYPE is not None:
+        robot.remove_pipet()
     try:
         for vial, index, slot, _, _ in staged:
             # Clamp exchanges return the previous vial home with a tip attached.
@@ -390,7 +391,6 @@ def dispense_vial_to_vial(lash, source, destination, volume, liquid):
             robot.VIAL_DF.at[index, "home_location_index"] = slot
             robot.move_vial_to_location(vial, "main_8mL_rack", slot)
         result = robot.dispense_from_vial_into_vial(source, destination, volume, liquid=liquid)
-        robot.remove_pipet()
     finally:
         # Restore metadata even on failure; do not attempt recovery movements.
         for _, index, _, home, home_index in staged:
@@ -638,7 +638,7 @@ def execute(config=None, show_gui=True):
         if validation_enabled:
             validation_results = run_liquid_validations(
                 lash, validation_sources, Path("output") / "fluorescence_calibration",
-                vial_transfers=vial_transfers)
+                replicates=3, vial_transfers=vial_transfers)
             if c["VALIDATION_ONLY"]:
                 return {"validation_results": validation_results}
             inventory = lash.nr_robot.VIAL_DF.copy().set_index("vial_name", drop=False)
