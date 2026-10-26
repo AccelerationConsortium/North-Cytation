@@ -18,6 +18,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 from workflows.workflow_template import _send_workflow_slack
 
 _WORKFLOW_NAME = Path(__file__).stem
+_OUTPUT_ROOT = Path(__file__).resolve().parents[1] / "output" / _WORKFLOW_NAME
 
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/SQ_Peptoid_LNP_test_vials.csv"
@@ -31,7 +32,6 @@ ALIQUOT_VOLUME_UL = 150.0
 WELL_INDICES = [0, 1, 2]
 WELLPLATE_TYPE = "96 WELL PLATE"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\SQ_Peroxide.prt"
-OUTPUT_DIRECTORY = r"C:\Users\Imaging Controller\Desktop\SQ\peptoid_LNP"
 
 _CONFIG_KEYS = [
     "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ORGANIC_VIAL", "AQUEOUS_VIAL",
@@ -118,6 +118,7 @@ def execute(config=None, show_gui=True):
         robot.dispense_into_vial(c["SAMPLE_VIAL"], mix_ml, parameters=mix_parameters,
             initial_move=False, record_measurement=False)
         robot.remove_pipet()
+        robot.return_vial_home(c["SAMPLE_VIAL"])
 
         lash_e.grab_new_wellplate()
         for well in c["WELL_INDICES"]:
@@ -133,11 +134,10 @@ def execute(config=None, show_gui=True):
                 raise RuntimeError("Plate reader returned no measurements.")
             lash_e.logger.info("Simulation completed all steps; no real reader data returned.")
         elif not lash_e.simulate:
-            output = Path(c["OUTPUT_DIRECTORY"])
-            output.mkdir(parents=True, exist_ok=True)
-            filename = f"{_WORKFLOW_NAME}_{datetime.now():%Y%m%d_%H%M%S_%f}.csv"
-            data.to_csv(output / filename)
-            lash_e.logger.info("Reader measurements saved to %s", output / filename)
+            output = _OUTPUT_ROOT / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            output.mkdir(parents=True, exist_ok=False)
+            data.to_csv(output / "measurements.csv")
+            lash_e.logger.info("Reader measurements saved to %s", output / "measurements.csv")
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("%s failed or was interrupted", _WORKFLOW_NAME)
         if isinstance(error, KeyboardInterrupt):

@@ -1706,7 +1706,8 @@ class North_Robot(North_Base):
         self.logger.debug(f"Selected {selected_tip} for volume {volume:.3f} mL")
         return selected_tip
     
-    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, tip_type=None):
+    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, tip_type=None,
+                                  require_calibration=False):
         """
         Get optimized pipetting parameters using intelligent hierarchy:
         defaults → liquid-calibrated → user overrides
@@ -1717,7 +1718,8 @@ class North_Robot(North_Base):
             user_parameters (PipettingParameters, optional): User-provided overrides
             
         Returns:
-            PipettingParameters: Optimized parameters with intelligent defaults
+            PipettingParameters: Optimized parameters with intelligent defaults,
+            or None if require_calibration is true and calibration is unavailable.
         """
         # Start with system defaults
         optimized = PipettingParameters()
@@ -1728,6 +1730,8 @@ class North_Robot(North_Base):
                 wizard = PipettingWizard(logger=self.logger)
                 calibrated_params = wizard.get_pipetting_parameters(
                     liquid, volume, compensate_overvolume, tip_type=tip_type)
+                if calibrated_params is None and require_calibration:
+                    return None
                 
                 if calibrated_params is not None:
                     # Update only the parameters that were successfully calibrated
@@ -1774,6 +1778,7 @@ class North_Robot(North_Base):
                       sorted(self.PIPET_TIPS, key=lambda name:
                              self.PIPET_TIPS[name].get('volume', 0)))
         failures = []
+        fallback_tips = []
         for tip in candidates:
             if tip not in self.PIPET_TIPS:
                 raise ValueError(f"Unknown pipet tip: {tip}")
@@ -1787,16 +1792,36 @@ class North_Robot(North_Base):
             try:
                 params = self._get_optimized_parameters(
                     volume, liquid, user_parameters, compensate_overvolume,
-                    tip_type=tip if tip_calibration else None)
+                    tip_type=tip if tip_calibration else None,
+                    require_calibration=tip_calibration)
             except ValueError as error:
                 failures.append(f"{tip}: {error}")
+                continue
+            if params is None:
+                fallback_tips.append(tip)
+                failures.append(f"{tip}: calibration unavailable")
                 continue
             tip_load = volume + max(0, params.overaspirate_vol) + max(0, params.post_asp_air_vol)
             if tip_load >= config['volume']:
                 failures.append(f"{tip}: {tip_load * 1000:.1f} uL reaches tip capacity")
                 continue
             return params, tip
-        raise ValueError(f"No calibrated tip fits {liquid} at {volume * 1000:g} uL: " +
+        # Prefer any calibrated tip that fits before falling back to defaults.
+        # Only unavailable calibration permits fallback; capacity failures do not.
+        for tip in fallback_tips:
+            params = self._get_optimized_parameters(
+                volume, None, user_parameters, compensate_overvolume)
+            tip_load = volume + max(0, params.overaspirate_vol) + max(0, params.post_asp_air_vol)
+            if tip_load >= self.PIPET_TIPS[tip]['volume']:
+                failures.append(f"{tip}: default tip load {tip_load * 1000:.1f} uL reaches tip capacity")
+                continue
+            self.logger.warning(
+                "No calibrated tip fits %s at %g uL; using default pipetting parameters "
+                "with %s (user overrides retained). Dispensing accuracy is unvalidated.",
+                liquid, volume * 1000, tip,
+            )
+            return params, tip
+        raise ValueError(f"No tip fits {liquid} at {volume * 1000:g} uL: " +
                          '; '.join(failures))
     
     def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):
@@ -2887,7 +2912,6 @@ class North_Robot(North_Base):
                 self.logger.info("Simulation mode - final mass set to 0")
             measured_mass = final_mass - initial_mass  
             self.logger.info(f"Mass difference: {measured_mass:.6f} g (target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water)")
-y
         if density is not None:
             # Existing weighing uses zero for insufficient data. Preserve that
             # caller contract, but do not store it as an observed zero mass.

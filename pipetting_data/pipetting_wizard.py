@@ -146,7 +146,7 @@ class PipettingWizard:
         calibration_files = self.find_calibration_files(liquid)
         
         if not calibration_files:
-            self.logger.error(f"No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
+            self.logger.warning(f"No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
             return None
         
         best_file = None
@@ -197,7 +197,7 @@ class PipettingWizard:
                 best_df = df
         
         if best_file is None:
-            self.logger.error(f"No valid calibration files found for liquid '{liquid}'")
+            self.logger.warning(f"No valid calibration files found for liquid '{liquid}' (tip: {tip_type or 'unspecified'})")
             return None
             
         return best_file, best_df
@@ -368,8 +368,11 @@ class PipettingWizard:
         # Find best calibration file
         file_result = self.find_best_calibration_file(liquid, volume_ml, tip_type=tip_type)
         if file_result is None:
-            if tip_type is not None:
-                raise ValueError(f"No confirmed {tip_type} calibration for {liquid}")
+            self.logger.warning(
+                "No usable calibration for %s at %g uL (tip: %s); "
+                "default pipetting parameters may be used.",
+                liquid, volume_ml * 1000, tip_type or 'unspecified',
+            )
             return None
         
         file_path, df = file_result
@@ -382,18 +385,12 @@ class PipettingWizard:
         min_vol, max_vol = volumes.min(), volumes.max()
         if (target_volume_ul < min_vol * (1 - MAX_EXTRAPOLATION_FRACTION)
                 or target_volume_ul > max_vol * (1 + MAX_EXTRAPOLATION_FRACTION)):
-            if tip_type is not None:
-                self.logger.debug(
-                    "Rejecting %s calibration candidate for %s at %g uL: "
-                    "outside the 25%% extrapolation limit (%g-%g uL)",
-                    tip_type, liquid, target_volume_ul, min_vol, max_vol,
-                )
-                raise ValueError(f"{liquid} {tip_type} calibration is outside the 25% extrapolation limit")
             self.logger.warning(
                 f"Target volume {volume_ml}mL ({target_volume_ul}uL) is more than "
                 f"{MAX_EXTRAPOLATION_FRACTION:.0%} outside the calibrated range "
-                f"({min_vol}-{max_vol}uL) for '{liquid}' in {file_path.name}; "
-                f"using default pipetting parameters instead of extrapolating."
+                f"({min_vol}-{max_vol}uL) for '{liquid}' "
+                f"(tip: {tip_type or 'unspecified'}) in {file_path.name}; "
+                f"calibration unavailable; default pipetting parameters may be used."
             )
             return None
         
@@ -403,7 +400,11 @@ class PipettingWizard:
         
         # Interpolate parameters
         if tip_type is not None and len(df) < 2 and target_volume_ul not in df['volume_target'].values:
-            raise ValueError(f"{liquid} {tip_type} calibration needs two rows for extrapolation")
+            self.logger.warning(
+                "%s %s calibration needs two rows for extrapolation at %g uL; "
+                "default pipetting parameters may be used.", liquid, tip_type, target_volume_ul,
+            )
+            return None
         parameters = self.interpolate_parameters(df, volume_ml, extrapolate=tip_type is not None)
         
         # Add metadata

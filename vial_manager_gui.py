@@ -25,6 +25,7 @@ import yaml
 import re
 import glob
 import json
+import math
 from uuid import uuid4
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
@@ -40,7 +41,7 @@ from PySide6.QtWidgets import (
     QSplitter, QGroupBox, QTextEdit, QDialogButtonBox, QTreeWidget,
     QTreeWidgetItem, QHeaderView, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal, QSize, QMimeData, QTimer, QObject, QEvent
+from PySide6.QtCore import Qt, Signal, QSize, QMimeData, QTimer, QObject, QEvent, QRectF
 from PySide6.QtGui import (
     QAction, QPalette, QPainter, QFont, QPixmap, 
     QDrag, QColor, QBrush, QPen
@@ -153,9 +154,10 @@ class VialWidget(VialDropTarget, QFrame):
     vial_clicked = Signal(dict)  # Emits vial data when clicked
     vial_moved = Signal(dict, str, int)  # Emits (vial_data, new_location, new_index)
     
-    def __init__(self, vial_data: Dict, parent=None):
+    def __init__(self, vial_data: Dict, parent=None, capacity_ml=None):
         super().__init__(parent)
         self.vial_data = vial_data.copy()
+        self.capacity_ml = capacity_ml
         self._press_position = None
         self._drag_started = False
         self.setFixedSize(150, 100)  # Even wider vial widget for longer names
@@ -166,18 +168,42 @@ class VialWidget(VialDropTarget, QFrame):
         self.setAcceptDrops(True)
         
         # Create layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(2, 2, 2, 2)
-        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(7, 8, 7, 8)
+        layout.setSpacing(6)
+
+        # Stack the cap and graduated vial body inside the tile.
+        symbols = QVBoxLayout()
+        symbols.setSpacing(0)
+        self.cap_icon = QLabel()
+        self.cap_icon.setFixedSize(30, 30)
+        cap_policy = self.cap_icon.sizePolicy()
+        cap_policy.setRetainSizeWhenHidden(True)
+        self.cap_icon.setSizePolicy(cap_policy)
+        self.cap_icon.setAttribute(Qt.WA_TransparentForMouseEvents)
+        symbols.addWidget(self.cap_icon)
+        self.fill_icon = QLabel()
+        self.fill_icon.setFixedSize(30, 46)
+        self.fill_icon.setAttribute(Qt.WA_TransparentForMouseEvents)
+        symbols.addWidget(self.fill_icon)
+        layout.addLayout(symbols)
+        details = QVBoxLayout()
+        details.setSpacing(4)
+        layout.addLayout(details, 1)
+
         # Vial name label
         self.name_label = QLabel(self.vial_data.get('vial_name', 'Unknown'))
         self.name_label.setWordWrap(True)
-        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         font = QFont()
         font.setPointSize(8)
         font.setBold(True)
         self.name_label.setFont(font)
-        layout.addWidget(self.name_label)
+        details.addWidget(self.name_label)
+        readings = QVBoxLayout()
+        readings.setSpacing(4)
+        readings.addStretch(1)
+        details.addLayout(readings, 1)
         
         # Volume label
         volume = self.vial_data.get('vial_volume', 0)
@@ -189,16 +215,19 @@ class VialWidget(VialDropTarget, QFrame):
         
         self.volume_label = QLabel(volume_text)
         self.volume_label.setAlignment(Qt.AlignCenter)
-        font.setPointSize(7)
+        font.setPointSize(8)
         font.setBold(False)
         self.volume_label.setFont(font)
-        layout.addWidget(self.volume_label)
+        readings.addWidget(self.volume_label)
         
         # Status indicator
         self.status_label = QLabel()
         self.status_label.setAlignment(Qt.AlignCenter)
+        font.setPointSize(7)
         self.status_label.setFont(font)
-        layout.addWidget(self.status_label)
+        self.status_label.setStyleSheet("color: #46515b;")
+        readings.addWidget(self.status_label)
+        readings.addStretch(1)
         for label in (self.name_label, self.volume_label, self.status_label):
             label.setAttribute(Qt.WA_TransparentForMouseEvents)
         
@@ -206,26 +235,9 @@ class VialWidget(VialDropTarget, QFrame):
     
     def _update_appearance(self):
         """Update visual appearance based on vial properties."""
-        # Color coding based on volume and status
-        volume = self.vial_data.get('vial_volume', 0)
-        try:
-            volume_val = float(volume)
-        except (ValueError, TypeError):
-            volume_val = 0
-            
         capped = self.vial_data.get('capped', False)
         if isinstance(capped, str):
             capped = capped.lower() in ('true', '1', 'yes')
-        
-        # Color based on volume level (keep colors, remove text labels)
-        if volume_val <= 0:
-            color = "#ffcccc"  # Light red - empty
-        elif volume_val < 1.0:
-            color = "#ffffcc"  # Light yellow - low
-        elif volume_val < 3.0:
-            color = "#ccffcc"  # Light green - medium
-        else:
-            color = "#cccfff"  # Light blue - full
         
         # Show clear cap status text
         cap_type = self.vial_data.get('cap_type', 'open')
@@ -237,22 +249,100 @@ class VialWidget(VialDropTarget, QFrame):
             else:
                 status = "Closed Cap"  # Generic closed cap
         else:
-            status = "Open"  # No cap at all
+            status = "Uncapped"
         
         self.status_label.setText(status)
-        
-        # Simple consistent border for all vials
-        self.setStyleSheet(f"""
-            VialWidget {{
-                background-color: {color};
-                border: 2px solid #666;
+        self._update_cap_icon(capped, cap_type)
+        self._update_fill_icon()
+
+        # The graduated vial carries volume information; keep the tile neutral.
+        self.setStyleSheet("""
+            VialWidget {
+                background-color: #f5f7f9;
+                border: 2px solid #9aa6b2;
                 border-radius: 8px;
-            }}
-            VialWidget:hover {{
+            }
+            VialWidget:hover {
                 border-color: #0078d4;
                 border-width: 3px;
-            }}
+            }
         """)
+
+    def _update_cap_icon(self, capped, cap_type):
+        """Draw a top-view cap: an open centre or a solid closed lid."""
+        self.cap_icon.setVisible(bool(capped))
+        if not capped:
+            self.cap_icon.clear()
+            self.setToolTip("Uncapped vial")
+            return
+
+        is_open = cap_type == 'open'
+        description = "Open cap (centre opening)" if is_open else "Closed cap (solid lid)"
+        self.setToolTip(description)
+        self.cap_icon.setAccessibleName(description)
+        # Render at double resolution to keep the small symbol sharp on HiDPI screens.
+        pixmap = QPixmap(60, 60)
+        pixmap.setDevicePixelRatio(2)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QPen(QColor('#243746') if is_open else QColor('black'), 2))
+        painter.setBrush(QColor('#16816a') if is_open else QColor('black'))
+        painter.drawEllipse(3, 3, 24, 24)
+        if is_open:
+            painter.setBrush(QColor('white'))
+            painter.drawEllipse(9, 9, 12, 12)
+        painter.end()
+        self.cap_icon.setPixmap(pixmap)
+
+    def _update_fill_icon(self):
+        """Show recorded volume relative to the configured rack capacity."""
+        try:
+            capacity = float(self.capacity_ml)
+            volume = float(self.vial_data.get('vial_volume'))
+            valid = (math.isfinite(capacity) and capacity > 0
+                     and math.isfinite(volume) and volume >= 0)
+        except (ValueError, TypeError, OverflowError):
+            valid = False
+
+        if valid:
+            fraction = volume / capacity
+            description = f"{volume:g} / {capacity:g} mL"
+            if volume > capacity:
+                description += " - above rack capacity"
+            self.volume_label.setText(f"{volume:g} / {capacity:g} mL")
+        else:
+            description = "Fullness unavailable: volume or rack capacity is unknown or invalid"
+            try:
+                volume = float(self.vial_data.get('vial_volume'))
+                volume_text = f"{volume:g} mL" if math.isfinite(volume) and volume >= 0 else "Volume unknown"
+            except (ValueError, TypeError, OverflowError):
+                volume_text = "Volume unknown"
+            self.volume_label.setText(volume_text)
+
+        self.fill_icon.setAccessibleName(description)
+        self.setToolTip(self.toolTip() + "\n" + description + "\nTick marks divide rack capacity into quarters")
+        pixmap = QPixmap(60, 92)
+        pixmap.setDevicePixelRatio(2)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(QRectF(6, 3, 18, 40), QColor('white'))
+        if valid:
+            height = 40 * min(1.0, fraction)
+            liquid = QColor('#c44c36') if volume > capacity else QColor('#398dcc')
+            painter.fillRect(QRectF(6, 43 - height, 18, height), liquid)
+        else:
+            painter.setPen(QColor('#666666'))
+            painter.drawText(QRectF(6, 3, 18, 40), Qt.AlignCenter, '?')
+        painter.setPen(QPen(QColor('#243746'), 1.5))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(QRectF(6, 3, 18, 40))
+        for tick in range(5):
+            y = 3 + tick * 10
+            painter.drawLine(20, y, 28, y)
+        painter.end()
+        self.fill_icon.setPixmap(pixmap)
     
     def mousePressEvent(self, event):
         """Handle mouse clicks to emit vial data."""
@@ -775,6 +865,7 @@ class VialRackWidget(QScrollArea):
         self.grid_rows = area['grid_params']['num_rows']
         self.grid_cols = area['grid_params']['num_cols']
         self.rack_size = area['rack_size']
+        self.capacity_ml = area.get('vial_volume')
         
         self._setup_grid()
     
@@ -855,7 +946,7 @@ class VialRackWidget(QScrollArea):
             
             try:
                 # Create vial widget
-                vial_widget = VialWidget(vial_data)
+                vial_widget = VialWidget(vial_data, capacity_ml=self.capacity_ml)
                 vial_widget.vial_clicked.connect(self._on_vial_clicked)
                 
                 self.grid_layout.addWidget(vial_widget, row, col)
@@ -1112,7 +1203,7 @@ class CombinedRackWidget(QScrollArea):
                 placeholder.deleteLater()
                 
                 # Create vial widget
-                vial_widget = VialWidget(vial_data)
+                vial_widget = VialWidget(vial_data, capacity_ml=self.areas[location].get('vial_volume'))
                 vial_widget.vial_clicked.connect(self._on_vial_clicked)
                 # Ensure consistent sizing in grid
                 vial_widget.setFixedSize(150, 100)  # Match new wider size

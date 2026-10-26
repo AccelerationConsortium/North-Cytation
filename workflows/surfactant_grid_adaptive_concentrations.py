@@ -944,7 +944,7 @@ def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measu
         lash_e.logger.info(f"WARNING: Failed to backup measurement data: {e}")
         # Don't crash the workflow if backup fails
 
-def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water'):
+def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water', specified_tip=None):
     """Condition a pipette tip by aspirating and dispensing into source vial multiple times
     
     Args:
@@ -952,6 +952,7 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         vial_name: Name of vial to condition tip with
         conditioning_volume_ul: Total volume for conditioning (default 100 uL)
         liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO', etc.)
+        specified_tip: Resolved tip to keep throughout conditioning, if supplied.
     """
     try:
         # Calculate volume per conditioning cycle (5 cycles total)
@@ -972,13 +973,18 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         
         for cycle in range(cycles):
             # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+            lash_e.nr_robot.aspirate_from_vial(
+                vial_name, volume_per_cycle_ml, parameters=dummy_params,
+                specified_tip=specified_tip,
+            )
             # Dispense back into same vial
             lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
         
         lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
         
     except Exception as e:
+        if specified_tip is not None:
+            raise
         lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
 
 def get_pipette_usage_breakdown(lash_e):
@@ -2193,29 +2199,35 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells (sorted by volume, then well order)")
 
-    # Split wells into two passes by tip type.
-    # Small tip physical max = 200 uL; effective safe threshold = 175 uL (leaves room for
-    # overaspirate + air volumes added by aspirate_from_vial).
-    # Pass 1: small-tip wells (< 175 uL) — condition with 150 uL, lock to small_tip.
-    #         Runs first so the small tip held from previous dilution vials carries through.
-    # Pass 2: large-tip wells (>= 175 uL) — condition with 300 uL, lock to large_tip.
-    #         Runs last; only present on the stock vial (1 well at exactly 200 uL).
-    # This ordering means all-small vials (dilutions) never trigger a remove_pipet between
-    # them, so one small tip serves the entire dilution series + the stock's small wells.
-    SMALL_TIP_SAFE_UL = 175
-    large_wells = wells_needing_component[wells_needing_component[volume_column] >= SMALL_TIP_SAFE_UL]
-    small_wells = wells_needing_component[wells_needing_component[volume_column] < SMALL_TIP_SAFE_UL]
+    # Resolve every dose before moving liquid, then group by the robot's chosen
+    # tip. Calibration and actual tip load determine selection, not a volume cutoff.
+    tip_groups = {}
+    for _, row in wells_needing_component.iterrows():
+        volume_ml = row[volume_column] / 1000
+        _, tip = lash_e.nr_robot.resolve_pipetting_setup(volume_ml, liquid=liquid_type)
+        tip_groups.setdefault(tip, []).append(row)
 
-    # --- Pass 1: small tip ---
-    if len(small_wells) > 0:
-        logger.debug(f"  {component_name}: Pass 1 - {len(small_wells)} wells with small_tip (<{SMALL_TIP_SAFE_UL}uL)")
-        if should_condition_tip:
-            condition_tip(lash_e, vial_name, conditioning_volume_ul=150, liquid_type=liquid_type)
-        for _, row in small_wells.iterrows():
+    # Keep the smaller-tip pass first to preserve reuse across dilution vials.
+    ordered_tips = sorted(
+        tip_groups, key=lambda tip: lash_e.nr_robot.PIPET_TIPS[tip]['volume'],
+    )
+    for pass_index, tip in enumerate(ordered_tips):
+        rows = tip_groups[tip]
+        logger.debug(f"  {component_name}: {len(rows)} wells with resolved {tip}")
+        if should_condition_tip or pass_index > 0:
+            # The largest dose in this group already fits this tip. Condition at
+            # that volume and lock the tip so conditioning cannot select another.
+            condition_tip(
+                lash_e, vial_name, conditioning_volume_ul=rows[0][volume_column],
+                liquid_type=liquid_type, specified_tip=tip,
+            )
+        for row in rows:
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
-            logger.debug(f"    Well {well_idx}: {volume_ml*1000:.1f}uL (small_tip) from {vial_name}")
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type, specified_tip="small_tip")
+            logger.debug(f"    Well {well_idx}: {volume_ml*1000:.1f}uL ({tip}) from {vial_name}")
+            lash_e.nr_robot.aspirate_from_vial(
+                vial_name, volume_ml, liquid=liquid_type, specified_tip=tip,
+            )
             lash_e.nr_robot.dispense_into_wellplate(
                 dest_wp_num_array=[well_idx],
                 amount_mL_array=[volume_ml],
@@ -2223,26 +2235,6 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
                 well_plate_type=well_plate_type,
             )
 
-    # --- Pass 2: large tip ---
-    if len(large_wells) > 0:
-        # Only drop the tip if Pass 1 ran (small tip is held); if Pass 1 was empty
-        # there is no tip to remove before conditioning for the large tip.
-        if len(small_wells) > 0:
-            lash_e.nr_robot.remove_pipet()
-        logger.debug(f"  {component_name}: Pass 2 - {len(large_wells)} wells with large_tip (>={SMALL_TIP_SAFE_UL}uL)")
-        condition_tip(lash_e, vial_name, conditioning_volume_ul=300, liquid_type=liquid_type)
-        for _, row in large_wells.iterrows():
-            well_idx = row['wellplate_index']
-            volume_ml = row[volume_column] / 1000
-            logger.debug(f"    Well {well_idx}: {volume_ml*1000:.1f}uL (large_tip) from {vial_name}")
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type, specified_tip="large_tip")
-            lash_e.nr_robot.dispense_into_wellplate(
-                dest_wp_num_array=[well_idx],
-                amount_mL_array=[volume_ml],
-                liquid=liquid_type,
-                well_plate_type=well_plate_type,
-            )
-           
     logger.info(f"    {component_name}: Dispensing complete")
 
 def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, vial_type):
