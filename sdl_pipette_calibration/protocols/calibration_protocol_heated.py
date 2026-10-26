@@ -359,7 +359,8 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                     # Dispense into measurement vial and measure weight
                     dispense_result = lash_e.nr_robot.dispense_into_vial(
                         measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True,
-                        continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data
+                        continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data,
+                        record_measurement=False
                     )
                     
                     # Handle new return format (mass, stability_info)
@@ -409,7 +410,8 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                 # Still call the robot methods for vial tracking, but ignore measurement result
                 lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
                 lash_e.nr_robot.dispense_into_vial(
-                    measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True
+                    measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True,
+                    record_measurement=False
                 )
                 
                 # Enhanced simulation logic for heated liquids

@@ -20,13 +20,27 @@ from pipetting_data.validation_decisions import append_csv
 MASTER_MEASUREMENTS = Path(__file__).resolve().parent / "master_pipetting_measurements.csv"
 
 
+def capture_aspiration(robot, parameters, source, aspirate_speed, retract_speed):
+    """Copy recording metadata after aspiration; never wrap liquid handling."""
+    try:
+        settings = dict(vars(parameters),
+            aspirate_speed=int(round(float(aspirate_speed))), retract_speed=retract_speed)
+        robot._dispense_aspiration_settings = settings
+        robot._dispense_aspiration_source = source
+    except Exception as exc:
+        robot.logger.warning("Could not capture aspiration settings: %s", exc)
+
+
 def recording_density(robot, liquid, enabled=True):
     if (robot.simulate or not enabled or liquid is None
             or getattr(robot, "dispense_recording", "off") != "auto"):
         return None
     try:
-        return get_liquid(liquid)["density"]
-    except (ValueError, OSError, yaml.YAMLError) as exc:
+        density = float(get_liquid(liquid)["density"])
+        if not math.isfinite(density) or density <= 0:
+            raise ValueError("Liquid density must be finite and positive")
+        return density
+    except (ValueError, TypeError, KeyError, OSError, yaml.YAMLError) as exc:
         robot.logger.warning("Skipping dispense recording: %s", exc)
         return None
 
@@ -71,7 +85,7 @@ def read_steady_mass(robot):
 
 
 def record_dispense(robot, *, liquid, density, target, mass, stability,
-                    parameters, destination, reservoir_index=None):
+                    parameters, destination, reservoir_index=None, dispense_speed=None):
     if robot.simulate or density is None or liquid is None:
         return
     try:
@@ -89,6 +103,8 @@ def record_dispense(robot, *, liquid, density, target, mass, stability,
         source_name = (robot.get_vial_info(source, "vial_name")
                        if reservoir_index is None and source is not None else None)
         settings = asdict(parameters)
+        if dispense_speed is not None:
+            settings["dispense_speed"] = int(round(float(dispense_speed)))
         aspiration = getattr(robot, "_dispense_aspiration_settings", None)
         if reservoir_index is None:
             for name in ("aspirate_speed", "retract_speed", "aspirate_wait_time",

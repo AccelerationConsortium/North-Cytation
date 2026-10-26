@@ -204,7 +204,7 @@ class Lash_E:
             config (mapping): Complete automated workflow settings. Requires
                               show_gui=False; saved YAML is not read or written.
                               Provide workflow_globals/name to identify required keys.
-            dispense_recording (str): "auto" records known-liquid additions at
+            dispense_recording (str): "auto" records known-liquid pipette additions at
                                       clamp 0; "off" disables routine recording.
                                       Simulation never saves measurements.
             workflow_config (attribute): Confirmed settings after review. Build
@@ -323,7 +323,8 @@ class Lash_E:
             c8 = MagicMock()
 
         if initialize_robot:
-            self.nr_robot = North_Robot(c9, c8, vial_file,simulate=self.simulate, logger=self.logger)
+            self.nr_robot = North_Robot(c9, c8, vial_file,simulate=self.simulate, logger=self.logger,
+                                        dispense_recording=self.dispense_recording)
             # Pass log filename to robot for organized mass measurement file storage
             self.nr_robot.log_filename = self.log_filename
             self.spinner = North_Spin(c9, c8, simulate=self.simulate, logger=self.logger)

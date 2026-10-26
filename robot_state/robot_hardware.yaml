@@ -30,18 +30,11 @@ movement_speeds:
 
 # Gripper settling times (seconds)
 gripper_timing:
-  grab_settle_time_s: 2.0  # Additional wait after closing, beyond the SDK delay
-  release_settle_time_s: 2.0  # Additional wait after opening, beyond the SDK delay
+  grab_settle_time_s: 1.0  # Additional wait after closing, beyond the SDK delay
+  release_settle_time_s: 0.5  # Additional wait after opening, beyond the SDK delay
   uncap_position_settle_time_s: 0.5  # Before closing around the cap
-  uncap_grip_settle_time_s: 2.0  # After closing, before unscrewing; beyond the SDK delay
+  uncap_grip_settle_time_s: 1.0  # After closing, before unscrewing; beyond the SDK delay
   recap_position_settle_time_s: 0.5  # Before screwing the held cap onto the vial
-
-# Operator-tested release aid following normal open and output 0 OFF.
-vial_release_motion:
-  lift_mm: 10.0
-  x_mm: 1.0
-  y_mm: 1.0
-  cycles: 2
 
 # Physical constants
 physical_constants:

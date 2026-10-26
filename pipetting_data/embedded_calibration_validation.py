@@ -798,6 +798,7 @@ def validate_pipetting_accuracy(
                     dest_vial_name=destination_vial,
                     volume=volume_ml,
                     parameters=stage1_resolved_params,
+                    record_measurement=False,
                     liquid=liquid_type,
                     specified_tip=stage1_tip,
                     remove_tip=switch_pipet,  # Use built-in pipet removal control
@@ -968,6 +969,7 @@ def validate_pipetting_accuracy(
                             dest_vial_name=destination_vial,
                             volume=volume_ml,
                             parameters=stage2_params,
+                            record_measurement=False,
                             liquid=liquid_type,
                             specified_tip=stage1_tip,
                             remove_tip=switch_pipet,
@@ -1090,6 +1092,7 @@ def validate_pipetting_accuracy(
                             dest_vial_name=destination_vial,
                             volume=volume_ml,
                             parameters=stage3_params,
+                            record_measurement=False,
                             liquid=liquid_type,
                             specified_tip=stage1_tip,
                             remove_tip=switch_pipet,

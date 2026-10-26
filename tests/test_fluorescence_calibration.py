@@ -135,7 +135,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             rows.loc[rows.vial_name == source, "vial_volume"] -= amount
             rows.loc[rows.vial_name == destination, "vial_volume"] += amount
 
-        def validate(controller, sources, output, *, vial_transfers):
+        def validate(controller, sources, output, *, replicates, vial_transfers):
             self.assertAlmostEqual(controller.nr_robot.get_vial_info(
                 "DMSO_working", "vial_volume"), 6.0)
             controller.nr_robot.dispense_from_vials_into_wellplate.assert_not_called()
@@ -150,11 +150,15 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                       side_effect=validate):
             execute(lash.workflow_config, show_gui=False)
         self.assertAlmostEqual(lash.nr_robot.get_vial_info(
-            "DMSO_working", "vial_volume"), 3.82)
+            "DMSO_working", "vial_volume"), 5.72)
         lash.nr_robot.dispense_from_vials_into_wellplate.assert_called()
 
     def test_working_refill_accepts_less_than_six_ml_and_skips_when_sufficient(self):
-        for current, bulk, expected in ((2.28, 3.0, 2.0), (4.0, 1.0, 0.0)):
+        # Queue job 007 previously skipped filling 4.070 mL, then drained
+        # the working vial to 0.350 mL despite having another bulk source.
+        for current, bulk, expected in (
+                (4.069666666666679, 7.599, 6.0 - 4.069666666666679),
+                (4.28, 2.5, 1.5), (5.72, 1.0, 0.0)):
             with self.subTest(current=current):
                 inventory = pd.read_csv(self.vial_file)
                 inventory.loc[inventory.vial_name.str.contains(r"_s\d+$"), "vial_volume"] = 4.0
@@ -176,6 +180,26 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 fills = [call.args[3] for call in transfer.call_args_list
                          if call.args[2] == "DMSO_working"]
                 self.assertAlmostEqual(sum(fills), expected)
+
+    def test_working_refill_rejects_supply_below_small_tip_reserve(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory.loc[inventory.vial_name.str.contains(r"_s\d+$"), "vial_volume"] = 4.0
+        inventory.loc[inventory.vial_name == "DMSO_working", "vial_volume"] = 4.07
+        inventory.loc[inventory.vial_name == "DMSO", "vial_volume"] = 1.0
+        inventory.to_csv(self.vial_file, index=False)
+        lash = self.fake_coordinator(simulate=True)
+        config = {**self.config, "SIMULATE": True, "TEST_SOLVENT": True,
+                  "TOTAL_VOLUME_UL": 250, "DYE_VOLUME_UL": 5,
+                  "SOLVENT_SOURCE_VIALS": ["DMSO"], "SOLVENT_SOURCE_RESERVE_ML": 1.0}
+        lash.workflow_config = config
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), \
+                patch.object(workflow, "dispense_vial_to_vial") as transfer:
+            with self.assertRaisesRegex(ValueError, "including 2 mL reserve"):
+                execute(config, show_gui=False)
+        transfer.assert_not_called()
+        lash.nr_robot.dispense_from_vials_into_wellplate.assert_not_called()
 
     def test_solvent_pool_rejects_insufficient_volume_before_transfers(self):
         lash = self.fake_coordinator(simulate=True)

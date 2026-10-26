@@ -1,8 +1,12 @@
 # Pipetting data cleanup and recovery plan
 
+Status: Completed and archived on 2026-10-26, as confirmed by the user.
+The remaining text preserves the historical work record; earlier pending items
+are not active tasks.
+
 Date: 2026-10-21
 
-Status: Confirmed-simulation cleanup and the user-requested exclusion of the
+Historical status (2026-10-21): Confirmed-simulation cleanup and the user-requested exclusion of the
 remaining 50 unclear sessions are complete. The active real-only snapshot contains
 7,512 measurements and 1,401 per-volume summaries. Stage/selected-stage metadata
 repair is complete for those retained measurements; 7,509 have verified scalar
@@ -13,25 +17,25 @@ and Step 4 (missing real data recovery) remain pending.
 
 Pre-repair cleaned originals are preserved in
 `pipetting_data/archives/real_metadata_repair_20261021_175900_6251466/`.
-See the [repair report](../recovery/pipetting_real_metadata_20261021/REPORT.txt)
-and [field-level ledger](../recovery/pipetting_real_metadata_20261021/staged/field_changes.csv).
+See the [repair report](../../recovery/pipetting_real_metadata_20261021/REPORT.txt)
+and [field-level ledger](../../recovery/pipetting_real_metadata_20261021/staged/field_changes.csv).
 The historical planning counts and investigation states below describe earlier
 snapshots, not the current active dataset.
 
 Among those 50 archived unclear sessions, 23 have strong but unconfirmed synthetic-fallback
 evidence, 22 have protocol associations without enough independent execution
 evidence, and five June 11 sessions lack contemporaneous local logs/raw sources.
-See the [current investigation report](../recovery/pipetting_20261021_workflow_patterns/CURRENT_REPORT.txt)
-and [individual remaining-session ledger](../recovery/pipetting_20261021_workflow_patterns/remaining_50_sessions.csv).
+See the [current investigation report](../../recovery/pipetting_20261021_workflow_patterns/CURRENT_REPORT.txt)
+and [individual remaining-session ledger](../../recovery/pipetting_20261021_workflow_patterns/remaining_50_sessions.csv).
 
-Execution evidence: [cleanup report](../recovery/pipetting_cleanup_20261021/REPORT.txt)
-and [original archive manifest](../pipetting_data/archives/confirmed_simulation_cleanup_20261021_171031_367547/manifest.json).
-The [unclear-session exclusion manifest](../pipetting_data/archives/historical_unresolved_exclusion_20261021_174651_828607/manifest.json)
+Execution evidence: [cleanup report](../../recovery/pipetting_cleanup_20261021/REPORT.txt)
+and [original archive manifest](../../pipetting_data/archives/confirmed_simulation_cleanup_20261021_171031_367547/manifest.json).
+The [unclear-session exclusion manifest](../../pipetting_data/archives/historical_unresolved_exclusion_20261021_174651_828607/manifest.json)
 records the subsequent removal of unresolved records without reclassifying them.
 Historical audit row numbers refer to the archived originals. Use the archive's
 `row_manifest.csv` and the metadata repair's backup-relative measurement ledger
 to identify retained occurrences. The earlier
-[row mapping](../recovery/pipetting_20261021_workflow_patterns/current_row_mapping.csv)
+[row mapping](../../recovery/pipetting_20261021_workflow_patterns/current_row_mapping.csv)
 predates the final unclear-session exclusion. The counts in the original planning
 tables below describe the source snapshot before the first cleanup.
 
@@ -54,7 +58,7 @@ historical ambiguity, stage decision, or parameter discrepancy to be resolved.
 ## Current evidence and expected first cleanup
 
 The latest classifications are in
-[all_master_rows_updated_review.csv](../recovery/pipetting_20261021_unresolved_review/all_master_rows_updated_review.csv).
+[all_master_rows_updated_review.csv](../../recovery/pipetting_20261021_unresolved_review/all_master_rows_updated_review.csv).
 They supersede the larger unresolved counts in the first October 21 audit.
 
 | Current master records | Measurements | Per-volume session summaries |
@@ -68,7 +72,7 @@ They supersede the larger unresolved counts in the first October 21 audit.
 These counts describe a particular source snapshot. Recheck hashes and reconcile
 new recordings before using the classifications against current row positions.
 The master hashes for this snapshot are recorded in the
-[prior-work summary](../recovery/pipetting_prior_work_review_20261021/summary.json).
+[prior-work summary](../../recovery/pipetting_prior_work_review_20261021/summary.json).
 
 The analyzer's default scientific input should contain only confirmed real rows:
 currently 7,512 measurements and 1,401 summaries. Keep unresolved rows in the
@@ -106,9 +110,9 @@ correct parameter metadata. Those distinctions remain visible until Step 3.
 ### Prepare a reproducible migration
 
 1. Identify the analyzer entry point in use and its actual data-loading path.
-   Known consumers include [scheduler/liquid_review.py](../scheduler/liquid_review.py),
-   [oav_calibration_analysis.py](../analysis/oav_calibration_analysis.py), and
-   [oav_current_vs_best.py](../analysis/oav_current_vs_best.py). Inventory other
+   Known consumers include [scheduler/liquid_review.py](../../scheduler/liquid_review.py),
+   [oav_calibration_analysis.py](../../analysis/oav_calibration_analysis.py), and
+   [oav_current_vs_best.py](../../analysis/oav_current_vs_best.py). Inventory other
    readers and both embedded-validation writers before changing the schema.
 2. Capture current master hashes, row counts, headers, and the audit versions used.
    Reconcile any rows added since the classified snapshot. Source-row numbers
@@ -176,8 +180,8 @@ summaries; the analyzer default uses the confirmed-real subset within those file
 ## Step 2 Resolve unclear records
 
 Work from the
-[remaining master review](../recovery/pipetting_20261021_unresolved_review/remaining_unresolved_master.csv)
-and [session review](../recovery/pipetting_20261021_unresolved_review/session_review.csv).
+[remaining master review](../../recovery/pipetting_20261021_unresolved_review/remaining_unresolved_master.csv)
+and [session review](../../recovery/pipetting_20261021_unresolved_review/session_review.csv).
 The current remainder is 2,372 rows across 222 sessions.
 
 | Remaining evidence | Rows | Next investigation |
@@ -300,12 +304,12 @@ earlier stage reconstruction while the documentation still described that work.
 
 ## Evidence locations
 
-- [Full run audit](../recovery/pipetting_20261021_run_audit/REPORT.txt).
-- [Deeper unresolved review](../recovery/pipetting_20261021_unresolved_review/summary.json).
-- [Earlier work and Git recovery inventory](../recovery/pipetting_prior_work_review_20261021/REPORT.txt).
-- [Historical metadata candidates](../recovery/pipetting_prior_work_review_20261021/measurements_historical_metadata_candidates.csv).
-- [Historical summary candidates](../recovery/pipetting_prior_work_review_20261021/sessions_historical_metadata_candidates.csv).
-- [Prior parameter discrepancies](../recovery/pipetting_20261016_audit/parameter_discrepancies.csv).
-- [Verified output relocations](../output/_organization/moves_2026-10-16.csv).
+- [Full run audit](../../recovery/pipetting_20261021_run_audit/REPORT.txt).
+- [Deeper unresolved review](../../recovery/pipetting_20261021_unresolved_review/summary.json).
+- [Earlier work and Git recovery inventory](../../recovery/pipetting_prior_work_review_20261021/REPORT.txt).
+- [Historical metadata candidates](../../recovery/pipetting_prior_work_review_20261021/measurements_historical_metadata_candidates.csv).
+- [Historical summary candidates](../../recovery/pipetting_prior_work_review_20261021/sessions_historical_metadata_candidates.csv).
+- [Prior parameter discrepancies](../../recovery/pipetting_20261016_audit/parameter_discrepancies.csv).
+- [Verified output relocations](../../output/_organization/moves_2026-10-16.csv).
 
 Original sources and the prior audits remain preserved throughout the work.

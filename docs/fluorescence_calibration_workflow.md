@@ -67,11 +67,11 @@ Startup solvent, water, and surfactant refills occur before liquid validation.
 Validated runs prefer filling the working solvent to its normal target before
 checks, rather than validating from a nearly empty working vial. After validation,
 the workflow re-reads controller inventory, checks supply again, and adds working
-solvent if required to cover plate dispensing plus 0.1 mL. Validation-only runs
+solvent if required to cover plate dispensing plus 2 mL. Validation-only runs
 also perform the prerequisite refills.
 
 Without validation, working solvent is refilled only when its recorded volume cannot cover the
-upcoming plate demand plus 0.1 mL. A 6 mL fill is preferred, not mandatory:
+upcoming plate demand plus 2 mL. A 6 mL fill is preferred, not mandatory:
 the refill can stop below that target if it still covers the run, while
 reserving solvent needed for pending substocks. Each solvent addition draws
 from sources in configured order, using each down to its reserve before moving
@@ -85,7 +85,7 @@ The total requested addition is unchanged, or allocation fails before transfers.
 Before startup refills and preparation, the workflow checks the whole run's
 parent-stock demand, prepared or reused substock supply, aqueous supply after
 startup refills, and solvent allocation in actual transfer order. It retains
-0.1 mL in plate/stock sources and the configured reserve in bulk solvent
+2 mL in the working solvent vial, 0.1 mL in other plate/stock sources, and the configured reserve in bulk solvent
 sources. Plans requiring more aqueous liquid than the startup fill provides
 are rejected; there are no automatic mid-run aqueous refills. These checks
 depend on accurate inventory records and do not measure evaporation losses.
@@ -194,7 +194,7 @@ exist before dispensing. Extra levels and fresh batches require extra vials.
 When `TEST_WATER` is enabled, startup tops the water vial up to 8 mL from
 reservoir 1, matching the surfactant workflow. It skips water already within
 0.1 mL of full. This also replenishes water between queued workflow runs.
-Working solvent requirements include a 0.1 mL reserve; each bulk source retains
+Working solvent requirements include a 2 mL reserve to match the small-tip low-volume warning threshold; each bulk source retains
 `SOLVENT_SOURCE_RESERVE_ML`.
 When `TEST_SURFACTANT` is enabled, startup tops the `surfactant` vial up to
 7.5 mL from `surfactant_refill`, skipping it when within 0.1 mL of that target.
@@ -210,8 +210,10 @@ The workflow fills the selected working vial to 6 mL from the configured bulk
 sources before dispensing; substocks use the same ordered pool. All solvent
 additions to the plate, including matched blanks and solvent-only medium,
 use the selected working vial staged at the clamp. A resumed run skips filling a working
-vial already holding at least 5.9 mL. Volume checks reject runs exceeding the
-available bulk or working solvent, including a 0.1 mL reserve.
+vial already holding enough for the planned demand plus 2 mL. Volume checks reject runs exceeding the
+available bulk or working solvent, including that 2 mL working reserve. Plans needing
+more than 6 mL of working solvent are rejected because demand plus reserve exceeds
+the 8 mL vial capacity; no mid-run working-solvent refill is performed.
 Replace example values with the actual loaded inventory.
 Before plate dispensing, each 8 mL source vial is moved individually to
 `clamp[0]` before each plate dispense. Keep the clamp empty and do not assign

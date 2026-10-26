@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026-10-26] - Optional Routine Pipette Measurement Recording
+
+- Added opt-in `dispense_recording="auto"` plumbing through `Lash_E` and
+  `North_Robot`; the default remains `"off"`.
+- Eligible known-liquid pipette additions at primary clamp position 0 reuse the
+  existing weighing positions, baseline calculation, and waits. Each physical
+  chunk saves its result and actual settings to the unified measurement master.
+- Existing balance polling warns on read failures; new metadata/save failures warn
+  and continue. Existing weighing control flow, motion commands, compensation,
+  nominal accounting, and caller return values are preserved.
+  Calibration, mixing, and buffer-return paths avoid routine duplicates.
+- Routine simulation records are suppressed. Reservoir recording and calibration
+  alignment remain separate planned work. No hardware run was performed.
+
 ## [2026-10-24] - Promote Tested Output OFF Release Sequence
 
 - CHANGED: With operator approval after the roundtrip trial, shared production

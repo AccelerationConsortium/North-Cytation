@@ -1,8 +1,8 @@
-"""Uncap and recap 8 mL rack vials at positions 0 through 30 inclusive.
+"""Uncap and recap the 8 mL rack vials listed in the selected inventory.
 
 Run: python tests/rack_cap_cycle.py
 The startup GUI selects simulation/live mode and MAX_CYCLES. One cycle is
-a complete sweep of positions 0-30 inclusive (31 vials). MAX_CYCLES=0
+a sweep of the listed vials in rack-position order. MAX_CYCLES=0
 repeats until Ctrl+C. Defaults to one simulated sweep, with no pipetting.
 The supplied vial file has closed-cap 8 mL vials containing 5 mL each.
 Keep the clamp empty at startup.
@@ -28,7 +28,7 @@ _RACK_POSITIONS = tuple(range(31))
 
 
 def _validate_vials(robot):
-    """Require the exact rack layout before making any movement calls."""
+    """Validate listed vials; unlisted rack positions may be empty."""
     vials = {}
     for _, row in robot.VIAL_DF.iterrows():
         position = row["home_location_index"]
@@ -39,8 +39,8 @@ def _validate_vials(robot):
                 or row["vial_type"] != "8_mL" or row["cap_type"] != "closed" or not row["capped"]):
             raise ValueError(f"Vial {row['vial_name']} must start at home as a capped, closed-cap 8 mL vial.")
         vials[position] = row["vial_name"]
-    if set(vials) != set(_RACK_POSITIONS):
-        raise ValueError("Load one vial at every main_8mL_rack position from 0 through 30 (31 vials).")
+    if not vials:
+        raise ValueError("No vials listed in the selected rack inventory.")
     if robot.get_vial_in_location("clamp", 0) is not None:
         raise ValueError("The clamp must be empty before starting.")
     if robot.HELD_PIPET_TYPE is not None:
@@ -59,14 +59,14 @@ def execute(config=None, show_gui=True):
         return None
     robot = lash_e.nr_robot
     limit = lash_e.workflow_config["MAX_CYCLES"]
-    robot.home_robot_components()
     if type(limit) is not int or limit < 0:
         raise ValueError("MAX_CYCLES must be a nonnegative integer (0 means forever).")
     vials = _validate_vials(robot)
+    robot.home_robot_components()
     completed = 0
     try:
         while limit == 0 or completed < limit:
-            for position in _RACK_POSITIONS:
+            for position in sorted(vials):
                 name = vials[position]
                 lash_e.logger.info(
                     "Sweep %s: rack position %s (%s) -> clamp -> uncap -> recap -> home",

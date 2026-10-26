@@ -37,6 +37,7 @@ def transfer_setup():
     robot.get_vial_in_location.side_effect = lambda location, slot: next(
         iter(rows.loc[(rows.location == location) & (rows.location_index == slot), "vial_index"]), None)
     for name in ("is_vial_movable", "is_vial_pipetable", "return_vial_home",
+                 "plan_vial_transfer", "resolve_pipetting_setup",
                  "is_vial_movement_safe_with_pipet", "is_location_safe_for_vial_movement_with_pipet"):
         method = getattr(North_Robot, name)
         getattr(robot, name).side_effect = lambda *args, _method=method, **kw: _method(robot, *args, **kw)

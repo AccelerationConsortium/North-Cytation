@@ -31,6 +31,8 @@ SIMULATE = True
 VALIDATE_LIQUIDS = False
 VALIDATION_ONLY = False
 _SAVE_FILES_ON_SIMULATE = False
+# Match North_Safe's small-tip low-volume threshold for the working solvent.
+_WORKING_SOLVENT_RESERVE_ML = 2.0
 INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
@@ -446,7 +448,7 @@ def dispense_solvent(lash, sources, destination, volume, liquid, reserve):
 
 
 def check_liquid_supply(config, plan, recipes, inventory, working_fill, surfactant_fill):
-    """Check the full run before refills or preparation, retaining 0.1 mL per vial.
+    """Check supply, retaining 2 mL working solvent and 0.1 mL in other vials.
 
     Uses recorded inventory volumes; physical loading must match those records.
     Solvent allocation uses the same source-pooling plan as dispensing.
@@ -477,9 +479,10 @@ def check_liquid_supply(config, plan, recipes, inventory, working_fill, surfacta
         volume = available.get(source, inventory.loc[source, "vial_volume"])
         if not math.isfinite(volume) or volume < 0:
             raise ValueError(f"Invalid recorded liquid volume for {source}: {volume}")
-        if demand > 0 and demand + 0.1 > volume + 1e-9:
+        source_reserve = _WORKING_SOLVENT_RESERVE_ML if source == working else 0.1
+        if demand > 0 and demand + source_reserve > volume + 1e-9:
             raise ValueError(f"Insufficient liquid in {source}: need {demand:.3f} mL "
-                             f"plus 0.1 mL reserve, have {volume:.3f} mL after startup refills")
+                             f"plus {source_reserve:g} mL reserve, have {volume:.3f} mL after startup refills")
     remaining = {source: inventory.loc[source, "vial_volume"]
                  for source in c["SOLVENT_SOURCE_VIALS"]}
     for addition in [working_fill, *pending.solvent_ml]:
@@ -574,21 +577,22 @@ def execute(config=None, show_gui=True):
             plan.loc[plan.dye_source == working_vial, "dye_volume_ul"].sum()
             + plan.loc[plan.medium == "solvent", "medium_volume_ul"].sum()) / 1000
         # Fill enough for this plan, with reserve, without exceeding the 8 mL vial.
-        if working_required + 0.1 > 8.0:
+        working_minimum = working_required + _WORKING_SOLVENT_RESERVE_ML
+        if working_minimum > 8.0:
             raise ValueError("Insufficient working solvent capacity: scaled plan needs more than one 8 mL vial fill")
         pending_solvent = sum(recipe.solvent_ml for recipe in recipes.itertuples()
                               if inventory.loc[recipe.vial, "vial_volume"] <= 1.0)
         usable_amounts = [math.floor(max(0.0, v - reserve) * 1000 + 1e-6) / 1000
                           for v in source_volumes]
         usable_solvent = sum(v for v in usable_amounts if v >= 0.2 - 1e-9)
-        working_target = max(6.0, working_required + 0.1)
+        working_target = max(6.0, working_minimum)
         validation_enabled = c["VALIDATE_LIQUIDS"] or c["VALIDATION_ONLY"]
-        working_minimum = working_target if validation_enabled else working_required + 0.1
-        working_fill = (0.0 if working.vial_volume >= working_minimum
+        refill_threshold = working_target if validation_enabled else working_minimum
+        working_fill = (0.0 if working.vial_volume >= refill_threshold
                         else min(max(0.0, working_target - working.vial_volume),
                                  max(0.0, usable_solvent - pending_solvent)))
-        if working_required + 0.1 > working.vial_volume + working_fill + 1e-9:
-            raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
+        if working_minimum > working.vial_volume + working_fill + 1e-9:
+            raise ValueError("Insufficient working solvent for plate dispensing (including 2 mL reserve)")
         if usable_solvent + 1e-9 < pending_solvent + working_fill:
             raise ValueError(
                 f"Insufficient bulk solvent: need {pending_solvent + working_fill:.3f} mL "
@@ -644,8 +648,8 @@ def execute(config=None, show_gui=True):
             inventory = lash.nr_robot.VIAL_DF.copy().set_index("vial_name", drop=False)
             current = inventory.loc[working_vial, "vial_volume"]
             additional_fill = 0.0
-            if not c["PREPARE_ONLY"] and current < working_required + 0.1:
-                additional_fill = max(0.2, working_required + 0.1 - current)
+            if not c["PREPARE_ONLY"] and current < working_minimum:
+                additional_fill = max(0.2, working_minimum - current)
             check_liquid_supply(c, plan, recipes, inventory, additional_fill, 0.0)
             if c["TEST_WATER"] and not c["PREPARE_ONLY"]:
                 demand = plan.loc[plan.medium == "water", "medium_volume_ul"].sum() / 1000

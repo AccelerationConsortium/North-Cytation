@@ -17,7 +17,13 @@ def rack_test():
             Lash_E=MagicMock(return_value=lash))}):
         workflow = runpy.run_path(str(root / "tests" / "rack_cap_cycle.py"))
     lash.workflow_config = {key: workflow[key] for key in workflow["_CONFIG_KEYS"]}
-    lash.nr_robot.VIAL_DF = pd.read_csv(root / "status" / "rack_cap_cycle_vials.csv")
+    rows = pd.read_csv(root / "status" / "rack_cap_cycle_vials.csv")
+    template = rows.iloc[0].to_dict()
+    lash.nr_robot.VIAL_DF = pd.DataFrame([
+        dict(template, vial_index=i, vial_name=f"vial_{i:02d}",
+             location_index=i, home_location_index=i)
+        for i in range(31)
+    ])
     lash.nr_robot.get_vial_in_location.return_value = None
     lash.nr_robot.HELD_PIPET_TYPE = None
     return workflow, lash
@@ -27,13 +33,14 @@ def test_visits_all_31_vials_in_order_for_each_sweep(rack_test):
     workflow, lash = rack_test
     lash.workflow_config["MAX_CYCLES"] = 2
     assert workflow["execute"](config=lash.workflow_config, show_gui=False) == 2
-    expected = [call.get_vial_in_location("clamp", 0)]
+    expected = [call.get_vial_in_location("clamp", 0), call.home_robot_components()]
     for _ in range(2):
         for position in range(31):
             name = f"vial_{position:02d}"
             expected.extend([
                 call.move_vial_to_location(name, "clamp", 0),
                 call.uncap_clamp_vial(),
+                call.move_home(),
                 call.recap_clamp_vial(),
                 call.return_vial_home(name),
             ])
@@ -42,6 +49,25 @@ def test_visits_all_31_vials_in_order_for_each_sweep(rack_test):
     rows = lash.nr_robot.VIAL_DF
     assert set(rows.location_index) == set(range(31))
     assert all(rows.capped) and all(rows.cap_type == "closed")
+
+
+def test_cycles_only_listed_vials_in_rack_order(rack_test):
+    workflow, lash = rack_test
+    lash.nr_robot.VIAL_DF = lash.nr_robot.VIAL_DF.iloc[[23, 0, 7]].copy()
+    lash.workflow_config["MAX_CYCLES"] = 2
+    assert workflow["execute"](config=lash.workflow_config, show_gui=False) == 2
+    assert lash.nr_robot.move_vial_to_location.call_args_list == [
+        call(name, "clamp", 0)
+        for _ in range(2) for name in ["vial_00", "vial_07", "vial_23"]
+    ]
+
+
+def test_rejects_empty_inventory_before_homing(rack_test):
+    workflow, lash = rack_test
+    lash.nr_robot.VIAL_DF = lash.nr_robot.VIAL_DF.iloc[:0]
+    with pytest.raises(ValueError, match="No vials"):
+        workflow["execute"](show_gui=False)
+    lash.nr_robot.home_robot_components.assert_not_called()
 
 
 @pytest.mark.parametrize("operation", [

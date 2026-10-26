@@ -269,8 +269,8 @@ def test_reservoir_records_resolved_parameters_and_isolates_simulation(
 
         def dispense_into_vial_from_reservoir(
                 self, reservoir_index, vial_index, volume, reservoir_params, liquid,
-                measure_weight, continuous_mass_monitoring, save_mass_data, record_measurement=True):
-            assert record_measurement is False, "Calibration must own its records"
+                measure_weight, continuous_mass_monitoring, save_mass_data):
+            # Routine reservoir recording is deferred; match the current controller.
             self.transfers.append((volume, asdict(reservoir_params)))
             return next(self.masses)
     monkeypatch.setattr(validation, 'MASTER_RESERVOIR_MEASUREMENTS_DB', str(tmp_path / 'rm.csv'))
