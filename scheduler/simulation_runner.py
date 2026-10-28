@@ -41,7 +41,9 @@ def handoff_issues(root):
             issues.append(f"Robot state still contains {key}={value}")
     if robot["pipet_fluid_volume"] is not None and float(robot["pipet_fluid_volume"]) != 0:
         issues.append("Liquid remains in the pipet")
-    position = track["active_wellplate_position"]
+    position = track.get("active_wellplate_position")
+    from scheduler.plate_state import operation_issues
+    issues.extend(operation_issues(track))
     from workflows.two_run_plate import ready_for_second_run, read_marker
     if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
@@ -77,7 +79,8 @@ def run_job(root, job_id):
         with state.workflow_state(root, job_id), patch.object(builtins, "input", unexpected_input):
             initial_robot = yaml.safe_load((root / "robot_status.yaml").read_text())
             initial_tips = initial_robot["pipets_used"]
-            initial_plates = yaml.safe_load((root / "track_status.yaml").read_text())["num_in_source"]
+            from scheduler.plate_state import source_ids
+            initial_plates = source_ids(yaml.safe_load((root / "track_status.yaml").read_text()))
             if specification.get("allow_vial_conflicts", False):
                 for issue in handoff_issues(root):
                     if issue.startswith("Current vial-position conflict"):
@@ -109,8 +112,8 @@ def run_job(root, job_id):
             result["tips_used"] = "Unavailable after tip counter reset"
         else:
             result["tips_used"] = {rack: final_tips[rack] - initial_tips[rack] for rack in final_tips}
-        final_plates = yaml.safe_load((root / "track_status.yaml").read_text())["num_in_source"]
-        result["plates_used"] = initial_plates - final_plates
+        final_plates = source_ids(yaml.safe_load((root / "track_status.yaml").read_text()))
+        result["plates_used"] = len(initial_plates - final_plates)
     except (Exception, KeyboardInterrupt, SystemExit):
         result["exception"] = traceback.format_exc()
         result["records"].append({"level": "ERROR", "message": result["exception"]})

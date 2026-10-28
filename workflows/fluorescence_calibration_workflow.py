@@ -561,8 +561,8 @@ def execute(config=None, show_gui=True):
             if ((inventory[location] == "clamp") & (inventory[index] == 0)).any():
                 raise ValueError("Keep clamp[0] free for plate-dispensing staging")
         if not c["PREPARE_ONLY"]:
-            if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
-                raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
+            position = "pipetting_area" if half == 1 else "source_stack"
+            lash.nr_track.inventory.plate_at(position, c["WELLPLATE_TYPE"])
             plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
             maximum_dispensed_ul = (c["TOTAL_VOLUME_UL"] +
                                     (c["DYE_VOLUME_UL"] if c["VOLATILE_SOLVENT"] else 0)) * c["VOLUME_SCALE_BY_PLATE"][c["WELLPLATE_TYPE"]]

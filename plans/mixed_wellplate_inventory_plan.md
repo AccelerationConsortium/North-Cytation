@@ -1,7 +1,23 @@
 # Mixed wellplate inventory and position tracking
 
 Date: 2026-10-28
-Status: Proposed; plan only. No implementation or hardware actions in this task.
+Status: Implemented in the working tree. See [operator and validation notes](../docs/mixed_wellplates.md).
+Software validation uses simulated/mocked hardware; the agent has not commanded
+live hardware. The path regression found during operator testing is fixed and
+covered by comparisons with synced commit `9ba125e0`.
+
+Operator feedback update: the source-stack test now accepts the configured
+source contents rather than enforcing a specific two-plate sequence, and retains
+existing waste. Track Status now uses a clickable holder/stack visualization,
+compact individual editing buttons, and an interruption panel visible only when needed.
+Multi-plate holders (including null capacity) start at double height and grow
+individually to fit longer stacks; single-item holders remain compact.
+The ordinary workflow startup flow is unchanged; no separate UI-only mode was added.
+Drag-and-drop is supported in the position diagram for plate assemblies,
+detached lids, lid attachment/detachment and stack insertion/reordering. It uses
+the same inventory relocation operations as the existing editor, changes only
+the draft, and preserves IDs and unrelated placements. Native drag feedback
+shows allowed insertion points and rejects invalid capacity conflicts locally.
 
 ## Objective and existing coverage
 

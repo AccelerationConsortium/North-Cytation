@@ -33,25 +33,24 @@ def execute(config=None, show_gui=True):
     if not lash._workflow_should_continue:
         return None
     track = lash.nr_track
-    if track.CURRENT_WP_TYPE != _PLATE_TYPE:
-        raise ValueError("Select '24 WELL PLATE' in the startup Track Status tab.")
+    plate_id = track.inventory.plate_at("source_stack", _PLATE_TYPE)
     if track.NUM_SOURCE != 1 or track.NUM_WASTE != 0:
         raise ValueError("Start with exactly one source plate and an empty waste stack.")
-    if track.ACTIVE_WELLPLATE_POSITION is not None:
+    if any(track.inventory.contents(p) for p in ("pipetting_area", "cytation_tray", "gripper")):
         raise ValueError("Start with no active plate; pipetting area, Cytation and track gripper must be empty.")
 
     phase = "grab_new_wellplate"
     try:
         lash.grab_new_wellplate()
-        if track.ACTIVE_WELLPLATE_POSITION != "pipetting_area" or track.NUM_SOURCE != 0:
+        if track.inventory.top("pipetting_area") != plate_id or track.NUM_SOURCE != 0:
             raise RuntimeError("Source plate did not reach the active pipetting area.")
         phase = "measure_wellplate (null protocol)"
         data = lash.measure_wellplate(None, plate_type=_PLATE_TYPE)
-        if track.ACTIVE_WELLPLATE_POSITION != "pipetting_area":
+        if track.inventory.top("pipetting_area") != plate_id:
             raise RuntimeError("Plate did not return from Cytation to the active pipetting area.")
         phase = "discard_used_wellplate"
         lash.discard_used_wellplate()
-        if track.ACTIVE_WELLPLATE_POSITION is not None or track.NUM_WASTE != 1:
+        if track.inventory.contents("waste_stack") != [plate_id] or track.NUM_WASTE != 1:
             raise RuntimeError("Plate did not reach the waste stack.")
         lash.logger.info("24-well round trip complete; plate is in waste. No read was run.")
         return data  # None is the expected result for a null measurement.

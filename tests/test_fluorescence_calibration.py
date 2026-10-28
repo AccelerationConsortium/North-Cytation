@@ -75,7 +75,10 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash._workflow_should_continue = True
         lash.simulate = simulate
         lash.nr_robot.VIAL_FILE = str(self.vial_file)
-        lash.nr_track.CURRENT_WP_TYPE = "96 WELL PLATE"
+        from robot_state.plate_inventory import PlateInventory
+        lash.nr_track.inventory = PlateInventory({"wellplate_type": "96 WELL PLATE", "num_in_source": 1},
+            yaml.safe_load((REPO_ROOT / "robot_state/wellplates.yaml").read_text()),
+            yaml.safe_load((REPO_ROOT / "robot_state/track_positions.yaml").read_text()))
         lash.nr_track.NUM_SOURCE = 1
         lash.nr_robot.WELLPLATES = {"96 WELL PLATE": {"max_volume_per_well": 0.3}}
         lash.nr_robot.get_vial_in_location.return_value = None
@@ -479,31 +482,29 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_two_runs_share_plate_across_reloaded_state_then_third_loads_new(self):
         state_file = self.root / "track_status.yaml"
-        state_file.write_text(yaml.safe_dump({"position": None, "source": 2, "waste": 0}))
+        state_file.write_text(yaml.safe_dump({"wellplate_type": "96 WELL PLATE", "num_in_source": 2, "num_in_waste": 0}))
         loaded, discarded, measured = [], [], []
         for run in range(3):
             lash = self.fake_coordinator(simulate=True)
             track = lash.nr_track
             saved = yaml.safe_load(state_file.read_text())
-            track.ACTIVE_WELLPLATE_POSITION = saved["position"]
-            track.NUM_SOURCE = saved["source"]
-            track.NUM_WASTE = saved["waste"]
+            from robot_state.plate_inventory import PlateInventory
+            track.inventory = PlateInventory(saved, track.inventory.definitions, track.inventory.position_config)
+            track.NUM_SOURCE = len(track.inventory.contents("source_stack"))
             track.TRACK_STATUS_FILE = str(state_file)
             track._scheduler_state_root = str(self.root)
 
             def save():
-                state_file.write_text(yaml.safe_dump({"position": track.ACTIVE_WELLPLATE_POSITION,
-                    "waste": track.NUM_WASTE, "source": track.NUM_SOURCE}))
+                state_file.write_text(yaml.safe_dump(track.inventory.data))
 
             def grab():
                 loaded.append(run)
-                track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
-                track.NUM_SOURCE -= 1
+                track.inventory.relocate(track.inventory.top("source_stack"), "pipetting_area")
+                track.NUM_SOURCE = len(track.inventory.contents("source_stack"))
 
             def discard():
                 discarded.append(run)
-                track.ACTIVE_WELLPLATE_POSITION = None
-                track.NUM_WASTE += 1
+                track.inventory.relocate(track.inventory.top("pipetting_area"), "waste_stack")
                 save()
 
             track.save_track_status.side_effect = save
@@ -532,7 +533,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_two_run_plate_blocks_unfinished_run_before_dispensing(self):
         lash = self.fake_coordinator(simulate=True)
-        lash.nr_track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
+        lash.nr_track.inventory.relocate(lash.nr_track.inventory.top("source_stack"), "pipetting_area")
         lash.nr_track.TRACK_STATUS_FILE = str(self.root / "track_status.yaml")
         (self.root / "fluorescence_plate.yaml").write_text(yaml.safe_dump(
             {"status": "in_progress", "plate_type": "96 WELL PLATE"}))

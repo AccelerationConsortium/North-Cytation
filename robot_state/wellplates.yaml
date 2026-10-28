@@ -1,25 +1,9 @@
-quartz:
-  name_in_Locator: well_plate_new_grid
-  name_in_cytation: 96 QUARTZ LID
-  distance_to_bottom_for_pipet: 18 #Not 100% sure. May need to decrease now
-  gripping_z_offset: -800 
-  thickness: null
-  num_wells: 96
-  well_radius: 1.75
-  max_volume_per_well: 0.3
-  material: quartz
-
-quartz_lid:
-  gripping_z_offset: 7500
-
-96_wellplate_lid:
-  gripping_z_offset: 3000 
-
 96 WELL PLATE:
   name_in_Locator: well_plate_new_grid
   name_in_cytation: 96 WELL PLATE
   distance_to_bottom_for_pipet: 18 #Not 100% sure. May need to decrease now
   gripping_z_offset: 0
+  lid_gripping_z_offset: 3000
   thickness: 6400
   num_wells: 96
   well_radius: 3
@@ -41,9 +25,21 @@ quartz_lid:
   name_in_Locator: null # No calibrated 24-well Locator grid yet.
   name_in_cytation: 24 WELL PLATE # Verify the Cytation plate name.
   distance_to_bottom_for_pipet: 19 # Provisional: copied from 48-well plate; calibrate before use.
-  gripping_z_offset: 0 
+  gripping_z_offset: 0
   thickness: 9500 # Provisional: copied from 48-well plate; measure before stacking.
   num_wells: 24
   well_radius: 7.8 # Approximate for a typical 24-well plate; verify the actual plate.
   max_volume_per_well: 3.4 # Typical nominal capacity; verify the actual plate.
   material: polystyrene
+
+quartz:
+  name_in_Locator: well_plate_new_grid
+  name_in_cytation: 96 QUARTZ LID
+  distance_to_bottom_for_pipet: 18 #Not 100% sure. May need to decrease now
+  gripping_z_offset: -800
+  lid_gripping_z_offset: 7500
+  thickness: null
+  num_wells: 96
+  well_radius: 1.75
+  max_volume_per_well: 0.3
+  material: quartz

@@ -39,7 +39,7 @@ def round_trip(monkeypatch, tmp_path):
     lash.logger = logging.getLogger(__name__)
     lash._workflow_should_continue = True
     lash.nr_track = North_Track(MagicMock(), simulate=True, logger=lash.logger)
-    lash.nr_track.set_wellplate_position = Mock(wraps=lash.nr_track.set_wellplate_position)
+    lash.nr_track.inventory.commit_placement = Mock(wraps=lash.nr_track.inventory.commit_placement)
     lash.nr_robot = MagicMock()
     lash.nr_robot.get_config_parameter.return_value = "24 WELL PLATE"
     lash.nr_robot.pause_after_error.side_effect = AssertionError("Unexpected robot error")
@@ -61,9 +61,9 @@ def test_round_trip_uses_real_transfers_and_null_read(round_trip, reader_simulat
     assert execute(config={"SIMULATE": reader_simulation, "INPUT_VIAL_STATUS_FILE": None},
                    show_gui=False) is None
     assert not constructor.call_args.kwargs["show_gui"]
-    assert [call.args[0] for call in lash.nr_track.set_wellplate_position.call_args_list] == [
+    assert [call.args[1] for call in lash.nr_track.inventory.commit_placement.call_args_list] == [
         "gripper", "pipetting_area", "gripper", "cytation_tray",
-        "gripper", "pipetting_area", "gripper", "waste_stack", None,
+        "gripper", "pipetting_area", "gripper", "waste_stack",
     ]
     assert lash.nr_track.NUM_SOURCE == 0
     assert lash.nr_track.NUM_WASTE == 1
@@ -81,17 +81,26 @@ def test_round_trip_uses_real_transfers_and_null_read(round_trip, reader_simulat
 ])
 def test_bad_initial_state_stops_before_plate_transfers(round_trip, field, value):
     execute, lash, _ = round_trip
-    setattr(lash.nr_track, field, value)
+    inv = lash.nr_track.inventory
+    if field == "CURRENT_WP_TYPE":
+        inv.objects[inv.top("source_stack")]["type"] = value
+    elif field == "NUM_SOURCE":
+        inv.add("source_stack", "24 WELL PLATE")
+        inv.add("source_stack", "24 WELL PLATE")
+    elif field == "NUM_WASTE":
+        inv.add("waste_stack", "24 WELL PLATE")
+    else:
+        inv.add(value, "24 WELL PLATE")
     with pytest.raises(ValueError):
         execute()
-    lash.nr_track.set_wellplate_position.assert_not_called()
+    lash.nr_track.inventory.commit_placement.assert_not_called()
 
 
 def test_cancel_does_not_transfer_a_plate(round_trip):
     execute, lash, _ = round_trip
     lash._workflow_should_continue = False
     assert execute() is None
-    lash.nr_track.set_wellplate_position.assert_not_called()
+    lash.nr_track.inventory.commit_placement.assert_not_called()
 
 
 def test_failed_measurement_does_not_discard_or_attempt_recovery(round_trip):

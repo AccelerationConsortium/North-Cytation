@@ -31,11 +31,13 @@ SAFETY FEATURES:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import yaml
 import json
 import os
 import sys
+import queue
+import time
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
@@ -43,37 +45,26 @@ from typing import Dict, List, Tuple, Optional
 sys.path.append("..")
 sys.path.append(".")
 
-# Import Lash_E coordinator for actual track control
-try:
-    from master_usdl_coordinator import Lash_E
-    LASH_E_AVAILABLE = True
-except ImportError:
-    print("Warning: Could not import Lash_E - running in simulation-only mode")
-    LASH_E_AVAILABLE = False
+from robot_state.manual_track import ManualTrack, OperationRunner, ROOT
 
 class TrackControlGUI:
     """Standalone GUI for track control and position management"""
     
     def __init__(self, simulation_mode=True):
-        self.simulation_mode = simulation_mode
-        self.current_x = 68325  # Start at cytation position as reference
+        self.simulation_mode = True
+        self.current_x = 0  # Simulation coordinates; live coordinates are read on connection.
         self.current_z = 0      # Start at safe/home position (Z=0 is TOP for track system)
-        self.gripper_open = False
+        self.gripper_open = None
         self.command_sequence = []
         self.position_history = []
         
-        # Initialize Lash_E coordinator for actual track control
-        self.lash_e = None
-        if LASH_E_AVAILABLE and not simulation_mode:
-            try:
-                # Use a minimal vial file for track control only
-                INPUT_VIAL_STATUS_FILE = "status/experiment_vials.csv"
-                self.lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=True,  # Start with simulation
-                                   workflow_globals=globals(), workflow_name='track_control_gui')
-                print("Lash_E coordinator initialized for track control")
-            except Exception as e:
-                print(f"Warning: Could not initialize Lash_E: {e}")
-                self.simulation_mode = True
+        self.hardware = None
+        self.runner = OperationRunner()
+        self.stop_runner = OperationRunner()
+        self._operation_done = None
+        self._closed = False
+        self._position_known = True
+        self._stage = "Ready — simulation"
         
         # Load current track positions for reference
         self.load_track_positions()
@@ -92,6 +83,7 @@ class TrackControlGUI:
         self.root = tk.Tk()
         self.root.title("Track Control GUI - Manual Position Management")
         self.root.geometry("900x800")
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
         
         # Initialize GUI components
         self.setup_gui()
@@ -100,11 +92,14 @@ class TrackControlGUI:
         
         # Get initial track status if available
         self.refresh_track_status()
+        self.root.after(50, self._poll_operations)
+        if not simulation_mode:
+            self.root.after(0, lambda: self._enable_hardware(confirm=False))
         
     def load_track_positions(self):
         """Load current track positions from YAML file"""
         try:
-            yaml_path = "robot_state/track_positions.yaml"
+            yaml_path = ROOT / "robot_state/track_positions.yaml"
             if os.path.exists(yaml_path):
                 with open(yaml_path, 'r') as f:
                     self.track_positions = yaml.safe_load(f)
@@ -132,7 +127,7 @@ class TrackControlGUI:
         ttk.Button(status_frame, text="Toggle Mode", command=self.toggle_simulation_mode).grid(row=0, column=1, padx=(10, 0))
         
         # Connection status
-        self.connection_label = ttk.Label(status_frame, text="Lash_E: Not Connected", font=('Arial', 9))
+        self.connection_label = ttk.Label(status_frame, text="Track: Not Connected", font=('Arial', 9))
         self.connection_label.grid(row=1, column=0, sticky=tk.W)
         
         ttk.Button(status_frame, text="Refresh Status", command=self.refresh_track_status).grid(row=1, column=1, padx=(10, 0))
@@ -142,6 +137,8 @@ class TrackControlGUI:
         self.safety_label = ttk.Label(status_frame, text="⚠️ Manual movement does NOT modify robot config files", 
                                      font=('Arial', 8), foreground="green")
         self.safety_label.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+        self.operation_label = ttk.Label(status_frame, text="Ready — simulation", wraplength=650)
+        self.operation_label.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(4, 0))
         
         # Position display frame
         pos_frame = ttk.LabelFrame(main_frame, text="Current Position", padding="5")
@@ -207,18 +204,12 @@ class TrackControlGUI:
         ttk.Separator(util_frame, orient='horizontal').grid(row=2, column=0, sticky=(tk.W, tk.E), pady=10)
         
         ttk.Button(util_frame, text="Go to Origin", command=self.go_to_origin, width=15).grid(row=3, column=0, pady=2)
-        ttk.Button(util_frame, text="Emergency Stop", command=self.emergency_stop, width=15).grid(row=4, column=0, pady=2)
+        ttk.Button(util_frame, text="SDK Quick Stop", command=self.emergency_stop, width=15).grid(row=4, column=0, pady=2)
         
         # Preset positions
         ttk.Label(util_frame, text="Preset Positions:", font=('Arial', 10, 'bold')).grid(row=5, column=0, pady=(10, 5))
         
-        preset_positions = [
-            ("Pipetting Area", 131750, 75000),
-            ("Source Stack", 300, 0),
-            ("Waste Stack", 14700, 0), 
-            ("Cytation Tray", 68325, 0),
-            ("Lid Storage", 60325, 75000)
-        ]
+        preset_positions = self.preset_positions()
         
         for i, (name, x, z) in enumerate(preset_positions):
             x_mm = x / self.UNITS_PER_MM
@@ -304,318 +295,194 @@ class TrackControlGUI:
         
         # Make sure the window can receive focus
         self.root.focus_set()
-        
-    def toggle_simulation_mode(self):
-        """Toggle between simulation and hardware mode"""
-        if not LASH_E_AVAILABLE:
-            messagebox.showwarning("Not Available", "Lash_E coordinator not available - cannot switch to hardware mode")
+
+    def preset_positions(self):
+        """Use configured transfer coordinates, rather than old calibration values."""
+        labels = {"pipetting_area": "Pipetting Area", "source_stack": "Source Stack",
+                  "waste_stack": "Waste Stack", "cytation_tray": "Cytation Tray",
+                  "lid_storage": "Lid Storage", "lid_storage_96": "96-well Lid Storage"}
+        positions = self.track_positions.get("positions", {})
+        return [(label, positions[name]["x"], positions[name]["z_transfer"])
+                for name, label in labels.items() if name in positions]
+
+    def _submit(self, label, function, completed=None):
+        if self.runner.busy or self.stop_runner.busy:
+            self.operation_label.config(text="An operation is still running; additional commands were not queued.")
+            return False
+        self._operation_done = completed
+        self._operation_started = time.monotonic()
+        self._stage = label
+        self.operation_label.config(text=label)
+        return self.runner.start(label, function)
+
+    def _poll_operations(self):
+        if self._closed:
             return
-            
-        if not self.simulation_mode:
-            # Switching to simulation mode
-            if self.lash_e:
-                self.lash_e.simulate = True
+        for runner in (self.runner, self.stop_runner):
+            while True:
+                try:
+                    kind, payload = runner.events.get_nowait()
+                except queue.Empty:
+                    break
+                if kind == "progress":
+                    self._stage = payload
+                else:
+                    runner.busy = False
+                    label, value = payload
+                    if kind == "error":
+                        self._stage = f"{label} failed: {value}"
+                        self.connection_label.config(text="Track: operation failed; inspect controller", foreground="red")
+                        self.gripper_open = None
+                        self._position_known = False
+                        self.update_position_display()
+                        messagebox.showerror(label, value)
+                    else:
+                        if runner is self.runner and self._operation_done:
+                            self._operation_done(value)
+                        self._stage = f"{label} complete"
+                    if runner is self.runner:
+                        self._operation_done = None
+        suffix = f" ({time.monotonic() - self._operation_started:.1f}s)" if self.runner.busy else ""
+        self.operation_label.config(text=self._stage + suffix)
+        self.root.after(50, self._poll_operations)
+
+    def _set_position(self, position):
+        self.current_x, self.current_z = position
+        self._position_known = True
+        self.update_position_display()
+
+    def _enable_hardware(self, confirm=True):
+        if self.runner.busy or self.stop_runner.busy:
+            return
+        if confirm and not messagebox.askyesno("Hardware Mode",
+                "Connect to the real track? Ensure no workflow is using it. Connecting will not move it."):
+            return
+        existing = self.hardware
+
+        def connect(progress):
+            track = existing or ManualTrack.connect(progress)
+            return track, track.read_position(progress)
+
+        def connected(result):
+            self.hardware, position = result
+            self.simulation_mode = False
+            self.gripper_open = None
+            self.mode_label.config(text="Mode: HARDWARE")
+            self.connection_label.config(text="Track: Connected (Hardware)", foreground="green")
+            self._set_position(position)
+
+        self._submit("Connect track", connect, connected)
+
+    def toggle_simulation_mode(self):
+        if self.runner.busy or self.stop_runner.busy:
+            self.operation_label.config(text="Wait for the current request before changing modes.")
+            return
+        if self.simulation_mode:
+            self._enable_hardware()
+        else:
             self.simulation_mode = True
             self.mode_label.config(text="Mode: SIMULATION")
-            print("Switched to simulation mode")
-        else:
-            # Switching to hardware mode
-            response = messagebox.askyesno("Hardware Mode", 
-                                         "WARNING: Switching to hardware mode will send actual commands to the robot.\n\n"
-                                         "Ensure the robot is not running an active workflow!\n\n"
-                                         "Continue?")
-            if response:
-                try:
-                    if not self.lash_e:
-                        # Initialize Lash_E for hardware mode
-                        INPUT_VIAL_STATUS_FILE = "status/experiment_vials.csv"
-                        self.lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=False,
-                                           workflow_globals=globals(), workflow_name='track_control_gui')
-                    else:
-                        self.lash_e.simulate = False
-                    
-                    self.simulation_mode = False
-                    self.mode_label.config(text="Mode: HARDWARE")
-                    self.refresh_track_status()
-                    print("Switched to hardware mode")
-                except Exception as e:
-                    messagebox.showerror("Error", f"Failed to initialize hardware mode: {e}")
-                    print(f"Error switching to hardware mode: {e}")
-    
+            self.connection_label.config(text="Track: Simulation (hardware parked)", foreground="blue")
+            self._position_known = True
+
     def refresh_track_status(self):
-        """Get current track status from hardware"""
-        if self.lash_e:
-            try:
-                if not self.simulation_mode:
-                    self.lash_e.nr_track.get_track_status()
-                    # Update current position from hardware if available
-                    # Note: The track may not provide absolute position feedback
-                    print("Track status refreshed from hardware")
-                    self.connection_label.config(text="Lash_E: Connected (Hardware)", foreground="green")
-                else:
-                    self.connection_label.config(text="Lash_E: Connected (Simulation)", foreground="blue")
-            except Exception as e:
-                print(f"Warning: Could not get track status: {e}")
-                self.connection_label.config(text=f"Lash_E: Error - {str(e)[:30]}", foreground="red")
-        else:
-            self.connection_label.config(text="Lash_E: Not Connected", foreground="red")
-    
+        if self.simulation_mode:
+            self.connection_label.config(text="Track: Simulation", foreground="blue")
+        elif self.hardware:
+            self._submit("Refresh track encoders", self.hardware.read_position, self._set_position)
+
     def debug_hardware(self):
-        """Debug hardware configuration and axis mappings"""
-        if not self.lash_e:
-            messagebox.showwarning("Debug", "Lash_E not connected - cannot debug hardware")
-            return
-        
-        try:
-            x_axis = self.lash_e.nr_track.get_axis('x_axis')
-            z_axis = self.lash_e.nr_track.get_axis('z_axis')
-            gripper_open = self.lash_e.nr_track.get_axis('gripper_open')
-            gripper_close = self.lash_e.nr_track.get_axis('gripper_close')
-            
-            x_speed = self.lash_e.nr_track.get_speed('default_x')
-            z_speed = self.lash_e.nr_track.get_speed('default_z')
-            
-            debug_info = (
-                f"Hardware Axis Mappings:\n"
-                f"X-axis: {x_axis}\n"
-                f"Z-axis: {z_axis} (INVERTED: 0=top, higher=lower)\n"
-                f"Gripper Open: {gripper_open}\n"
-                f"Gripper Close: {gripper_close}\n\n"
-                f"Unit Conversion:\n"
-                f"{self.UNITS_PER_MM} encoder units = 1mm\n\n"
-                f"Movement Speeds:\n"
-                f"X Speed: {x_speed}\n"
-                f"Z Speed: {z_speed}\n\n"
-                f"Current Position:\n"
-                f"X: {self.current_x} units ({self.current_x/self.UNITS_PER_MM:.1f}mm)\n"
-                f"Z: {self.current_z} units ({self.current_z/self.UNITS_PER_MM:.1f}mm - {'TOP' if self.current_z == 0 else 'lower'})\n"
-                f"Gripper: {'OPEN' if self.gripper_open else 'CLOSED'}\n\n"
-                f"Movement Increments:\n"
-                f"X: {self.x_increment_mm}mm ({self.x_increment} units)\n"
-                f"Z: {self.z_increment_mm}mm ({self.z_increment} units)\n\n"
-                f"Z-Axis Coordinate System:\n"
-                f"Z = 0 units (0mm) → TOP/SAFE position\n"
-                f"Z = 75000+ units (750+mm) → LOWER working positions"
-            )
-            
-            print("DEBUG HARDWARE INFO:")
-            print(debug_info)
-            messagebox.showinfo("Hardware Debug", debug_info)
-            
-        except Exception as e:
-            error_msg = f"Debug failed: {e}"
-            print(f"DEBUG ERROR: {error_msg}")
-            messagebox.showerror("Debug Error", error_msg)
-    
+        positions = self.track_positions.get("positions", {})
+        messagebox.showinfo("Track diagnostics", f"Mode: {'simulation' if self.simulation_mode else 'hardware'}\n"
+                            f"Operation: {self._stage}\n"
+                            f"Configured holders: {', '.join(positions)}\n"
+                            "Connection uses controller A / USB AU06CNCF; axes come from robot_hardware.yaml.\n"
+                            "No workflow, inventory recovery or photoreactor is initialized.")
+
     def update_increments(self):
-        """Update movement increments from spinbox values (convert mm to encoder units)"""
-        self.x_increment_mm = self.x_increment_var.get()
-        self.z_increment_mm = self.z_increment_var.get()
-        
-        # Convert mm to encoder units for hardware commands
-        self.x_increment = int(self.x_increment_mm * self.UNITS_PER_MM)
-        self.z_increment = int(self.z_increment_mm * self.UNITS_PER_MM)
-        
-        print(f"Updated increments: X={self.x_increment_mm}mm ({self.x_increment} units), Z={self.z_increment_mm}mm ({self.z_increment} units)")
-    
+        try:
+            x, z = self.x_increment_var.get(), self.z_increment_var.get()
+            if not all(0.1 <= value <= 10 for value in (x, z)):
+                raise ValueError("Movement increments must be between 0.1 and 10 mm")
+            self.x_increment_mm, self.z_increment_mm = x, z
+            self.x_increment, self.z_increment = round(x * self.UNITS_PER_MM), round(z * self.UNITS_PER_MM)
+            return True
+        except (ValueError, tk.TclError) as error:
+            messagebox.showerror("Movement increment", str(error))
+            return False
+
+    def _motion(self, label, function, action, name=None, gripper=None):
+        if self.runner.busy or self.stop_runner.busy:
+            self.operation_label.config(text="An operation is still running; additional commands were not queued.")
+            return
+        track = self.hardware
+        track.cancel.clear()
+
+        def completed(position):
+            if gripper is not None:
+                self.gripper_open = gripper
+            self._set_position(position)
+            entry = (action, self.current_x, self.current_z, self.gripper_open)
+            self.position_history.append(entry + (name,) if name else entry)
+
+        self._submit(label, function, completed)
+
+    def _jog(self, axis, direction):
+        if not self.update_increments():
+            return
+        delta = direction * (self.x_increment if axis == "x" else -self.z_increment)
+        if self.simulation_mode:
+            if self.runner.busy or self.stop_runner.busy:
+                return
+            self.current_x += delta if axis == "x" else 0
+            self.current_z = max(0, self.current_z + (delta if axis == "z" else 0))
+            self.position_history.append(("move_" + axis, self.current_x, self.current_z, self.gripper_open))
+            self.update_position_display()
+        elif self.hardware:
+            self._motion(f"Jog {axis.upper()}", lambda progress: self.hardware.jog(axis, delta, progress), "move_" + axis)
+
     def move_x(self, direction_multiplier):
-        """Move track in X direction"""
-        if self.lash_e and not self.simulation_mode:
-            try:
-                # Calculate target position
-                target_x = self.current_x + (direction_multiplier * self.x_increment)
-                
-                # Use Lash_E track control for actual movement
-                x_axis = self.lash_e.nr_track.get_axis('x_axis')
-                speed = self.lash_e.nr_track.get_speed('default_x')
-                self.lash_e.nr_track.c9.move_axis(x_axis, target_x, vel=speed)
-                
-                print(f"HARDWARE: Moving X axis {x_axis} to {target_x} units ({target_x/self.UNITS_PER_MM:.1f}mm) - delta: {direction_multiplier * self.x_increment} units ({direction_multiplier * self.x_increment_mm:.1f}mm)")
-                self.lash_e.logger.info(f"Manual X movement: axis {x_axis} to {target_x} units ({target_x/self.UNITS_PER_MM:.1f}mm)")
-                
-                # NOTE: Intentionally NOT calling update_gripper_location() to avoid modifying config files
-                
-            except Exception as e:
-                messagebox.showerror("Movement Error", f"Failed to move X: {e}")
-                print(f"Error moving X: {e}")
-                return
-                
-        self.current_x += direction_multiplier * self.x_increment
-        self.position_history.append(('move_x', self.current_x, self.current_z, self.gripper_open))
-        self.update_position_display()
-        
-        if self.simulation_mode or not self.lash_e:
-            x_mm = self.current_x / self.UNITS_PER_MM
-            delta_mm = direction_multiplier * self.x_increment_mm
-            print(f"SIMULATION: Moving X to {self.current_x} units ({x_mm:.1f}mm) - delta: {direction_multiplier * self.x_increment} units ({delta_mm:.1f}mm)")
-    
+        self._jog("x", direction_multiplier)
+
     def move_z(self, direction_multiplier):
-        """Move track in Z direction - NOTE: Z coordinates are inverted (0=top, higher=lower)""" 
-        if self.lash_e and not self.simulation_mode:
-            try:
-                # IMPORTANT: Invert the direction because Z-axis is inverted 
-                # (Z=0 is top/safe, higher values are lower positions)
-                inverted_direction = -direction_multiplier  # Invert the direction!
-                target_z = self.current_z + (inverted_direction * self.z_increment)
-                
-                # Ensure we don't go below 0 (above safe height)
-                if target_z < 0:
-                    messagebox.showwarning("Z-Limit", "Cannot move above safe height (Z=0)")
-                    return
-                
-                # Debug Z-axis setup
-                z_axis = self.lash_e.nr_track.get_axis('z_axis')
-                speed = self.lash_e.nr_track.get_speed('default_z')
-                
-                print(f"DEBUG Z-movement (INVERTED): User pressed {'UP' if direction_multiplier > 0 else 'DOWN'}")
-                print(f"  Physical direction: {'UP (decreasing Z)' if inverted_direction < 0 else 'DOWN (increasing Z)'}")
-                print(f"  Current: {self.current_z} units ({self.current_z/self.UNITS_PER_MM:.1f}mm)")
-                print(f"  Target: {target_z} units ({target_z/self.UNITS_PER_MM:.1f}mm)")
-                print(f"  axis={z_axis}, speed={speed}")
-                
-                # Try Z movement with corrected direction
-                self.lash_e.nr_track.c9.move_axis(z_axis, target_z, vel=speed)
-                print(f"HARDWARE: Z-axis movement successful to {target_z} units ({target_z/self.UNITS_PER_MM:.1f}mm)")
-                
-                self.lash_e.logger.info(f"Manual Z movement: axis {z_axis} to {target_z} units ({target_z/self.UNITS_PER_MM:.1f}mm) - user direction: {direction_multiplier}, physical direction: {inverted_direction}")
-                
-                # NOTE: Intentionally NOT calling update_gripper_location() to avoid modifying config files
-                
-            except Exception as e:
-                messagebox.showerror("Movement Error", f"Failed to move Z: {e}")
-                print(f"Error moving Z: {e}")
-                return
-                
-        # Update GUI position with inverted direction
-        inverted_direction = -direction_multiplier
-        self.current_z += inverted_direction * self.z_increment
-        
-        # Don't let GUI position go negative
-        if self.current_z < 0:
-            self.current_z = 0
-        
-        self.position_history.append(('move_z', self.current_x, self.current_z, self.gripper_open))
-        self.update_position_display()
-        
-        if self.simulation_mode or not self.lash_e:
-            direction_name = "UP (Z decreasing)" if direction_multiplier > 0 else "DOWN (Z increasing)"
-            z_mm = self.current_z / self.UNITS_PER_MM
-            delta_mm = inverted_direction * self.z_increment_mm
-            print(f"SIMULATION: Moving Z {direction_name} to {self.current_z} units ({z_mm:.1f}mm) - delta: {inverted_direction * self.z_increment} units ({delta_mm:.1f}mm)")
-    
+        self._jog("z", direction_multiplier)
+
     def set_gripper(self, open_gripper):
-        """Set gripper state"""
-        if self.lash_e and not self.simulation_mode:
-            try:
-                # Use Lash_E gripper control methods
-                if open_gripper:
-                    self.lash_e.nr_track.open_gripper()
-                    print("HARDWARE: Opening gripper")
-                else:
-                    self.lash_e.nr_track.close_gripper()
-                    print("HARDWARE: Closing gripper")
-                    
-                self.lash_e.logger.info(f"Manual gripper {'opened' if open_gripper else 'closed'}")
-                    
-            except Exception as e:
-                messagebox.showerror("Gripper Error", f"Failed to control gripper: {e}")
-                print(f"Error controlling gripper: {e}")
-                return
-                
-        self.gripper_open = open_gripper
-        self.position_history.append(('gripper', self.current_x, self.current_z, self.gripper_open))
-        self.update_position_display()
-        
-        if self.simulation_mode or not self.lash_e:
-            print(f"SIMULATION: Gripper {'OPENED' if open_gripper else 'CLOSED'}")
-    
+        if self.simulation_mode:
+            self.gripper_open = open_gripper
+            self.position_history.append(('gripper', self.current_x, self.current_z, self.gripper_open))
+            self.update_position_display()
+        elif self.hardware:
+            self._motion("Open gripper" if open_gripper else "Close gripper",
+                         lambda progress: self.hardware.set_gripper(open_gripper, progress), "gripper", gripper=open_gripper)
+
     def go_to_origin(self):
-        """Move to origin position"""
-        if self.lash_e and not self.simulation_mode:
-            try:
-                # Use Lash_E origin/homing command - this should go to X=0, Z=0 (top/safe)
-                self.lash_e.nr_track.origin()
-                print("HARDWARE: Moving to origin (X=0, Z=0 which is TOP position)")
-                
-                # Update position after homing - origin is X=0, Z=0 (safe height)
-                self.refresh_track_status()
-                
-            except Exception as e:
-                messagebox.showerror("Movement Error", f"Failed to move to origin: {e}")
-                print(f"Error moving to origin: {e}")
-                return
-                
-        # Origin is X=0 (left), Z=0 (top/safe position)
-        self.current_x = 0
-        self.current_z = 0
-        self.position_history.append(('origin', self.current_x, self.current_z, self.gripper_open))
-        self.update_position_display()
-        
-        if self.simulation_mode or not self.lash_e:
-            print("SIMULATION: Moving to origin (X=0mm, Z=0mm - top/safe position)")
-    
-    def go_to_preset(self, name, x, z):
-        """Go to predefined position"""
-        if self.lash_e and not self.simulation_mode:
-            try:
-                x_mm = x / self.UNITS_PER_MM
-                z_mm = z / self.UNITS_PER_MM
-                print(f"DEBUG: Attempting preset movement to {name} at X={x_mm:.1f}mm ({x} units), Z={z_mm:.1f}mm ({z} units)")
-                
-                # Try direct coordinate movement first (more reliable)
-                x_axis = self.lash_e.nr_track.get_axis('x_axis')
-                z_axis = self.lash_e.nr_track.get_axis('z_axis') 
-                x_speed = self.lash_e.nr_track.get_speed('default_x')
-                z_speed = self.lash_e.nr_track.get_speed('default_z')
-                
-                print(f"DEBUG: Using axes X={x_axis}, Z={z_axis}, speeds X={x_speed}, Z={z_speed}")
-                
-                # Move X first
-                self.lash_e.nr_track.c9.move_axis(x_axis, x, vel=x_speed)
-                print(f"HARDWARE: X moved to {x} units ({x_mm:.1f}mm)")
-                
-                # Try Z movement (might not be supported)
-                if z != 0:  # Only move Z if not zero position
-                    try:
-                        self.lash_e.nr_track.c9.move_axis(z_axis, z, vel=z_speed)
-                        print(f"HARDWARE: Z moved to {z} units ({z_mm:.1f}mm)")
-                    except Exception as z_error:
-                        print(f"Z preset movement failed: {z_error}")
-                        messagebox.showwarning("Preset Z Issue", f"X moved successfully, but Z movement failed: {z_error}")
-                
-                print(f"HARDWARE: Manual movement to {name} completed")
-                self.lash_e.logger.info(f"Manual preset movement to {name}: X={x_mm:.1f}mm ({x} units), Z={z_mm:.1f}mm ({z} units)")
-                
-            except Exception as e:
-                messagebox.showerror("Preset Movement Error", f"Failed to move to {name}: {e}")
-                print(f"Error moving to {name}: {e}")
-                return
-                
-        self.current_x = x
-        self.current_z = z
-        self.position_history.append(('preset', self.current_x, self.current_z, self.gripper_open, name))
-        self.update_position_display()
-        
-        if self.simulation_mode or not self.lash_e:
-            x_mm = x / self.UNITS_PER_MM
-            z_mm = z / self.UNITS_PER_MM
-            print(f"SIMULATION: Moving to {name} position at X={x_mm:.1f}mm ({x} units), Z={z_mm:.1f}mm ({z} units)")
-    
+        # A coordinate move, not homing/recalibration; never updates track_status.
+        self.go_to_preset("Origin", 0, 0, action="origin")
+
+    def go_to_preset(self, name, x, z, action="preset"):
+        if self.simulation_mode:
+            self.current_x, self.current_z = x, z
+            self.position_history.append((action, x, z, self.gripper_open, name))
+            self.update_position_display()
+        elif self.hardware:
+            self._motion(f"Move to {name}", lambda progress: self.hardware.move_to(x, z, progress), action, name=name)
+
     def emergency_stop(self):
-        """Emergency stop function"""
-        if self.lash_e and not self.simulation_mode:
-            try:
-                # Use Lash_E emergency stop if available
-                print("HARDWARE: Emergency stop activated!")
-                self.lash_e.logger.error("EMERGENCY STOP activated via GUI")
-                # Note: May need to implement emergency stop in track controller
-                
-            except Exception as e:
-                print(f"Error during emergency stop: {e}")
-                
-        messagebox.showwarning("Emergency Stop", "Emergency stop activated!")
-        print("EMERGENCY STOP ACTIVATED")
-    
+        if self.simulation_mode or not self.hardware:
+            self.operation_label.config(text="Simulation: no stop sent to hardware")
+            return
+        if self.stop_runner.busy:
+            return
+        self.hardware.cancel.set()
+        self.stop_runner.start("SDK quick stop", self.hardware.stop)
+        self.operation_label.config(text="Requesting SDK quick stop; use the physical E-stop if needed.")
+
+    def _close(self):
+        self._closed = True
+        # Never wait on an SDK thread on the UI thread, or silently command motion.
+        self.root.destroy()
+
     def update_position_display(self):
         """Update position labels and coordinate display"""
         # Convert encoder units to mm for display
@@ -625,10 +492,16 @@ class TrackControlGUI:
         self.x_label.config(text=f"X: {x_mm:.1f}mm ({self.current_x})")
         z_height_desc = "TOP" if self.current_z == 0 else f"Z{z_mm:.1f}mm (lower)"
         self.z_label.config(text=f"Z: {z_mm:.1f}mm ({z_height_desc})")
-        self.gripper_label.config(text=f"Gripper: {'OPEN' if self.gripper_open else 'CLOSED'}")
+        gripper = 'UNKNOWN' if self.gripper_open is None else 'OPEN' if self.gripper_open else 'CLOSED'
+        self.gripper_label.config(text=f"Gripper: {gripper}")
+        if not self._position_known:
+            self.x_label.config(text=f"X: unconfirmed (last {self.current_x})")
+            self.z_label.config(text=f"Z: unconfirmed (last {self.current_z})")
         
         # Update coordinate display in single line format with both mm and units
-        coord_text = f"X={x_mm:.1f}mm ({self.current_x}), Z={z_mm:.1f}mm ({'TOP' if self.current_z == 0 else 'lower'}), Gripper={'OPEN' if self.gripper_open else 'CLOSED'}"
+        coord_text = f"X={x_mm:.1f}mm ({self.current_x}), Z={z_mm:.1f}mm ({'TOP' if self.current_z == 0 else 'lower'}), Gripper={gripper}"
+        if not self._position_known:
+            coord_text = "UNCONFIRMED last reading: " + coord_text
         self.coord_display.delete('1.0', tk.END)
         self.coord_display.insert('1.0', coord_text)
     
@@ -858,7 +731,7 @@ class TrackControlGUI:
         # Find command in sequence
         cmd = next((c for c in self.command_sequence if c['step'] == step), None)
         if cmd:
-            notes = tk.simpledialog.askstring("Edit Notes", f"Notes for Step {step}:", initialvalue=cmd['notes'])
+            notes = simpledialog.askstring("Edit Notes", f"Notes for Step {step}:", initialvalue=cmd['notes'])
             if notes is not None:
                 cmd['notes'] = notes
                 self.update_sequence_display()

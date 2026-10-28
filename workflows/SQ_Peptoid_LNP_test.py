@@ -78,9 +78,9 @@ def validate_experiment(c, lash_e):
         raise ValueError("Sample volume is insufficient for mixing or the requested aliquots.")
     if max(c["MIX_VOLUME_UL"], c["ALIQUOT_VOLUME_UL"]) / 1000 >= robot.PIPET_TIPS["large_tip"]["volume"]:
         raise ValueError("Mixing and aliquot aspirations must fit a large tip.")
-    if track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
+    if track.inventory.plate_type(track.inventory.top("source_stack")) != c["WELLPLATE_TYPE"]:
         raise ValueError("Source-stack plate type must match WELLPLATE_TYPE.")
-    if track.NUM_SOURCE < 1 or track.ACTIVE_WELLPLATE_POSITION is not None:
+    if track.NUM_SOURCE < 1 or bool(track.inventory.contents("pipetting_area")):
         raise ValueError("A source plate and an empty track/pipetting area are required.")
     if not lash_e.simulate and not Path(c["MEASUREMENT_PROTOCOL_FILE"]).is_file():
         raise FileNotFoundError(c["MEASUREMENT_PROTOCOL_FILE"])

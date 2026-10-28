@@ -14,6 +14,7 @@ from pipetting_data.dispense_recording import recording_density, record_dispense
 import matplotlib.patches as patches
 import threading
 import json
+from robot_state.plate_inventory import PlateInventory, LID_ALIASES, number
 
 class North_Base:
     """Base class for North robot components with shared functionality"""
@@ -149,10 +150,8 @@ class North_Track(North_Base):
         self.logger = logger
         self.logger.info("Initializing North Track...")
 
-        self.NUM_SOURCE = 0
-        self.NUM_WASTE = 0
-        self.CURRENT_WP_TYPE = "96 WELL PLATE"
-        self.ACTIVE_WELLPLATE_POSITION = None  # null, 'gripper', 'pipetting_area', 'cytation_tray', etc.
+        # Inventory is loaded once definitions and positions are available.
+        self._inventory = None
         self.CURRENT_GRIPPER_LOCATION = None  # Track where the gripper physically is: 'pipetting_area', 'cytation_tray', etc.
         self.CURRENT_GRIPPER_POSITION = {'x': None, 'z': None}  # Track physical coordinates
         self.simulate = simulate
@@ -163,7 +162,7 @@ class North_Track(North_Base):
         if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
             from scheduler.simulation_state import configure_controller
             configure_controller(self, "track")
-        self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
+        # Read state after loading its definitions.
         
         # Load track positions configuration
         self.TRACK_POSITIONS_FILE = "robot_state/track_positions.yaml"
@@ -176,7 +175,8 @@ class North_Track(North_Base):
         # Load wellplate configuration using base class method
         self._load_wellplate_config()
 
-        #Bias    
+        self.get_track_status()
+        # Preserve held objects at startup; never automatically discard them.
         self.reset_after_initialization()
     
     def _load_track_positions(self):
@@ -200,51 +200,58 @@ class North_Track(North_Base):
         )
 
     def get_track_status(self):
-        self.logger.debug("Getting track status from file: %s", self.TRACK_STATUS_FILE)
-        """Get the track status from the yaml file."""
-        
-        # Load track status using unified method from North_Base
-        track_status = self._load_yaml_file(
-            self.TRACK_STATUS_FILE, 
-            "track status", 
-            required=True, 
-            convert_none=True
-        )
-        
-        if track_status is None:
-            return
+        loaded = PlateInventory.load(self.TRACK_STATUS_FILE, self.WELLPLATES, self.TRACK_POSITIONS)
+        if getattr(self, "_inventory", None) is None:
+            self._inventory = loaded
+        else:
+            # Preserve the object shared with North_Robot on explicit reload.
+            self._inventory.data = loaded.data
+            self._inventory.legacy = loaded.legacy
+        pose = self._inventory.data.get("track_pose", {})
+        self.CURRENT_GRIPPER_LOCATION = pose.get("location")
+        self.CURRENT_GRIPPER_POSITION = {"x": pose.get("x"), "z": pose.get("z")}
+        if self._inventory.legacy:
+            self.logger.warning("Legacy track inventory loaded in memory; review plate/lid positions in Track Status before live use.")
 
-        try:
-            self.NUM_SOURCE = track_status['num_in_source']
-            self.NUM_WASTE = track_status['num_in_waste']
-            self.CURRENT_WP_TYPE = track_status['wellplate_type']
-            self.ACTIVE_WELLPLATE_POSITION = track_status.get('active_wellplate_position')  # New unified field
-            self.CURRENT_GRIPPER_LOCATION = track_status.get('current_gripper_location')  # Track gripper location name
-            self.CURRENT_GRIPPER_POSITION = track_status.get('current_gripper_position', {'x': None, 'z': None})  # Track gripper coordinates
-        except KeyError as e:
-            self.pause_after_error(f"Missing required field in track status: {e}", False)
-        except Exception as e:
-            self.pause_after_error(f"Issue processing track status: {e}", False)
+    @property
+    def inventory(self):
+        return self._inventory
+
+    @property
+    def NUM_SOURCE(self):
+        return len(self.inventory.contents("source_stack"))
+
+    @property
+    def NUM_WASTE(self):
+        return len(self.inventory.contents("waste_stack"))
+
+    @property
+    def CURRENT_WP_TYPE(self):
+        types = {obj["type"] for obj in self.inventory.objects.values() if obj["kind"] == "plate"}
+        if len(types) != 1:
+            raise ValueError("No single global plate type; select a plate by position or ID")
+        return next(iter(types))
+
+    @property
+    def ACTIVE_WELLPLATE_POSITION(self):
+        locations = [location for location in self.inventory.positions
+                     if location not in ("source_stack", "waste_stack")
+                     and any(self.inventory.objects[item]["kind"] == "plate"
+                             for item in self.inventory.contents(location))]
+        if len(locations) > 1:
+            raise ValueError("Several plates are active; query the required position")
+        return locations[0] if locations else None
 
     def save_track_status(self):
-        #self.logger.debug("Saving track status to file: %s", self.TRACK_STATUS_FILE)
-        track_status = {
-            "num_in_source": self.NUM_SOURCE,
-            "num_in_waste": self.NUM_WASTE,
-            "wellplate_type": self.CURRENT_WP_TYPE,
-            "active_wellplate_position": self.ACTIVE_WELLPLATE_POSITION,
-            "current_gripper_location": self.CURRENT_GRIPPER_LOCATION,
-            "current_gripper_position": self.CURRENT_GRIPPER_POSITION
+        self.inventory.data["track_pose"] = {
+            "location": self.CURRENT_GRIPPER_LOCATION, **self.CURRENT_GRIPPER_POSITION,
         }
-
         save_state = not self.simulate
         if getattr(self, "_scheduler_state_root", None) is not None:
             from scheduler.simulation_state import can_save
             save_state = can_save(self, self.TRACK_STATUS_FILE)
         if save_state:
-            # Writing to a file
-            with open(self.TRACK_STATUS_FILE, "w") as file:
-                yaml.dump(track_status, file, default_flow_style=False)
+            self.inventory.save(self.TRACK_STATUS_FILE)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
         print("\n" + "="*60)
@@ -334,21 +341,9 @@ class North_Track(North_Base):
         #     input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
-        """Reset robot to known state after initialization"""
-        if self.ACTIVE_WELLPLATE_POSITION == 'gripper':
-            # Discard the wellplate currently in gripper
-            response = False
-            release = False
-            while not response:
-                text = input("The System reports having a wellplate in the gripper... Please confirm y/n:")
-                if text.lower() == 'y':
-                    release = True
-                    response = True
-                elif text.lower() == 'n':
-                    release = False
-                    response = True
-            if release:
-                self.release_wellplate_in_location('pipetting_area', waypoint_locations=['cytation_safe_area'])
+        if self.inventory.positions["gripper"] or self.inventory.data.get("pending_transfer"):
+            self.logger.info("Preserving recorded gripper/transfer state; no automatic recovery motion.")
+            return
         self.origin()
      
     # === 2. CONFIGURATION ACCESS METHODS ===  
@@ -363,9 +358,7 @@ class North_Track(North_Base):
     
     # === WELLPLATE POSITION TRACKING ===
     def set_wellplate_position(self, position):
-        """Set the current wellplate position (null, 'gripper', 'pipetting_area', 'cytation_tray', etc.)"""
-        self.ACTIVE_WELLPLATE_POSITION = position
-        self.save_track_status()
+        raise ValueError("Use inventory transfers; a single active-plate position cannot describe this state")
     
     def update_gripper_location(self, location_name, x=None, z=None):
         """Update tracked gripper location when moving to a named position from track_positions.yaml"""
@@ -529,203 +522,110 @@ class North_Track(North_Base):
             self.logger.debug(f"Moved to origin position (0,0) - setting location to 'origin'")
             self.save_track_status()
 
-    def grab_wellplate_from_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
-        """
-        Unified method to grab a wellplate from any configured location.
-        
-        Args:
-            location_name (str): Name of location in track_positions.yaml (e.g., 'pipetting_area', 'cytation_tray')
-            wellplate_type (str): Type of wellplate for height adjustment
-            waypoint_locations (list): Optional list of waypoint location names for safe routing after grabbing
-            z_override (float): Optional Z position override for dynamic stack heights
-        """
-        self.logger.info(f"Grabbing wellplate from location: {location_name}")
-        
-        # Get location position from YAML
-        location_pos = self.get_position(location_name)
-        if not location_pos:
-            self.logger.error(f"Location '{location_name}' not found in configuration")
-            return
-        
-        # Extract position coordinates (handle different location formats)
-        x_pos = location_pos['x']
-        z_transfer = location_pos['z_transfer']
-        
-        if z_override is not None: # Use provided Z override for dynamic positioning (e.g., stack heights)
-            z_grab = z_override
-        elif 'z_grab' in location_pos:  #Defined z_grab
-            z_grab = location_pos['z_grab']
-        else:
-            self.logger.error(f"No Z coordinate found for location '{location_name}' and no z_override provided")
-            return
-        
-        # Calculate vertical offset based on wellplate type
-        move_up = 0
-        move_up += self.get_config_parameter('wellplates', wellplate_type, "gripping_z_offset", error_on_missing=False) or 0
-        z_grab_final = z_grab - move_up
-        
-        self.transfer_wellplate_via_path(x_pos, z_transfer, waypoint_locations)  # Move to transfer height first
-
-        # Execute movement sequence
+    def grab_wellplate_from_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None, object_kind=None):
+        if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
+            self.check_reader_motion()
+        inv = self.inventory
+        if inv.positions["gripper"] is not None:
+            raise ValueError("Track gripper is occupied")
+        lid_type = LID_ALIASES.get(wellplate_type)
+        kind = "lid" if lid_type else object_kind
+        source_id = inv.top(location_name)
+        if kind == "lid" and inv.objects[source_id]["kind"] == "plate":
+            plate_id = source_id
+            if plate_id not in inv.attachments:
+                raise ValueError(f"Plate {plate_id} has no attached lid")
+            source_id = inv.attachments[plate_id]
+        obj = inv.objects[source_id]
+        expected = lid_type or wellplate_type
+        if expected is not None and inv.plate_type(source_id) != expected:
+            raise ValueError(f"Object {source_id} is not expected type {expected}")
+        if kind is not None and obj["kind"] != kind:
+            raise ValueError(f"Expected {kind} at {location_name}")
+        cfg = self.get_position(location_name)
+        z = inv.stack_z(location_name, "grab", obj["kind"]) if z_override is None else number(z_override, "Z override")
+        offset = number(self.WELLPLATES[inv.plate_type(source_id)].get(
+            "lid_gripping_z_offset" if obj["kind"] == "lid" else "gripping_z_offset"), "gripping offset")
+        self.logger.info("Pickup %s (%s) from %s: stack Z=%s, grip offset=%s, commanded Z=%s, path=%s",
+                         source_id, inv.plate_type(source_id), location_name, z, offset, z-offset, waypoint_locations)
+        inv.begin(source_id, location_name, "gripper")
+        self.save_track_status()
+        self.transfer_wellplate_via_path(cfg['x'], cfg['z_transfer'], waypoint_locations)
         self.open_gripper()
-        self.c9.move_axis(self.get_axis('z_axis'), z_grab_final, vel=self.get_speed('slow_movement')) #Move to grab height
+        self.c9.move_axis(self.get_axis('z_axis'), z - offset, vel=self.get_speed('slow_movement'))
         self.close_gripper()
-        self.set_wellplate_position('gripper')
-        
-        #Move to transfer height
-        self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
-        
-        # Update gripper location tracking - now at this location with wellplate in gripper
-        self.update_gripper_location(location_name, x=x_pos, z=z_transfer)
-       
-    def release_wellplate_in_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
-        """
-        Unified method to release a wellplate at any configured location with optional safe routing.
-        
-        Args:
-            location_name (str): Name of location in track_positions.yaml
-            wellplate_type (str): Type of wellplate for height adjustment  
-            waypoint_locations (list): Optional list of waypoint location names for safe routing (e.g., ['cytation_safe_area'])
-            z_override (float): Optional Z position override for dynamic stack heights
-        """
-        self.logger.info(f"Releasing wellplate at location: {location_name}")
-        
-        # COLLISION PREVENTION: Check if destination location is already occupied
-        # self.get_track_status()  # Refresh current wellplate position
-        # if self.ACTIVE_WELLPLATE_POSITION == location_name:
-        #     self.pause_after_error(
-        #         f"COLLISION PREVENTION: Cannot release wellplate at '{location_name}' - "
-        #         f"location already occupied. Current wellplate position: {self.ACTIVE_WELLPLATE_POSITION}",
-        #         send_slack=True
-        #     )
-        
-        # Get location position from YAML
-        location_pos = self.get_position(location_name)
-        if not location_pos:
-            self.logger.error(f"Location '{location_name}' not found in configuration")
-            return
-        
-        # Extract position coordinates (handle different location formats)
-        x_pos = location_pos['x']
-        z_transfer = location_pos['z_transfer']
-        
-        if z_override is not None:
-            # Use provided Z override for dynamic positioning (e.g., stack heights)
-            z_release = z_override
-        elif 'z_release' in location_pos:  # Cytation-style location
-            z_release = location_pos['z_release']
-        else:
-            self.logger.error(f"No Z coordinate found for location '{location_name}' and no z_override provided")
-            return
-        
-        # Calculate vertical offset based on wellplate type
-        move_up = 0
-        move_up += self.get_config_parameter('wellplates', wellplate_type, "gripping_z_offset", error_on_missing=False) or 0
-        
-        # Calculate final Z position
-        final_z_release = z_release - move_up
+        inv.commit_placement(source_id, "gripper")
+        self.save_track_status()
+        self.c9.move_axis(self.get_axis('z_axis'), cfg['z_transfer'], vel=self.get_speed('default_z'))
+        self.update_gripper_location(location_name, x=cfg['x'], z=cfg['z_transfer'])
+        inv.finish()
+        self.save_track_status()
+        return source_id
 
-        # Execute movement sequence to get there
-        self.transfer_wellplate_via_path(x_pos, z_transfer, waypoint_locations)  # Move to transfer height first
-        
-        #Move down to release height & Release
-        self.c9.move_axis(self.get_axis('z_axis'), final_z_release, vel=self.get_speed('slow_movement'))
+    def grab_lid_from_location(self, location_name, **kwargs):
+        return self.grab_wellplate_from_location(location_name, object_kind="lid", **kwargs)
+
+    def release_wellplate_in_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None):
+        if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
+            self.check_reader_motion()
+        inv = self.inventory
+        object_id = inv.top("gripper")
+        expected = LID_ALIASES.get(wellplate_type, wellplate_type)
+        if expected is not None and inv.plate_type(object_id) != expected:
+            raise ValueError(f"Held object {object_id} is not expected type {expected}")
+        inv.check_destination(object_id, location_name)
+        obj = inv.objects[object_id]
+        cfg = self.get_position(location_name)
+        z = inv.stack_z(location_name, "release", obj["kind"]) if z_override is None else number(z_override, "Z override")
+        offset = number(self.WELLPLATES[inv.plate_type(object_id)].get(
+            "lid_gripping_z_offset" if obj["kind"] == "lid" else "gripping_z_offset"), "gripping offset")
+        self.logger.info("Place %s (%s) at %s: stack Z=%s, grip offset=%s, commanded Z=%s, path=%s",
+                         object_id, inv.plate_type(object_id), location_name, z, offset, z-offset, waypoint_locations)
+        inv.begin(object_id, "gripper", location_name)
+        self.save_track_status()
+        self.transfer_wellplate_via_path(cfg['x'], cfg['z_transfer'], waypoint_locations)
+        self.c9.move_axis(self.get_axis('z_axis'), z - offset, vel=self.get_speed('slow_movement'))
         self.open_gripper()
-        self.set_wellplate_position(location_name)  # Wellplate released at this location
-        
-        # Return to safe height
-        self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
-        
-        # Update gripper location tracking - now at this location (without wellplate)
-        self.update_gripper_location(location_name, x=x_pos, z=z_transfer)
+        inv.commit_placement(object_id, location_name)
+        self.save_track_status()
+        self.c9.move_axis(self.get_axis('z_axis'), cfg['z_transfer'], vel=self.get_speed('default_z'))
+        self.update_gripper_location(location_name, x=cfg['x'], z=cfg['z_transfer'])
+        inv.finish()
+        self.save_track_status()
+        return object_id
 
 
     # === 6. STACK MANAGEMENT ===
-    def calculate_wp_stack_height(self, num, wp_type, stack_name, operation='grab'):
-        self.logger.debug("Calculating well plate stack height for num: %d, wp_type: %s, stack: %s, operation: %s", num, wp_type, stack_name, operation)
-        thickness = self.get_config_parameter('wellplates', wp_type, "thickness", error_on_missing=False) or 0
-        
-        # Get base height from the specific stack configuration based on operation
-        stack_pos = self.get_position(stack_name)
-        if not stack_pos:
-            self.logger.error(f"Stack '{stack_name}' not found in configuration")
-            return -1
-            
-        # Use operation-specific Z coordinate (like other unified methods)
-        if operation == 'release' and 'z_release' in stack_pos:
-            base_height = stack_pos['z_release']
-        elif operation == 'grab' and 'z_grab' in stack_pos:
-            base_height = stack_pos['z_grab']
+    def calculate_wp_stack_height(self, num=None, wp_type=None, stack_name="source_stack", operation='grab'):
+        """Compatibility name: geometry comes from actual ordered contents, not num/type."""
+        return self.inventory.stack_z(stack_name, operation)
+
+    def move_wellplate(self, source, destination, expected_type=None, move_home_afterwards=True):
+        inv = self.inventory
+        plate_id = inv.plate_at(source, expected_type)
+        inv.check_destination(plate_id, destination)
+        # Validate both ends before picking up; no whole-workflow preflight required.
+        inv.stack_z(source, "grab")
+        inv.stack_z(destination, "release")
+        # Preserve the established stack routes. A source-stack pickup first
+        # rises to max_height. Approaching the active area from home for discard
+        # must visit transfer_stack BEFORE lowering to its transfer Z.
+        if source in ("source_stack", "waste_stack"):
+            pickup_path = ['max_height']
         else:
-            self.logger.error(f"No appropriate Z coordinate found for stack '{stack_name}' operation '{operation}'")
-            return -1
-            
-        height = base_height - thickness * (num - 1)
-        #print(f"HEIGHT = {height}")
-
-        if height >= self.get_limit('max_stack_height') and height <= base_height: #beneath max height and higher than the base
-            return height
-        else:
-            return -1 #invalid input
-        
-    def get_new_wellplate(self, move_home_afterwards = True): #double WP stack 
-        self.logger.info("Getting new wellplate from source stack")
-        """Get a new wellplate from the source stack (in the double stack holder) and move to north robot pipetting area"""
-        DOUBLE_SOURCE_Y = self.calculate_wp_stack_height(self.NUM_SOURCE, self.CURRENT_WP_TYPE, 'source_stack', 'grab')
-        
-
-        if self.NUM_SOURCE > 0 and DOUBLE_SOURCE_Y != -1 and self.ACTIVE_WELLPLATE_POSITION != 'pipetting_area': #still have well plates in stack & pipetting area is empty
-            self.logger.debug(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source at {DOUBLE_SOURCE_Y}")
-                     
-            # Use unified method with dynamic Z override for wellplate pickup
-            self.grab_wellplate_from_location('source_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_SOURCE_Y, waypoint_locations=['max_height'])
-            
-            self.NUM_SOURCE -= 1
-            self.save_track_status() #update yaml
-
-            self.release_wellplate_in_location('pipetting_area', self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
-
-            if move_home_afterwards:
-                self.origin()
-        
-        else:
-            if self.NUM_SOURCE <= 0:
-                self.pause_after_error("Wellplate stack is empty")
-            elif DOUBLE_SOURCE_Y == -1:
-                self.pause_after_error("Invalid height calculated (too many wellplates in stack)")
-            if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
-                self.pause_after_error("Cannot get wellplate, NR pipetting area is occupied")
-    
-    def discard_wellplate(self, move_home_afterwards = True, pickup_location='pipetting_area', discard_location='waste_stack'): #double WP stack
-        """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder). ENSURE North Robot is homed!!!
-        
-        Args:
-            `wellplate_num`(int): The number identifying which wellplate stand to discard a wellplate from (0 for the pipetting one) 
-        """
-        DOUBLE_WASTE_Y = self.calculate_wp_stack_height(self.NUM_WASTE+1, self.CURRENT_WP_TYPE, 'waste_stack', 'release')
-        
-        if DOUBLE_WASTE_Y != -1: #can still hold an additional wellplate & pipetting area is occupied
-            self.logger.info(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
-            
-            # Move to max height, then grab wellplate from NR
             self.close_gripper()
-            if self.ACTIVE_WELLPLATE_POSITION == pickup_location:
-                self.grab_wellplate_from_location(pickup_location, self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
-            self.release_wellplate_in_location(discard_location, self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
+            pickup_path = ['transfer_stack']
+        self.grab_wellplate_from_location(source, expected_type, waypoint_locations=pickup_path)
+        self.release_wellplate_in_location(destination, expected_type, waypoint_locations=['transfer_stack'])
+        if move_home_afterwards:
+            self.origin()
+        return plate_id
 
-            # Use unified transfer method to drop off at waste stack
-            self.set_wellplate_position(None)  # Wellplate discarded to waste, no longer tracked
+    def get_new_wellplate(self, move_home_afterwards=True):
+        return self.move_wellplate("source_stack", "pipetting_area", move_home_afterwards=move_home_afterwards)
 
-            self.NUM_WASTE += 1
-            self.save_track_status()
-
-            if move_home_afterwards: #home after dropping off wellplate into waste stack
-                self.origin()
-        else:
-            if DOUBLE_WASTE_Y == -1:
-                self.pause_after_error("Wellplate stack is too full for discarding another well plate.")
-            if self.ACTIVE_WELLPLATE_POSITION != 'pipetting_area':
-                self.pause_after_error("Cannot discard wellplate, designated wellplate stand is empty.")
+    def discard_wellplate(self, move_home_afterwards=True, pickup_location='pipetting_area', discard_location='waste_stack'):
+        return self.move_wellplate(pickup_location, discard_location, move_home_afterwards=move_home_afterwards)
 
     # === 7. UTILITIES ===        
     def get_ordinal(self,n): #convert n into an ordinal number (ex. 1st, 2nd, 4th)  -- from chatgpt
@@ -1710,7 +1610,7 @@ class North_Robot(North_Base):
                                   require_calibration=False):
         """
         Get optimized pipetting parameters using intelligent hierarchy:
-        defaults → liquid-calibrated → user overrides
+        defaults â†’ liquid-calibrated â†’ user overrides
         
         Args:
             volume (float): Target pipetting volume in mL
@@ -1827,7 +1727,7 @@ class North_Robot(North_Base):
     def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):
         """
         Get optimized reservoir parameters using intelligent hierarchy:
-        defaults → liquid-calibrated → user overrides
+        defaults â†’ liquid-calibrated â†’ user overrides
         
         Args:
             volume (float): Target dispensing volume in mL
@@ -2041,7 +1941,7 @@ class North_Robot(North_Base):
         """
         self._dispense_aspiration_settings = None
         self._dispense_aspiration_source = None
-        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters, resolved_tip = self.resolve_pipetting_setup(
             amount_mL, liquid, parameters, specified_tip)
         
@@ -2503,7 +2403,7 @@ class North_Robot(North_Base):
         return total_mass, stability_info
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self, wp_index, volume, parameters=None, liquid=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
+    def pipet_from_wellplate(self, wp_index, volume, parameters=None, liquid=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type=None):
         """
         Aspirate or dispense from/to a wellplate.
         
@@ -2516,7 +2416,8 @@ class North_Robot(North_Base):
             move_to_aspirate (bool): Whether to move to location (default: True)
             well_plate_type (str): Type of well plate (default: "96 WELL PLATE")
         """
-        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        well_plate_type = self._resolve_pipetting_plate(well_plate_type, [wp_index])
+        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(volume, liquid, parameters)
 
         # Calculate volumes based on operation
@@ -2573,7 +2474,7 @@ class North_Robot(North_Base):
             self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
     #Mix the well
-    def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type="96 WELL PLATE", parameters=None, liquid=None):
+    def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type=None, parameters=None, liquid=None):
         """
         Mix a well in a wellplate by aspirating and dispensing repeatedly.
         
@@ -2628,7 +2529,7 @@ class North_Robot(North_Base):
             continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
             save_mass_data (bool): Whether to save continuous mass data to file (default: False)
         """
-        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
 
         # Extract liquid handling values from parameters
@@ -3098,10 +2999,31 @@ class North_Robot(North_Base):
     # 6. WELLPLATE OPERATIONS
     # ====================================================================
 
-    def select_wellplate_grid(self, well_plate_type):
-        grid_name = self.WELLPLATES[well_plate_type]["name_in_Locator"]  # Gets "well_plate_new_grid"
-        actual_grid = getattr(Locator, grid_name)  # Gets the actual coordinate array
-        return actual_grid
+    def _resolve_pipetting_plate(self, expected_type=None, wells=None):
+        inv = getattr(self, "plate_inventory", None)
+        if inv is None:
+            positions = self._load_yaml_file("robot_state/track_positions.yaml", "track positions")
+            path = "robot_state/track_status.yaml"
+            if getattr(self, "_scheduler_state_root", None):
+                path = os.path.join(self._scheduler_state_root, "track_status.yaml")
+            inv = self.plate_inventory = PlateInventory.load(path, self.WELLPLATES, positions)
+        plate_id = inv.plate_at("pipetting_area", expected_type)
+        if plate_id in inv.attachments:
+            raise ValueError(f"Remove the lid from plate {plate_id} before pipetting")
+        plate_type = inv.plate_type(plate_id)
+        definition = self.WELLPLATES[plate_type]
+        if not definition.get("name_in_Locator"):
+            raise ValueError(f"No Locator grid configured for {plate_type}")
+        if wells is not None:
+            for well in wells:
+                if not isinstance(well, (int, np.integer)) or isinstance(well, bool) or not 0 <= well < definition["num_wells"]:
+                    raise ValueError(f"Well index {well} is invalid for plate {plate_id} ({plate_type})")
+        self.last_plate_id = plate_id
+        return plate_type
+
+    def select_wellplate_grid(self, well_plate_type=None):
+        well_plate_type = self._resolve_pipetting_plate(well_plate_type)
+        return getattr(Locator, self.WELLPLATES[well_plate_type]["name_in_Locator"])
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
     def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, liquid=None, well_plate_type=None):
@@ -3114,9 +3036,8 @@ class North_Robot(North_Base):
             liquid (str, optional): Liquid type for automatic parameter optimization
             well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
         """
+        well_plate_type = self._resolve_pipetting_plate(well_plate_type, dest_wp_num_array)
         # Default well plate type if not specified
-        if well_plate_type is None:
-            well_plate_type = "96 WELL PLATE"
 
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
@@ -3131,7 +3052,7 @@ class North_Robot(North_Base):
             if amount_mL == 0: #Skip empty dispenses
                 continue
 
-            # Use intelligent parameter resolution for each volume: defaults → liquid-calibrated → user overrides
+            # Use intelligent parameter resolution for each volume: defaults â†’ liquid-calibrated â†’ user overrides
             optimized_parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
             
             # Extract values from optimized parameters
@@ -3169,7 +3090,7 @@ class North_Robot(North_Base):
         return True
 
     def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="serial", 
-                                          low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type="96 WELL PLATE"):
+                                          low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type=None):
         """
         Dispense from multiple vials into wellplate wells using strategy pattern.
         
@@ -3190,6 +3111,7 @@ class North_Robot(North_Base):
                 "vial_C": [0.2, 0.0, 0.1, 0.2]
             })
         """
+        well_plate_type = self._resolve_pipetting_plate(well_plate_type, well_plate_df.index)
         # Handle backwards compatibility for vial_names
         if vial_names is not None:
             self.logger.warning("vial_names parameter is deprecated. Use DataFrame columns for vial names.")
@@ -3427,7 +3349,7 @@ class North_Robot(North_Base):
         """
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
         
-        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
         
         

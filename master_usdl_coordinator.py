@@ -6,6 +6,7 @@ from North_Safe import North_Track
 from North_Safe import North_Temp
 from North_Safe import North_Powder
 from North_Safe import North_Spin
+import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
@@ -91,9 +92,11 @@ class MeasurementHandle:
     """
 
     def __init__(self, lash_e, protocol_file_path, wells_to_measure, wellplate_index,
-                 plate_type, cytation_plate_type, repeats, use_lid):
+                 plate_type, cytation_plate_type, repeats, use_lid, plate_id=None):
         self._lash_e = lash_e
         self._wellplate_index = wellplate_index
+        self.plate_id = plate_id
+        self._returned = False
         self._plate_type = plate_type
         self._use_lid = use_lid
         self._result = None
@@ -147,7 +150,7 @@ class MeasurementHandle:
         finally:
             self._done_event.set()
 
-    def complete(self):
+    def complete(self, destination="pipetting_area"):
         """
         Finish the measurement cycle:
           1. Parks the robot arm (unconditionally, before track moves)
@@ -157,6 +160,8 @@ class MeasurementHandle:
 
         Raises any exception that occurred during the cytation read.
         """
+        if self._returned:
+            return self._result
         lash_e = self._lash_e
         lash_e.logger.info("MeasurementHandle.complete(): parking arm before returning plate")
 
@@ -174,10 +179,14 @@ class MeasurementHandle:
         # Step 3: return plate
         lash_e.logger.info("MeasurementHandle.complete(): returning plate from cytation")
         lash_e.move_wellplate_back_from_cytation(
-            self._wellplate_index, plate_type=self._plate_type, use_lid=self._use_lid
+            self._wellplate_index, plate_type=self._plate_type, use_lid=self._use_lid,
+            plate_id=self.plate_id, destination=destination
         )
         lash_e.nr_track.origin()
 
+        self._returned = True
+        if self._result is not None:
+            self._result.attrs.update(plate_id=self.plate_id, plate_type=self._plate_type)
         return self._result
 
 
@@ -335,6 +344,9 @@ class Lash_E:
         
         if initialize_track:
             self.nr_track = North_Track(c9, simulate=self.simulate, logger=self.logger)
+            self.nr_track.check_reader_motion = self._check_reader_motion
+            if initialize_robot:
+                self.nr_robot.plate_inventory = self.nr_track.inventory
         
 
         # Photoreactor initialization
@@ -468,60 +480,57 @@ class Lash_E:
         if return_home:
             self.nr_robot.return_vial_home(vial) 
 
-    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False, safe_movement=True):
-        self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
-        
-        # Get Cytation software's wellplate name from robot's wellplate configuration
-        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
-        if not cytation_plate_type:
-            cytation_plate_type = plate_type  # Fallback to original if not found
-            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}' for CarrierIn")
-        else:
-            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
-        
+    def _resolve_plate(self, location, plate_type=None, use_lid=None, plate_id=None):
+        inv = self.nr_track.inventory
+        plate_id = inv.plate_at(location, plate_type, plate_id, use_lid)
+        actual_type = inv.plate_type(plate_id)
+        reader_type = inv.definitions[actual_type].get("name_in_cytation") or actual_type
+        return plate_id, actual_type, plate_id in inv.attachments, reader_type
+
+    def _check_reader_motion(self):
+        handle = getattr(self, "_active_measurement", None)
+        if getattr(self, "_cytation_reading", False) or (handle is not None and not handle._done_event.is_set()):
+            raise ValueError("Cytation read is active; its carrier cannot move yet")
+
+    def move_wellplate_to_cytation(self, wellplate_index=0, plate_type=None, use_lid=None, safe_movement=True, plate_id=None):
+        self._check_reader_motion()
+        plate_id, plate_type, use_lid, reader_type = self._resolve_plate("pipetting_area", plate_type, use_lid, plate_id)
+        inv = self.nr_track.inventory
+        inv.check_destination(plate_id, "cytation_tray")
+        inv.stack_z("pipetting_area", "grab")
+        inv.stack_z("cytation_tray", "release")
+        self.nr_robot.move_home()
         if safe_movement:
             self.nr_track.move_through_path(['cytation_safe_area'])
-        # Use robot's plate_type for robot movements
-
-
         self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
             self.cytation.CarrierOut()
-        # Use robot's plate_type for robot movements
-        #input()
         self.nr_track.release_wellplate_in_location('cytation_tray', plate_type)
-        #input()
         if not self.simulate:
-            # Use cytation_plate_type for Cytation software commands
-            self.cytation.CarrierIn(plate_type=cytation_plate_type, use_lid=use_lid)
+            self.cytation.CarrierIn(plate_type=reader_type, use_lid=use_lid)
+        self.logger.info("Plate %s (%s) loaded at Cytation", plate_id, plate_type)
+        return plate_id
 
-    def move_wellplate_back_from_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False):
-        self.logger.info("Moving wellplate %d back from Cytation", wellplate_index)
-        
-        # Get Cytation software's wellplate name from robot's wellplate configuration
-        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
-        if not cytation_plate_type:
-            cytation_plate_type = plate_type  # Fallback to original if not found
-            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}' for CarrierIn")
-        else:
-            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
-        
+    def move_wellplate_back_from_cytation(self, wellplate_index=0, plate_type=None, use_lid=None, plate_id=None, destination="pipetting_area"):
+        self._check_reader_motion()
+        plate_id, plate_type, use_lid, reader_type = self._resolve_plate("cytation_tray", plate_type, use_lid, plate_id)
+        inv = self.nr_track.inventory
+        # Check before touching the carrier or picking up, so completion is retryable.
+        inv.check_destination(plate_id, destination)
+        inv.stack_z(destination, "release")
+        self.nr_robot.move_home()
         if not self.simulate:
             self.cytation.CarrierOut()
-            None
-        # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
-        #input()
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
-            # Use cytation_plate_type for Cytation software commands
-            self.cytation.CarrierIn(plate_type=cytation_plate_type, use_lid=use_lid)
-        # Use robot's plate_type for robot movements
-        self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
+            self.cytation.CarrierIn(plate_type=reader_type, use_lid=use_lid)
+        self.nr_track.release_wellplate_in_location(destination, plate_type)
+        return plate_id
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True, preparation_protocol=None):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type=None, repeats=1, use_lid=None, safe_movement=True, preparation_protocol=None, plate_id=None):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
         An optional preparation_protocol runs once after loading, before all reads,
@@ -537,21 +546,20 @@ class Lash_E:
         """
         self.logger.info("Measuring wellplate %d with protocols: %s", wellplate_index, protocol_file_path)
         
-        # Get Cytation software's wellplate name from robot's wellplate configuration
-        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
-        if not cytation_plate_type:
-            cytation_plate_type = plate_type  # Fallback to original if not found
-            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}'")
-        else:
-            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}'")
-        
+        plate_id, plate_type, use_lid, cytation_plate_type = self._resolve_plate(
+            "pipetting_area", plate_type, use_lid, plate_id)
+        if wells_to_measure is not None:
+            count = self.nr_track.inventory.definitions[plate_type]["num_wells"]
+            wells_to_measure = list(wells_to_measure)
+            if any(isinstance(w, bool) or not isinstance(w, (int, np.integer)) or not 0 <= w < count for w in wells_to_measure):
+                raise ValueError(f"Invalid wells for plate {plate_id} ({plate_type})")
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement)
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement, plate_id=plate_id)
 
         # A shake acts on the whole plate. Selecting one well prevents the reader
         # wrapper from repeating it for every row/group in wells_to_measure.
         if preparation_protocol is not None and not self.simulate:
-            self.cytation.run_protocol(preparation_protocol, [0], plate_type=cytation_plate_type)
+            self._run_plate_protocol(preparation_protocol, [0], plate_type=cytation_plate_type)
 
         all_data = []
 
@@ -564,7 +572,7 @@ class Lash_E:
                     print(f"Running protocol {protocol_path} (rep {i+1})")
                     try:
                         # Use cytation_plate_type for the biotek system, not the robot's plate_type
-                        data = self.cytation.run_protocol(protocol_path, wells_to_measure, plate_type=cytation_plate_type)
+                        data = self._run_plate_protocol(protocol_path, wells_to_measure, plate_type=cytation_plate_type)
                         if data is not None:
                             # Add a MultiIndex: (replicate + protocol name, wavelength/column)
                             label = f"rep{i+1}_{os.path.splitext(os.path.basename(protocol_path))[0]}"
@@ -572,17 +580,20 @@ class Lash_E:
                             all_data.append(data)
                     except RuntimeError as e:
                         self.logger.error(f"Plate read failed: {e}")
-                        self.nr_robot.pause_after_error(f"Plate read failed: {e}")
+                        raise
 
             combined_data = pd.concat(all_data, axis=1) if all_data else None
         else:
             combined_data = None
 
-        self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid)
+        self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, plate_id=plate_id)
         self.nr_track.origin()
+        if combined_data is not None:
+            combined_data.attrs.update(plate_id=plate_id, plate_type=plate_type)
         return combined_data
 
-    def measure_wellplate_async(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True):
+
+    def measure_wellplate_async(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type=None, repeats=1, use_lid=None, safe_movement=True, plate_id=None):
         """
         Non-blocking version of measure_wellplate(). Moves the wellplate to the Cytation
         and starts the read in a background thread, then returns a MeasurementHandle
@@ -598,17 +609,19 @@ class Lash_E:
         """
         self.logger.info("measure_wellplate_async: moving plate to cytation then starting background read")
 
-        # Resolve cytation plate type once here (same logic as measure_wellplate)
-        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
-        if not cytation_plate_type:
-            cytation_plate_type = plate_type
-
+        plate_id, plate_type, use_lid, cytation_plate_type = self._resolve_plate(
+            "pipetting_area", plate_type, use_lid, plate_id)
+        if wells_to_measure is not None:
+            count = self.nr_track.inventory.definitions[plate_type]["num_wells"]
+            wells_to_measure = list(wells_to_measure)
+            if any(isinstance(w, bool) or not isinstance(w, (int, np.integer)) or not 0 <= w < count for w in wells_to_measure):
+                raise ValueError(f"Invalid wells for plate {plate_id} ({plate_type})")
         # Step 1: park arm and move plate to cytation (synchronous — track needs c9)
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement)
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement, plate_id=plate_id)
 
         # Step 2: start cytation read in background (c9 is now idle)
-        return MeasurementHandle(
+        handle = MeasurementHandle(
             lash_e=self,
             protocol_file_path=protocol_file_path,
             wells_to_measure=wells_to_measure,
@@ -617,7 +630,12 @@ class Lash_E:
             cytation_plate_type=cytation_plate_type,
             repeats=repeats,
             use_lid=use_lid,
+            plate_id=plate_id,
         )
+
+        self._active_measurement = handle
+        return handle
+
 
     def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
         self.logger.info("Running photoreactor for vial %d with target RPM: %d, intensity: %d, duration: %d, reactor number: %d", vial_index, target_rpm, intensity, duration, reactor_num)
@@ -625,12 +643,27 @@ class Lash_E:
         self.photoreactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
         self.nr_robot.return_vial_home(vial_index)
 
-    def grab_new_wellplate(self):
-        self.logger.info("Grabbing new wellplate")
+    def _run_plate_protocol(self, *args, **kwargs):
+        self._cytation_reading = True
+        try:
+            return self.cytation.run_protocol(*args, **kwargs)
+        finally:
+            self._cytation_reading = False
+
+    def move_wellplate(self, source, destination, expected_type=None):
+        if source == "cytation_tray":
+            return self.move_wellplate_back_from_cytation(plate_type=expected_type, destination=destination)
+        if destination == "cytation_tray":
+            if source != "pipetting_area":
+                raise ValueError("Load Cytation from the configured pipetting area")
+            return self.move_wellplate_to_cytation(plate_type=expected_type)
         self.nr_robot.move_home()
-        self.nr_track.get_new_wellplate(move_home_afterwards=True)
+        return self.nr_track.move_wellplate(source, destination, expected_type)
+
+    def grab_new_wellplate(self):
+        self.nr_robot.move_home()
+        return self.nr_track.get_new_wellplate(move_home_afterwards=True)
     
     def discard_used_wellplate(self):
-        self.logger.info("Discarding used wellplate")
         self.nr_robot.move_home()
-        self.nr_track.discard_wellplate(move_home_afterwards=True)
+        return self.nr_track.discard_wellplate(move_home_afterwards=True)

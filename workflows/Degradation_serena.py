@@ -192,8 +192,8 @@ def restore_vial_home(lash_e, vial_name, original_home_index): #restore original
     lash_e.nr_robot.return_vial_home(vial_name=vial_name)
 
 def move_lid_to_wellplate(lash_e):
-    lash_e.nr_track.grab_wellplate_from_location('lid_storage', wellplate_type='quartz_lid', waypoint_locations=['cytation_safe_area'])
-    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='quartz_lid')
+    lash_e.nr_track.grab_lid_from_location('lid_storage', wellplate_type='quartz', waypoint_locations=['cytation_safe_area'])
+    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='quartz')
     #lash_e.nr_track.origin()
 
 def move_lid_to_storage(lash_e):
@@ -206,8 +206,8 @@ def move_lid_to_storage(lash_e):
                 lash_e.logger.info("Gripper at origin position - using safe movement for measurement")
     except Exception as e:
         lash_e.logger.debug(f"Could not read track status: {e}")
-    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid', waypoint_locations=waypoint_locations)
-    lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz_lid')
+    lash_e.nr_track.grab_lid_from_location('pipetting_area', wellplate_type='quartz', waypoint_locations=waypoint_locations)
+    lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz')
 
 def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, cycles=3):
     """Condition a pipette tip by aspirating and dispensing into source vial multiple times

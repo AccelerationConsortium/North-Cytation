@@ -431,6 +431,11 @@ class SchedulerWindow(QMainWindow):
             self.shared_state_baselines[widget] = self.shared_state_snapshot(widget)
             widget.state_saved.connect(lambda widget=widget, reload=reload:
                                        self.shared_state_saved(widget, reload))
+            if hasattr(widget, "draft_changed"):
+                widget.draft_changed.connect(self.shared_state_changed)
+                # Navigation within the plate diagram/position selector is not
+                # an inventory edit. Its draft signal covers actual changes.
+                continue
             for control in widget.findChildren(QWidget):
                 if isinstance(control, QLineEdit):
                     control.textChanged.connect(self.shared_state_changed)
@@ -440,6 +445,8 @@ class SchedulerWindow(QMainWindow):
                     control.currentIndexChanged.connect(self.shared_state_changed)
 
     def shared_state_snapshot(self, widget):
+        if hasattr(widget, "state_snapshot"):
+            return widget.state_snapshot()
         values = []
         for control in widget.findChildren(QWidget):
             if isinstance(control, QLineEdit):

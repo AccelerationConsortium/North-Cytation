@@ -1101,19 +1101,15 @@ def measure_dye_fluorescence(
 
 def position_study_wellplate_at_cytation(lash_e):
     """Move the active wellplate to Cytation using the configured wellplate type."""
-    lash_e.nr_track.get_track_status()
-    if lash_e.nr_track.ACTIVE_WELLPLATE_POSITION != "cytation":
+    if not lash_e.nr_track.inventory.contents("cytation_tray"):
         lash_e.move_wellplate_to_cytation(plate_type=WELLPLATE_TYPE)
-        lash_e.nr_track.set_wellplate_position("cytation")
 
 
 def position_study_wellplate_at_track(lash_e):
     """Return the active wellplate to the pipetting area using the configured type."""
-    lash_e.nr_track.get_track_status()
-    if lash_e.nr_track.ACTIVE_WELLPLATE_POSITION != "pipetting_area":
+    if not lash_e.nr_track.inventory.contents("pipetting_area"):
         lash_e.move_wellplate_back_from_cytation(plate_type=WELLPLATE_TYPE)
         lash_e.nr_track.origin()
-        lash_e.nr_track.set_wellplate_position("pipetting_area")
 
 
 def shake_study_wellplate(lash_e):

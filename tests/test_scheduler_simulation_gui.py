@@ -426,7 +426,7 @@ class SimulationGuiTests(unittest.TestCase):
             self.window.start_live_run()
         self.wait_for_queue()
         live = json.loads((self.window.simulation_session / "jobs/001/input.json").read_text())
-        self.assertEqual(live["config_file"], self.window.row_config_path(second))
+        self.assertEqual(Path(live["config_file"]).resolve(), Path(self.window.row_config_path(second)).resolve())
         self.assertNotEqual(live["config_file"], str(alternate.resolve()))
         self.assertEqual(live["config"]["VOLUME_TARGETS_ML"], [0.2])
         self.assertIs(live["config"]["SIMULATE"], False)

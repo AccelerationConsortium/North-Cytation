@@ -16,9 +16,22 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 from scheduler import simulation_state as state
+from robot_state.plate_inventory import PlateInventory
+from North_Safe import North_Track
+
+
+def configure_inventory(track, source, waste):
+    track.WELLPLATES = yaml.safe_load((REPO_ROOT / "robot_state/wellplates.yaml").read_text())
+    track.TRACK_POSITIONS = yaml.safe_load((REPO_ROOT / "robot_state/track_positions.yaml").read_text())
+    track._inventory = PlateInventory({"wellplate_type": "96 WELL PLATE", "num_in_source": source,
+                                      "num_in_waste": waste}, track.WELLPLATES, track.TRACK_POSITIONS)
+    track._inventory.data["revision"] = yaml.safe_load(Path(track.TRACK_STATUS_FILE).read_text()).get("revision", 0)
+
 
 
 def save_class(class_name, method):
+    if class_name == "North_Track":
+        return type("North_TrackFixture", (North_Track,), {"__init__": lambda self: None})
     tree = ast.parse((REPO_ROOT / "North_Safe.py").read_text(encoding="utf-8-sig"))
     definition = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == class_name)
     names = [method, "_load_state_files"] if class_name == "North_Robot" else [method, "get_track_status"]
@@ -68,10 +81,7 @@ class SimulationStateTests(unittest.TestCase):
         track = self.Track()
         track.simulate = True
         state.configure_controller(track, "track")
-        track.NUM_SOURCE = plates
-        track.NUM_WASTE = 10 - plates
-        track.CURRENT_WP_TYPE = "96 WELL PLATE"
-        track.ACTIVE_WELLPLATE_POSITION = None
+        configure_inventory(track, plates, 10 - plates)
         track.CURRENT_GRIPPER_LOCATION = "home"
         track.CURRENT_GRIPPER_POSITION = {"x": 0, "z": 0}
         return types.SimpleNamespace(nr_robot=robot, nr_track=track, logger=Mock())
@@ -87,7 +97,7 @@ class SimulationStateTests(unittest.TestCase):
             coordinator = self.controllers(config["INPUT_VIAL_STATUS_FILE"], 3, 8)
             coordinator.simulate = True
             coordinator.grab_new_wellplate = Mock()
-            coordinator.nr_track.ACTIVE_WELLPLATE_POSITION = "pipetting_area"
+            coordinator.nr_track.inventory.add("pipetting_area", "96 WELL PLATE")
             two_run_plate.begin(coordinator, 0, "first")
             two_run_plate.finish(coordinator, 0)
             state.register_coordinator(coordinator)
@@ -114,7 +124,7 @@ class SimulationStateTests(unittest.TestCase):
         with state.workflow_state(self.root, "second_job"):
             coordinator = self.controllers(second["INPUT_VIAL_STATUS_FILE"], 7, 6)
             self.assertEqual(yaml.safe_load(Path(coordinator.nr_robot.ROBOT_STATUS_FILE).read_text())["pipets_used"], {"rack": 3})
-            self.assertEqual(yaml.safe_load(Path(coordinator.nr_track.TRACK_STATUS_FILE).read_text())["num_in_source"], 8)
+            self.assertEqual(len(yaml.safe_load(Path(coordinator.nr_track.TRACK_STATUS_FILE).read_text())["positions"]["source_stack"]), 8)
             state.register_coordinator(coordinator)
         self.assertEqual(pd.read_csv(first["INPUT_VIAL_STATUS_FILE"]).vial_volume.iloc[0], 4)
         self.assertEqual(pd.read_csv(second["INPUT_VIAL_STATUS_FILE"]).vial_volume.iloc[0], 5)
@@ -196,7 +206,8 @@ class SimulationStateTests(unittest.TestCase):
             track.logger = Mock()
             track._load_yaml_file = robot._load_yaml_file
             track.pause_after_error = robot.pause_after_error
-            track.NUM_SOURCE = 0
+            for plate in track.inventory.contents("source_stack"):
+                track.inventory.remove(plate)
             track.get_track_status()
             self.assertEqual(track.NUM_SOURCE, 7)
         self.assert_live_unchanged()
@@ -216,7 +227,7 @@ class SimulationStateTests(unittest.TestCase):
         robot.save_robot_status()
         track.save_track_status()
         self.assertEqual(yaml.safe_load(Path(robot.ROBOT_STATUS_FILE).read_text())["pipets_used"], {"rack": 5})
-        self.assertEqual(yaml.safe_load(Path(track.TRACK_STATUS_FILE).read_text())["num_in_source"], 7)
+        self.assertEqual(len(yaml.safe_load(Path(track.TRACK_STATUS_FILE).read_text())["positions"]["source_stack"]), 7)
 
     def test_coordinator_rejects_live_mode_before_tracking_or_hardware(self):
         source = REPO_ROOT / "master_usdl_coordinator.py"
@@ -258,17 +269,14 @@ class SimulationStateTests(unittest.TestCase):
             track = self.Track()
             track.simulate = True
             state.configure_controller(track, "track")
-            track.NUM_SOURCE = 9
-            track.NUM_WASTE = 1
-            track.CURRENT_WP_TYPE = "96 WELL PLATE"
-            track.ACTIVE_WELLPLATE_POSITION = None
+            configure_inventory(track, 9, 1)
             track.CURRENT_GRIPPER_LOCATION = "home"
             track.CURRENT_GRIPPER_POSITION = {"x": 0, "z": 0}
             state.register_coordinator(types.SimpleNamespace(nr_robot=robot, nr_track=track))
         robot.VIAL_DF.to_csv.assert_not_called()
         self.assertEqual(list((root / "vials").iterdir()), [])
         self.assertEqual(yaml.safe_load((root / "robot_status.yaml").read_text())["pipets_used"], {"rack": 3})
-        self.assertEqual(yaml.safe_load((root / "track_status.yaml").read_text())["num_in_source"], 9)
+        self.assertEqual(len(yaml.safe_load((root / "track_status.yaml").read_text())["positions"]["source_stack"]), 9)
         self.assertTrue((root / "end_states" / "no_vials" / "robot_status.yaml").is_file())
         self.assert_live_unchanged()
 

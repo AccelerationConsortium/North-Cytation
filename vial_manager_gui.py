@@ -1375,137 +1375,12 @@ class CombinedRackWidget(QScrollArea):
         return self.vial_data_list.copy()
 
 
-class TrackStatusWidget(QWidget):
-    """Widget for editing track status YAML file."""
-    
-    state_saved = Signal()
+from robot_state.plate_inventory_widget import PlateInventoryWidget
 
-    def __init__(self, file_path=None, show_load_errors=True):
-        super().__init__()
-        self.track_data = {}
-        self.track_file_path = str(file_path) if file_path is not None else os.path.join("robot_state", "track_status.yaml")
-        self.show_load_errors = show_load_errors
-        self.state_loaded = False
-        self._setup_ui()
-        self._load_track_status()
-    
-    def _setup_ui(self):
-        """Setup the track status editing UI."""
-        layout = QVBoxLayout(self)
-        
-        # Header
-        header_label = QLabel("Track Status Configuration")
-        header_label.setStyleSheet("font-weight: bold; font-size: 14px; padding: 10px;")
-        layout.addWidget(header_label)
-        
-        # Form layout
-        form_widget = QWidget()
-        form_layout = QFormLayout(form_widget)
-        
-        # Active wellplate position
-        self.active_position_edit = QLineEdit()
-        self.active_position_edit.setPlaceholderText("null or position number")
-        form_layout.addRow("Active Wellplate Position:", self.active_position_edit)
-        
-        # Number in source
-        self.num_source_spin = QSpinBox()
-        self.num_source_spin.setRange(0, 100)
-        disable_wheel_events(self.num_source_spin)  # Prevent scroll interference
-        form_layout.addRow("Number in Source:", self.num_source_spin)
-        
-        # Number in waste
-        self.num_waste_spin = QSpinBox()
-        self.num_waste_spin.setRange(0, 100)
-        disable_wheel_events(self.num_waste_spin)  # Prevent scroll interference
-        form_layout.addRow("Number in Waste:", self.num_waste_spin)
-        
-        # Wellplate type
-        self.wellplate_type_combo = QComboBox()
-        self.wellplate_type_combo.addItems(["96 WELL PLATE", "quartz", "48 WELL PLATE", "24 WELL PLATE"])
-        disable_wheel_events(self.wellplate_type_combo)  # Prevent scroll interference
-        form_layout.addRow("Wellplate Type:", self.wellplate_type_combo)
-        
-        layout.addWidget(form_widget)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        
-        button_layout.addStretch()
-        
-        layout.addLayout(button_layout)
-        layout.addStretch()
-    
-    def _load_track_status(self):
-        """Load track status from YAML file."""
-        self.state_loaded = False
-        try:
-            with open(self.track_file_path, 'r') as file:
-                self.track_data = yaml.safe_load(file) or {}
-            
-            self._populate_form()
-            self.state_loaded = True
-            return True
-            
-        except FileNotFoundError:
-            if self.show_load_errors:
-                QMessageBox.warning(self, "File Not Found",
-                              f"Track status file not found: {self.track_file_path}")
-        except Exception as e:
-            if self.show_load_errors:
-                QMessageBox.critical(self, "Error", f"Failed to load track status: {str(e)}")
-        return False
-    
-    def _populate_form(self):
-        """Populate form with loaded data."""
-        # Active wellplate position
-        active_pos = self.track_data.get('active_wellplate_position')
-        if active_pos is None:
-            self.active_position_edit.setText("")
-        else:
-            self.active_position_edit.setText(str(active_pos))
-        
-        # Numbers
-        self.num_source_spin.setValue(self.track_data.get('num_in_source', 0))
-        self.num_waste_spin.setValue(self.track_data.get('num_in_waste', 0))
-        
-        # Wellplate type
-        wellplate_type = self.track_data.get('wellplate_type', '96 WELL PLATE')
-        index = self.wellplate_type_combo.findText(wellplate_type)
-        if index >= 0:
-            self.wellplate_type_combo.setCurrentIndex(index)
-    
-    def _save_track_status(self, silent=False):
-        """Save track status to YAML file."""
-        try:
-            # Update data from form
-            active_pos_text = self.active_position_edit.text().strip()
-            if active_pos_text == "" or active_pos_text.lower() == "null":
-                active_pos = None
-            else:
-                try:
-                    active_pos = int(active_pos_text)
-                except ValueError:
-                    active_pos = active_pos_text
-            
-            self.track_data.update({
-                'active_wellplate_position': active_pos,
-                'num_in_source': self.num_source_spin.value(),
-                'num_in_waste': self.num_waste_spin.value(),
-                'wellplate_type': self.wellplate_type_combo.currentText()
-            })
-            
-            # Save to file
-            with open(self.track_file_path, 'w') as file:
-                yaml.dump(self.track_data, file, default_flow_style=False)
-            self.state_saved.emit()
-            
-            if not silent:
-                QMessageBox.information(self, "Success", "Track status saved successfully!")
-            return True
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save track status: {str(e)}")
-            return False
+
+class TrackStatusWidget(PlateInventoryWidget):
+    """Position inventory editor; preserves parent-window load/save integration."""
+    pass
 
 
 class RobotStatusWidget(QWidget):
@@ -2653,6 +2528,9 @@ class VialManagerMainWindow(QMainWindow):
         for attribute in ("track_status_widget", "robot_status_widget"):
             widget = getattr(self, attribute, None)
             if widget is None:
+                continue
+            if hasattr(widget, "state_snapshot"):
+                shared_values.append(widget.state_snapshot())
                 continue
             for control in widget.findChildren(QWidget):
                 if isinstance(control, QLineEdit):

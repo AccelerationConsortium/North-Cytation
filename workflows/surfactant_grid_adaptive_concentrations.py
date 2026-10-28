@@ -2330,24 +2330,20 @@ def return_water_vial_home(lash_e, vial_name):
 def position_wellplate_at_cytation(lash_e):
     """Smart positioning - only moves wellplate to cytation if not already there."""
     # Refresh track status to get current position
-    lash_e.nr_track.get_track_status()
-    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
+    inventory = lash_e.nr_track.inventory
     
-    if current_pos != 'cytation':
+    if not inventory.contents("cytation_tray"):
         lash_e.move_wellplate_to_cytation()
-        lash_e.nr_track.set_wellplate_position('cytation')
     # If already at cytation, do nothing (idempotent)
 
 def position_wellplate_at_track(lash_e):
     """Smart positioning - only returns wellplate to track if not already there."""
     # Refresh track status to get current position
-    lash_e.nr_track.get_track_status()
-    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
+    inventory = lash_e.nr_track.inventory
     
-    if current_pos != 'pipetting_area':
+    if not inventory.contents("pipetting_area"):
         lash_e.move_wellplate_back_from_cytation()
         lash_e.nr_track.origin()
-        lash_e.nr_track.set_wellplate_position('pipetting_area')
     # If already at track, do nothing (idempotent)
 
 def pause_kinetics_measurements(lash_e):

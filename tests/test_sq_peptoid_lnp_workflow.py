@@ -36,7 +36,12 @@ def setup(monkeypatch, tmp_path):
     robot.WELLPLATES = {'96 WELL PLATE': {'num_wells': 96, 'max_volume_per_well': .3}}
     robot.PIPET_TIPS = {'large_tip': {'volume': 1.}}
     track = MagicMock(spec=North_Track)
-    track.CURRENT_WP_TYPE = '96 WELL PLATE'
+    from robot_state.plate_inventory import PlateInventory
+    import yaml
+    root = Path(__file__).resolve().parents[1]
+    track.inventory = PlateInventory({"wellplate_type": "96 WELL PLATE", "num_in_source": 1},
+        yaml.safe_load((root / "robot_state/wellplates.yaml").read_text()),
+        yaml.safe_load((root / "robot_state/track_positions.yaml").read_text()))
     track.NUM_SOURCE = 1
     track.ACTIVE_WELLPLATE_POSITION = None
     lash = SimpleNamespace(nr_robot=robot, nr_track=track, simulate=True,
@@ -123,7 +128,7 @@ def test_invalid_setup_fails_before_experiment_motion(setup, change):
     elif change == 'not_enough_liquid':
         lash.nr_robot.VIAL_DF.at[0, 'vial_volume'] = .1
     elif change == 'occupied_plate_area':
-        lash.nr_track.ACTIVE_WELLPLATE_POSITION = 'pipetting_area'
+        lash.nr_track.inventory.add("pipetting_area", "96 WELL PLATE")
     else:
         lash.workflow_config['WELL_INDICES'] = [0, 0, 1]
     with pytest.raises(ValueError):

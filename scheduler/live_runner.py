@@ -50,7 +50,9 @@ def live_state_issues(job):
     volume = robot["pipet_fluid_volume"]
     if volume is not None and float(volume) != 0:
         issues.append("Liquid remains in the pipet")
-    position = track["active_wellplate_position"]
+    position = track.get("active_wellplate_position")
+    from scheduler.plate_state import operation_issues
+    issues.extend(operation_issues(track))
     from workflows.two_run_plate import ready_for_second_run, read_marker
     if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
