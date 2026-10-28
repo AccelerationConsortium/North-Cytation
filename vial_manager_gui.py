@@ -1421,7 +1421,7 @@ class TrackStatusWidget(QWidget):
         
         # Wellplate type
         self.wellplate_type_combo = QComboBox()
-        self.wellplate_type_combo.addItems(["96 WELL PLATE", "quartz", "48 WELL PLATE"])
+        self.wellplate_type_combo.addItems(["96 WELL PLATE", "quartz", "48 WELL PLATE", "24 WELL PLATE"])
         disable_wheel_events(self.wellplate_type_combo)  # Prevent scroll interference
         form_layout.addRow("Wellplate Type:", self.wellplate_type_combo)
         

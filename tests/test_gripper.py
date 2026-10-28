@@ -13,7 +13,7 @@ def test_vortex(repeats):
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(initialize_biotek=False, show_gui=False)
 
-    lash_e.nr_robot.move_robot_home()
+    #lash_e.nr_robot.move_robot_home()
 
     for i in range (0, repeats):
         lash_e.nr_robot.c9.open_gripper()
@@ -24,4 +24,4 @@ def test_vortex(repeats):
 
   
 
-test_vortex(5)
+test_vortex(100)
