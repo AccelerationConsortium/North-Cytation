@@ -16,6 +16,7 @@ vial types. Other file formats are not converted by this workflow.
 | --- | --- | --- |
 | `INPUT_VIAL_STATUS_FILE` | `status/sample_input_vials.csv` | Robot's tracked vial input |
 | `ITERATIONS` | 10 | Complete shuffled photo/CSV pairs to collect |
+| `TARGET_EXPERIMENT_TIME_HOURS` | 0 | Target collection duration, including cycle work; 0 disables pacing |
 | `MIN_VIALS_MOVED`, `MAX_VIALS_MOVED` | 3, 8 | Random number of distinct participating vials per image |
 | `MIN_OFF_RACK`, `MAX_OFF_RACK` | 0, 14 | Total participating vials outside the main rack at exposure |
 | `CAMERA_FOLDER` | Desktop `camera-control` | Existing C110 camera program directory |
@@ -45,6 +46,28 @@ for settling, and captures one fresh frame. Snapshot CSVs come from the current
 calls detection. After the requested number of pairs, participating vials return
 to their recorded starting positions (which may differ from CSV home fields),
 and the robot moves home again.
+
+For example, `TARGET_EXPERIMENT_TIME_HOURS: 24` and `ITERATIONS: 500` gives
+each cycle a 172.8-second interval. Planning, movement, homing, capture retries,
+file saves and optional verification consume that interval: a 120-second cycle
+leaves 52.8 seconds to wait. Shuffle starts follow deadlines anchored to the
+first shuffle using a monotonic clock, so small delays do not accumulate.
+If a cycle runs late, the workflow skips the wait, logs the delay and continues.
+It still collects every requested sample, even if collection takes longer than
+the target. Faster later cycles can catch up to the original schedule.
+
+The robot remains home while waiting. There is no initial or final wait. This
+is a pacing target, not a minimum runtime or a shutdown deadline. Startup and
+returning vials afterward are additional time. Photo spacing can vary because
+individual shuffles take different amounts of time. Simulation logs each cycle's
+estimated remaining wait without sleeping; it does not predict hardware speed.
+
+`summary.json` records `sample_interval_seconds`, each pair's `cycle_seconds`,
+`wait_seconds` (planned delay) and `schedule_lag_seconds`, and total
+`elapsed_seconds` including restoration. The parameter replaces
+`ESTIMATED_LENGTH_HOURS`: update old presets to use the new name. Existing
+scheduler rows use private config copies; reload the updated preset or recreate
+the row to pick up the new parameter.
 
 Outputs go in a unique directory under
 `output/vial_shuffle_capture_workflow/<timestamp>_LIVE/`:

@@ -13,7 +13,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from workflows import vial_shuffle_capture_workflow as workflow
-from workflows.vial_shuffle import (
+from workflows._vial_shuffle import (
     RACK, apply_transfers, available_slots, eligible_names, plan_shuffle, positions,
     validate_layout,
 )
@@ -215,6 +215,107 @@ class ShuffleTests(unittest.TestCase):
         self.assertIn("images=10/10", message)
         self.assertIn("vision matches=8/9", message)
         self.assertIn("verification errors=1", message)
+
+    def test_waits_between_samples_at_home_without_initial_or_final_wait(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=False, logger=robot.logger)
+        events = []
+        now = [0.0]
+
+        def capture(path, *_):
+            self.assertTrue(robot.homed)
+            events.append("capture")
+            now[0] += 120.0
+            path.write_bytes(b"photo")
+
+        def sleep(seconds):
+            self.assertTrue(robot.homed)
+            if seconds > 0:
+                events.append(seconds)
+                now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(workflow.time, "sleep", side_effect=sleep), patch.object(workflow.time, "monotonic", side_effect=lambda: now[0]):
+                with patch.object(workflow, "_notify"):
+                    summary = workflow.run_collection(
+                        coordinator,
+                        config(SIMULATE=False, ITERATIONS=3, TARGET_EXPERIMENT_TIME_HOURS=0.144),
+                        Path(temporary) / "run", capture=capture,
+                    )
+        self.assertAlmostEqual(summary["sample_interval_seconds"], 172.8)
+        self.assertEqual([event for event in events if event == "capture"], ["capture"] * 3)
+        self.assertEqual(events[0], "capture")
+        self.assertEqual(events[-1], "capture")
+        self.assertAlmostEqual(sum(event for event in events if isinstance(event, float)), 105.6)
+        self.assertTrue(all(event <= 60 for event in events if isinstance(event, float)))
+        self.assertTrue(summary["restored"])
+
+    def test_simulation_skips_long_wait(self):
+        coordinator = SimpleNamespace(simulate=True, logger=Mock())
+        with patch.object(workflow.time, "sleep") as sleep:
+            workflow._wait_between_samples(coordinator, 24 * 3600 / 500)
+            sleep.assert_not_called()
+        coordinator.logger.info.assert_called_once()
+
+    def test_invalid_target_lengths_rejected_before_motion(self):
+        for length in (-1, float("nan"), float("inf"), True, "24h", 1e308):
+            with self.subTest(length=length):
+                robot = Robot()
+                with self.assertRaises(ValueError):
+                    workflow._validate(config(TARGET_EXPERIMENT_TIME_HOURS=length), robot)
+                self.assertEqual(robot.moves, [])
+
+    def test_overruns_skip_waits_and_keep_every_sample_on_anchored_schedule(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=False, logger=robot.logger)
+        now = [0.0]
+        durations = iter([120.0, 240.0, 20.0, 20.0])
+
+        def capture(path, *_):
+            now[0] += next(durations)
+            path.write_bytes(b"photo")
+
+        def sleep(seconds):
+            self.assertTrue(robot.homed)
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(workflow.time, "monotonic", side_effect=lambda: now[0]), patch.object(workflow.time, "sleep", side_effect=sleep), patch.object(workflow, "_notify"):
+                summary = workflow.run_collection(
+                    coordinator,
+                    config(SIMULATE=False, ITERATIONS=4, TARGET_EXPERIMENT_TIME_HOURS=0.192),
+                    Path(temporary) / "run", capture=capture,
+                )
+        self.assertEqual(summary["images_saved"], 4)
+        self.assertEqual(summary["status"], "completed")
+        for pair, wait in zip(summary["pairs"], [52.8, 0.0, 85.6, 0.0]):
+            self.assertAlmostEqual(pair["wait_seconds"], wait)
+        self.assertAlmostEqual(summary["pairs"][1]["schedule_lag_seconds"], 67.2)
+        self.assertAlmostEqual(summary["elapsed_seconds"], 538.4)
+        self.assertTrue(summary["restored"])
+
+    def test_consistently_slow_cycles_finish_after_target_without_dropping_samples(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=False, logger=robot.logger)
+        now = [0.0]
+
+        def capture(path, *_):
+            now[0] += 240.0
+            path.write_bytes(b"photo")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(workflow.time, "monotonic", side_effect=lambda: now[0]), patch.object(workflow.time, "sleep") as sleep, patch.object(workflow, "_notify"):
+                summary = workflow.run_collection(
+                    coordinator,
+                    config(SIMULATE=False, ITERATIONS=3, TARGET_EXPERIMENT_TIME_HOURS=0.144),
+                    Path(temporary) / "run", capture=capture,
+                )
+        self.assertEqual(summary["images_saved"], 3)
+        self.assertEqual(summary["elapsed_seconds"], 720.0)
+        self.assertGreater(summary["elapsed_seconds"], 0.144 * 3600)
+        self.assertTrue(all(pair["wait_seconds"] == 0 for pair in summary["pairs"]))
+        self.assertTrue(all(call.args[0] == 0 for call in sleep.call_args_list))
+        self.assertTrue(summary["restored"])
 
 
 if __name__ == "__main__":

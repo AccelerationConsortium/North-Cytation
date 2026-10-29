@@ -17,13 +17,14 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from tools.c110_camera import capture_photo
-from workflows.vial_shuffle import (
+from workflows._vial_shuffle import (
     RACK, apply_transfers, available_slots, plan_shuffle, positions, validate_layout,
 )
 
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/sample_input_vials.csv"
 ITERATIONS = 10
+TARGET_EXPERIMENT_TIME_HOURS = 0.0  # Target cycle spacing includes work; 0 runs without pacing
 MIN_VIALS_MOVED = 3
 MAX_VIALS_MOVED = 8
 MIN_OFF_RACK = 0
@@ -36,7 +37,7 @@ RANDOM_SEED = None
 
 _WORKFLOW_NAME = Path(__file__).stem
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ITERATIONS", "MIN_VIALS_MOVED",
+    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ITERATIONS", "TARGET_EXPERIMENT_TIME_HOURS", "MIN_VIALS_MOVED",
     "MAX_VIALS_MOVED", "MIN_OFF_RACK", "MAX_OFF_RACK", "CAMERA_FOLDER",
     "CAPTURE_TIMEOUT_S", "CAPTURE_ATTEMPTS", "SETTLE_SECONDS", "RANDOM_SEED",
 ]
@@ -52,12 +53,14 @@ def _validate(config, robot):
     for low, high in (("MIN_VIALS_MOVED", "MAX_VIALS_MOVED"), ("MIN_OFF_RACK", "MAX_OFF_RACK")):
         if config[low] > config[high]:
             raise ValueError(f"{low} must not exceed {high}")
-    for key in ("CAPTURE_TIMEOUT_S", "SETTLE_SECONDS"):
+    for key in ("CAPTURE_TIMEOUT_S", "SETTLE_SECONDS", "TARGET_EXPERIMENT_TIME_HOURS"):
         value = config[key]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
             raise ValueError(f"{key} must be a finite nonnegative number")
     if config["CAPTURE_TIMEOUT_S"] == 0:
         raise ValueError("CAPTURE_TIMEOUT_S must be positive")
+    if not math.isfinite(config["TARGET_EXPERIMENT_TIME_HOURS"] * 3600):
+        raise ValueError("TARGET_EXPERIMENT_TIME_HOURS is too large to convert to seconds")
     if robot.HELD_PIPET_TYPE is not None or robot.GRIPPER_STATUS is not None:
         raise ValueError("Shuffle requires an empty gripper and no held pipette")
     slots = available_slots(robot)
@@ -145,6 +148,22 @@ def _notify(lash_e, summary):
         lash_e.logger.warning("End-of-run Slack summary failed", exc_info=True)
 
 
+def _wait_between_samples(lash_e, seconds):
+    if seconds <= 0:
+        return
+    if lash_e.simulate:
+        lash_e.logger.info("SIMULATION: Would wait %.3f seconds before next shuffle", seconds)
+        return
+    lash_e.logger.info("Waiting %.3f seconds before next shuffle (robot at home)", seconds)
+    # Short sleeps keep long waits interruptible without changing the total delay.
+    deadline = time.monotonic() + seconds
+    remaining = seconds
+    while remaining > 0:
+        duration = min(60.0, remaining)
+        time.sleep(duration)
+        remaining = deadline - time.monotonic()
+
+
 def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
     """Run with an initialized coordinator; verifier(photo, csv) returns a result dict.
 
@@ -160,11 +179,16 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
     robot.VIAL_DF.to_csv(directory / "initial_state.csv", index=False)
     _write_json(directory / "config.json", config)
     rng = random.Random(config["RANDOM_SEED"])
+    interval_seconds = config["TARGET_EXPERIMENT_TIME_HOURS"] * 3600 / config["ITERATIONS"]
     summary = dict(status="running", requested=config["ITERATIONS"], images_saved=0,
+                   target_experiment_time_hours=config["TARGET_EXPERIMENT_TIME_HOURS"],
+                   sample_interval_seconds=interval_seconds,
                    verification_enabled=verifier is not None, verified=0, matches=0,
                    mismatches=0, verification_errors=0, restored=False, pairs=[])
+    started = time.monotonic()
     try:
         for index in range(1, config["ITERATIONS"] + 1):
+            cycle_started = time.monotonic()
             targets = plan_shuffle(
                 positions(robot.VIAL_DF), names, slots, config["MIN_VIALS_MOVED"],
                 config["MAX_VIALS_MOVED"], config["MIN_OFF_RACK"],
@@ -191,7 +215,24 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                     summary["verification_errors"] += 1
                     pair["verification_error"] = str(error)
                     robot.logger.warning("Verification failed for %s", photo.name, exc_info=True)
+            cycle_finished = time.monotonic()
+            pair["cycle_seconds"] = cycle_finished - cycle_started
+            # Live deadlines stay anchored to the first shuffle, avoiding drift.
+            # Simulation skips waits, so only estimate each cycle's remaining gap.
+            deadline = (cycle_started if lash_e.simulate else started + (index - 1) * interval_seconds) + interval_seconds
+            remaining = max(0.0, deadline - cycle_finished) if interval_seconds else 0.0
+            pair["schedule_lag_seconds"] = max(0.0, cycle_finished - deadline) if interval_seconds else 0.0
+            pair["wait_seconds"] = remaining if index < config["ITERATIONS"] else 0.0
+            if pair["schedule_lag_seconds"] and not lash_e.simulate:
+                robot.logger.warning(
+                    "Sample %s finished %.3f seconds behind target; continuing without dropping samples",
+                    index, pair["schedule_lag_seconds"],
+                )
             _write_json(directory / "summary.json", summary)
+            if index < config["ITERATIONS"]:
+                # Include manifest-save time when calculating the actual live wait.
+                wait = max(0.0, deadline - time.monotonic()) if not lash_e.simulate and interval_seconds else remaining
+                _wait_between_samples(lash_e, wait)
         apply_transfers(robot, original, slots)
         robot.move_home()
         summary["restored"] = True
@@ -204,6 +245,7 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
         robot.logger.exception("Collection stopped; inspect tracked state before recovery")
         raise
     finally:
+        summary["elapsed_seconds"] = time.monotonic() - started
         try:
             robot.VIAL_DF.to_csv(directory / "final_state.csv", index=False)
             _write_json(directory / "summary.json", summary)

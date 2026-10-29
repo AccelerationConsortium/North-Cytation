@@ -1,4 +1,7 @@
-"""Plan collision-free subset shuffles without importing hardware libraries."""
+"""Plan collision-free subset shuffles without importing hardware libraries.
+
+The private filename keeps this helper out of the scheduler's workflow list.
+"""
 import random
 
 RACK = "main_8mL_rack"
