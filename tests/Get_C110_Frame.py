@@ -1,8 +1,7 @@
 import json
 import sys
 from pathlib import Path
-import cv2
-import requests
+import argparse
 
 #Pathing for camera control and output folders + Detection URL
 
@@ -13,40 +12,32 @@ OUTPUT_FOLDER = Path(
     r"C:\Users\Imaging Controller\Desktop\C110_test_frames"
 )
 DETECTION_URL = "http://sdl4-not-for-gaming:8001/api/detect"
-sys.path.insert(0, str(CAMERA_FOLDER))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from camera_frame_capture import C110FrameCapture
+from tools.c110_camera import capture_photo, detect_photo
 
-camera = C110FrameCapture()
-frames = camera.capture_frames(count=1, timeout=20)
-
-OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
-results = {}
-
-for index, frame in enumerate(frames, start=1):
-    frame_path = OUTPUT_FOLDER / f"frame_{index}.jpg"
-    if not cv2.imwrite(str(frame_path), frame):
-        raise OSError(f"Could not save captured frame to {frame_path}")
-    print(f"Saved frame {index}: shape={frame.shape}, path={frame_path}")
-
-    with frame_path.open("rb") as image_file:
-        response = requests.post(
-            DETECTION_URL,
-            files={"image": (frame_path.name, image_file, "image/jpeg")},
-            timeout=60,
+def main():
+    """Capture only by default; --detect explicitly enables the separate action."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--camera-folder", type=Path, default=CAMERA_FOLDER)
+    parser.add_argument("--output-folder", type=Path, default=OUTPUT_FOLDER)
+    parser.add_argument("--count", type=int, default=1)
+    parser.add_argument("--detect", action="store_true")
+    parser.add_argument("--detection-url", default=DETECTION_URL)
+    args = parser.parse_args()
+    if args.count < 1:
+        parser.error("--count must be positive")
+    results = {}
+    for index in range(1, args.count + 1):
+        path = capture_photo(args.output_folder / f"frame_{index}.jpg", args.camera_folder)
+        print(f"Saved frame: {path}")
+        if args.detect:
+            results[path.name] = detect_photo(path, args.detection_url)
+    if args.detect:
+        (args.output_folder / "detection_results.json").write_text(
+            json.dumps(results, indent=2), encoding="utf-8",
         )
-    response.raise_for_status()
-    response_data = response.json()
-    if (
-        not isinstance(response_data, dict)
-        or not isinstance(response_data.get("positions"), dict)
-    ):
-        raise ValueError(
-            f"Detection response for {frame_path.name} has no positions mapping"
-        )
-    results[frame_path.name] = response_data["positions"]
-    print(f"Analyzed frame {index}")
 
-results_path = OUTPUT_FOLDER / "detection_results.json"
-results_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
-print(f"Saved detection results: {results_path}")
+
+if __name__ == "__main__":
+    main()
