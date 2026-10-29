@@ -1458,15 +1458,18 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
 
 REFILL_THRESHOLD_ML = 4.0  # Top up vials below this volume
 
-def create_substocks_from_recipes(lash_e, recipes):
+def create_substocks_from_recipes(lash_e, recipes, ensure_source=None, refill_threshold_ml=None):
     """
     Create physical substocks according to the calculated recipes.
     - Vials >= REFILL_THRESHOLD_ML: skipped (sufficient)
     - Vials 0 < v < REFILL_THRESHOLD_ML: topped up proportionally to FINAL_SUBSTOCK_VOLUME_ML
     - Vials <= 0: full remake
+    - Optional ensure_source(vial, amount_ml) runs before consuming source liquid.
+    - refill_threshold_ml optionally raises the refill trigger for larger chunks.
     """
     logger = lash_e.logger
-    logger.info(f"Checking {len(recipes)} substocks (threshold: {REFILL_THRESHOLD_ML} mL)...")
+    threshold = REFILL_THRESHOLD_ML if refill_threshold_ml is None else refill_threshold_ml
+    logger.info(f"Checking {len(recipes)} substocks (threshold: {threshold} mL)...")
 
     # Read live volumes from robot tracker for all recipe vials
     current_volumes = {}
@@ -1480,13 +1483,13 @@ def create_substocks_from_recipes(lash_e, recipes):
 
     # Log full status table before doing anything
     logger.info("=" * 65)
-    logger.info(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
+    logger.info(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={threshold} mL)")
     logger.info(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
     logger.info("  " + "-" * 60)
     for recipe in recipes:
         vial_name = recipe['Vial_Name']
         vol = current_volumes[vial_name]
-        if vol >= REFILL_THRESHOLD_ML:
+        if vol >= threshold:
             action = f"SKIP  (sufficient)"
             breakdown = None
         elif vol > 0:
@@ -1520,8 +1523,8 @@ def create_substocks_from_recipes(lash_e, recipes):
         current_vol    = current_volumes[vial_name]
 
         # --- SKIP ---
-        if current_vol >= REFILL_THRESHOLD_ML:
-            logger.info(f"  SKIP  {vial_name}: {current_vol:.2f} mL (>= {REFILL_THRESHOLD_ML} mL threshold)")
+        if current_vol >= threshold:
+            logger.info(f"  SKIP  {vial_name}: {current_vol:.2f} mL (>= {threshold} mL threshold)")
             created_substocks.append({
                 'vial_name': vial_name, 'concentration_mm': target_conc,
                 'volume_ml': current_vol, 'created': False, 'existed': True
@@ -1592,6 +1595,9 @@ def create_substocks_from_recipes(lash_e, recipes):
         logger.info(f"  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
         logger.info(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
         logger.info(f"     Water  : {water_to_add*1000:.1f} uL")
+
+        if ensure_source is not None:
+            ensure_source(source_vial, source_to_add)
 
         try:
             lash_e.nr_robot.dispense_from_vial_into_vial(
