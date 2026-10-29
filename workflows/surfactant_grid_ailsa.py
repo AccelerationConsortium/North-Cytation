@@ -77,6 +77,7 @@ _RECIPE_VOLUME_COLUMNS = (
 # up from the mappings below; solvent and dispense volume remain shared.
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
+DYE_VIAL = "dye_vial"
 DYE_VOLUME_UL = 5
 # "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
 DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
@@ -110,7 +111,7 @@ EXPERIMENT_TAG = "study"
 _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
     "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE",
-    "DYE_SOLVENT", "VALIDATE_LIQUIDS", "VALIDATION_ONLY",
+    "DYE_SOLVENT", "DYE_VIAL", "VALIDATE_LIQUIDS", "VALIDATION_ONLY",
     "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
     "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
     "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
@@ -162,13 +163,6 @@ _DYE_PROTOCOLS = {
     },
 }
 
-_DYE_VIALS = {
-    "pyrene": "dye_vial",
-    "nile-red": "dye_nile_red",
-    "coumarin-6": "dye_coumarin_6",
-}
-
-
 # ============================================================================
 # STUDY METADATA
 # ============================================================================
@@ -178,7 +172,9 @@ def get_dye_protocol():
     if DYE not in _DYE_PROTOCOLS:
         valid_dyes = ", ".join(sorted(_DYE_PROTOCOLS))
         raise ValueError(f"Unknown DYE '{DYE}'. Valid dyes: {valid_dyes}")
-    dye_vial = _DYE_VIALS[DYE]
+    dye_vial = DYE_VIAL
+    if not isinstance(dye_vial, str) or not dye_vial.strip():
+        raise ValueError("DYE_VIAL must be a non-empty vial name")
     if DYE_VOLUME_UL <= 0:
         raise ValueError(f"DYE_VOLUME_UL must be positive, got {DYE_VOLUME_UL}")
 
@@ -1784,8 +1780,9 @@ def execute_study_workflow(
     well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
     if validate_liquids or validation_only:
         from pipetting_data.embedded_liquid_validations import run_liquid_validations
+        dye_protocol = get_dye_protocol()
         sources = [("water", "water", well_recipes_df["water_volume_ul"]),
-                   (DYE_VIAL, DYE_SOLVENT, [get_dye_protocol()["dye_volume_ul"]])]
+                   (dye_protocol["dye_vial"], DYE_SOLVENT, [dye_protocol["dye_volume_ul"]])]
         for label, column in ((surfactant_a_name, "surf_A_volume_ul"),
                               (surfactant_b_name, "surf_B_volume_ul")):
             sources.append((f"{label}_stock", "SDS", well_recipes_df[column]))

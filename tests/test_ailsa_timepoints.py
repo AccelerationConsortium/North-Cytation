@@ -10,6 +10,13 @@ import pytest
 from workflows import surfactant_grid_ailsa as ailsa
 
 
+def test_configured_dye_vial_is_used_for_dispensing(monkeypatch):
+    monkeypatch.setattr(ailsa, "DYE", "pyrene")
+    monkeypatch.setattr(ailsa, "DYE_VIAL", "dye_nile_red")
+    assert "DYE_VIAL" in ailsa._CONFIG_KEYS
+    assert ailsa.get_dye_protocol()["dye_vial"] == "dye_nile_red"
+
+
 def test_measurement_schedule_requires_zero_and_increasing_times(monkeypatch):
     for schedule in ([0], [0, 10, 30]):
         monkeypatch.setattr(ailsa, "MEASUREMENT_SCHEDULE_MIN", schedule)

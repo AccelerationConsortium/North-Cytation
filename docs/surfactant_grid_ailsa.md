@@ -52,7 +52,9 @@ Runtime behavior matches the replay workflow when `DYE="pyrene"`.
 `SIMULATE=True` with another dye still raises `NotImplementedError`.
 `DISPENSE_ORDER` controls the per-well pipetting sequence (default
 `["surfactant_B", "water", "surfactant_A", "dye"]`); `DYE_SOLVENT` is the
-calibrated liquid used to dispense the dye.
+calibrated liquid used to dispense the dye. `DYE_VIAL` selects the physical
+source vial; `DYE` selects the fluorescence protocol and analysis metric. Set
+both when switching dye solutions.
 
 Water vials are topped up before every `REFILL_CHECK_CHUNK_SIZE`-well chunk
 using `WATER_REFILL_THRESHOLD_ML` (kept high so the check always triggers;

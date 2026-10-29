@@ -3692,8 +3692,6 @@ class North_Robot(North_Base):
 
     #Drop off a vial at a location that you already have
     def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
-        from north.n9_kinematics import counts_to_mm, mm_to_counts
-
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
@@ -3701,8 +3699,10 @@ class North_Robot(North_Base):
         destination = list(self.get_location(False,location,location_index))
         release_offset_mm = self.get_config_parameter('vial_positions', location, 'release_height_offset_mm', error_on_missing=True)
         z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=True)
-        release_height_mm = counts_to_mm(z_axis, destination[z_axis]) + release_offset_mm
-        destination[z_axis] = mm_to_counts(z_axis, release_height_mm)
+        if not self.simulate:
+            from north.n9_kinematics import counts_to_mm, mm_to_counts
+            release_height_mm = counts_to_mm(z_axis, destination[z_axis]) + release_offset_mm
+            destination[z_axis] = mm_to_counts(z_axis, release_height_mm)
         occupying_vial = self.get_vial_in_location(location,location_index)
         # Allow drop-off if the location is empty or occupied by the same vial
         destination_empty = (occupying_vial is None) or (occupying_vial == vial_index)
