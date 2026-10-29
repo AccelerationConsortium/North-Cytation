@@ -17,6 +17,31 @@ def test_configured_dye_vial_is_used_for_dispensing(monkeypatch):
     assert ailsa.get_dye_protocol()["dye_vial"] == "dye_nile_red"
 
 
+def test_simulated_replicate_runs_without_study_files(monkeypatch, tmp_path):
+    monkeypatch.setattr(ailsa, "_SAVE_SIMULATION_OUTPUT", False)
+    monkeypatch.setattr(ailsa, "MEASUREMENT_REPLICATES", 1)
+    monkeypatch.setattr(ailsa, "MEASUREMENT_SCHEDULE_MIN", [0])
+    monkeypatch.setattr(ailsa, "RANDOMIZED_MEASUREMENT_ORDER", False)
+    monkeypatch.setattr(ailsa, "setup_experiment_environment", lambda *args: pytest.fail("created study folder"))
+    for name in ("fill_water_vial", "refill_surfactant_vial", "create_substocks_from_recipes",
+                 "execute_dispensing_with_refills"):
+        monkeypatch.setattr(ailsa, name, lambda *args, **kwargs: None)
+    monkeypatch.setattr(ailsa, "measure_and_process_study_turbidity", lambda _, df, **kwargs: df)
+    monkeypatch.setattr(ailsa, "measure_and_process_dye_fluorescence", lambda _, df, **kwargs: df)
+    monkeypatch.setattr(ailsa, "save_measurement_analysis_tables", lambda *args: pytest.fail("saved tables"))
+    lash = SimpleNamespace(
+        logger=logging.getLogger(__name__), simulate=True,
+        nr_robot=SimpleNamespace(home_robot_components=lambda: None),
+        grab_new_wellplate=lambda: None, discard_used_wellplate=lambda: None,
+    )
+    plate = pd.DataFrame({"wellplate_index": [0]})
+    result = ailsa.execute_preparation_replicate(
+        lash, [plate], [], "SDS", "BDDAC", 1, simulate=True,
+    )
+    assert result["results_csv"] is None
+    assert result["output_folder"] is None
+
+
 def test_measurement_schedule_requires_zero_and_increasing_times(monkeypatch):
     for schedule in ([0], [0, 10, 30]):
         monkeypatch.setattr(ailsa, "MEASUREMENT_SCHEDULE_MIN", schedule)

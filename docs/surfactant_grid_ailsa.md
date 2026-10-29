@@ -62,6 +62,11 @@ using `WATER_REFILL_THRESHOLD_ML` (kept high so the check always triggers;
 the separate `REFILL_THRESHOLD_ML = 4.0 mL`. `EXPERIMENT_TAG` is appended to
 the generated output folder name.
 
+Simulations skip study CSVs, measurement backups, plots, and scoring by default.
+Set the private `_SAVE_SIMULATION_OUTPUT` constant in the workflow to `True`
+for a diagnostic run that needs those files. The scheduler still records its
+simulation state and job result for subsequent jobs.
+
 Startup refreshes the confirmed config after GUI review and accepts a
 complete supplied config with `show_gui=False`, same as the other retained
 workflows — see

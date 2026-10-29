@@ -106,6 +106,13 @@ WATER_REFILL_THRESHOLD_ML = 8.0
 # Tag appended to the new experiment folder name.
 EXPERIMENT_TAG = "study"
 
+# Simulations exercise the robot and reader sequence without generating study files.
+_SAVE_SIMULATION_OUTPUT = False
+
+
+def _save_study_output(lash_e):
+    return not lash_e.simulate or _SAVE_SIMULATION_OUTPUT
+
 # Snapshot of the constants above (plus the imported ones ConfigManager has
 # historically persisted for this workflow) used by execute()/ConfigManager.
 _CONFIG_KEYS = [
@@ -489,26 +496,23 @@ def measure_and_process_study_turbidity(lash_e, well_recipes_df, shake_and_wait=
             continue
 
         turbidity_filename = None
-        try:
-            experiment_name = getattr(lash_e, "current_experiment_name", "unknown_experiment")
-            timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            turbidity_filename = (
-                f"turbidity_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-            )
-            sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
-            turbidity_path = os.path.join(
-                "output",
-                sim_folder,
-                experiment_name,
-                "measurement_backups",
-                turbidity_filename,
-            )
-            os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
-            turbidity_data.to_csv(turbidity_path, index=True)
-            mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
-            lash_e.logger.info(f"    {mode_label} Saved raw turbidity data: {turbidity_filename}")
-        except Exception as e:
-            lash_e.logger.error(f"    WARNING: Failed to save turbidity CSV: {e}")
+        if _save_study_output(lash_e):
+            try:
+                experiment_name = getattr(lash_e, "current_experiment_name", "unknown_experiment")
+                timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                turbidity_filename = (
+                    f"turbidity_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
+                )
+                sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
+                turbidity_path = os.path.join(
+                    "output", sim_folder, experiment_name, "measurement_backups", turbidity_filename,
+                )
+                os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
+                turbidity_data.to_csv(turbidity_path, index=True)
+                mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                lash_e.logger.info(f"    {mode_label} Saved raw turbidity data: {turbidity_filename}")
+            except Exception as e:
+                lash_e.logger.error(f"    WARNING: Failed to save turbidity CSV: {e}")
 
         if "wellplate_index" not in turbidity_data.columns:
             raise KeyError(
@@ -1016,27 +1020,24 @@ def measure_and_process_dye_fluorescence(lash_e, well_recipes_df, shake_and_wait
             continue
 
         fluorescence_filename = None
-        try:
-            experiment_name = getattr(lash_e, "current_experiment_name", "unknown_experiment")
-            timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            fluorescence_filename = (
-                f"fluorescence_{dye}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_"
-                f"{timestamp}.csv"
-            )
-            sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
-            fluorescence_path = os.path.join(
-                "output",
-                sim_folder,
-                experiment_name,
-                "measurement_backups",
-                fluorescence_filename,
-            )
-            os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
-            fluorescence_data.to_csv(fluorescence_path, index=True)
-            mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
-            lash_e.logger.info(f"    {mode_label} Saved raw dye fluorescence data: {fluorescence_filename}")
-        except Exception as e:
-            lash_e.logger.error(f"    WARNING: Failed to save dye fluorescence CSV: {e}")
+        if _save_study_output(lash_e):
+            try:
+                experiment_name = getattr(lash_e, "current_experiment_name", "unknown_experiment")
+                timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                fluorescence_filename = (
+                    f"fluorescence_{dye}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_"
+                    f"{timestamp}.csv"
+                )
+                sim_folder = "surfactant_grid/simulated" if lash_e.simulate else "surfactant_grid/experimental"
+                fluorescence_path = os.path.join(
+                    "output", sim_folder, experiment_name, "measurement_backups", fluorescence_filename,
+                )
+                os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
+                fluorescence_data.to_csv(fluorescence_path, index=True)
+                mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                lash_e.logger.info(f"    {mode_label} Saved raw dye fluorescence data: {fluorescence_filename}")
+            except Exception as e:
+                lash_e.logger.error(f"    WARNING: Failed to save dye fluorescence CSV: {e}")
 
         if "wellplate_index" not in fluorescence_data.columns:
             available_cols = list(fluorescence_data.columns)
@@ -1572,12 +1573,18 @@ def execute_preparation_replicate(
     )
     lash_e.logger.info("=" * 80)
 
-    experiment_output_folder, experiment_name = setup_experiment_environment(
-        lash_e,
-        surfactant_a_name,
-        f"{surfactant_b_name}_{EXPERIMENT_TAG}_prep{preparation_replicate}",
-        simulate,
-    )
+    if _save_study_output(lash_e):
+        experiment_output_folder, experiment_name = setup_experiment_environment(
+            lash_e,
+            surfactant_a_name,
+            f"{surfactant_b_name}_{EXPERIMENT_TAG}_prep{preparation_replicate}",
+            simulate,
+        )
+    else:
+        experiment_output_folder = None
+        experiment_name = f"{surfactant_a_name}_{surfactant_b_name}_simulation_prep{preparation_replicate}"
+        lash_e.current_experiment_name = experiment_name
+        lash_e.logger.info("Simulation study output disabled")
 
     lash_e.logger.info("Replicate setup: filling water + stock vials to capacity")
     fill_water_vial(lash_e, "water")
@@ -1637,9 +1644,20 @@ def execute_preparation_replicate(
                     measurement_df["timepoint_min"] = timepoint_min
                     measurement_df["elapsed_actual_min"] = (time.monotonic() - measurement_start) / 60
                     measurement_df["measurement_replicate"] = measurement_replicate
-                    completed_plates.append(measurement_df)
+                    if _save_study_output(lash_e):
+                        completed_plates.append(measurement_df)
 
         lash_e.discard_used_wellplate()
+
+    if not _save_study_output(lash_e):
+        return {
+            "preparation_replicate": preparation_replicate,
+            "well_recipes_df": None,
+            "output_folder": None,
+            "experiment_name": experiment_name,
+            "results_csv": None,
+            "analysis_tables": None,
+        }
 
     replicate_df = pd.concat(completed_plates, ignore_index=True)
     replicate_df = add_fluorescence_metric(replicate_df)
