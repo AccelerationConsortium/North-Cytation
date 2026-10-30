@@ -32,12 +32,11 @@ from workflows.surfactant_grid_adaptive_concentrations import (
     SHAKE_WAIT_PROTOCOL,
     SELECTED_BUFFER,
     TURBIDITY_PROTOCOL_FILE,
-    create_substocks_from_recipes,
+    create_substocks_from_recipes as _create_substocks_from_recipes,
     dispense_component_to_wellplate,
     fill_water_vial,
     get_pipette_usage_breakdown,
     position_surfactant_vials_by_concentration,
-    refill_surfactant_vial,
     return_surfactant_vials_home,
     return_water_vial_home,
     run_post_experiment_analysis,
@@ -96,6 +95,12 @@ EXECUTION_BLOCK_SIZE = 96
 # Refill cadence within each component dispense.
 REFILL_CHECK_CHUNK_SIZE = 24
 
+# Ordered containers holding the SAME concentration as the destination stock.
+# An empty mapping preserves the historical <surfactant>_refill naming.
+STOCK_REFILL_SOURCES = {}
+STOCK_REFILL_RESERVE_ML = 0.1
+_WORKING_VIAL_RESERVE_ML = 0.1
+
 # Water vials are topped up before every chunk. Setting the threshold to 8.0
 # ensures the check always triggers (vial can never be at 8.0 after dispensing).
 # fill_water_vial skips internally if already within 100uL of full, so no wasted
@@ -123,6 +128,7 @@ _CONFIG_KEYS = [
     "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
     "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
     "EXECUTION_BLOCK_SIZE", "REFILL_CHECK_CHUNK_SIZE",
+    "STOCK_REFILL_SOURCES", "STOCK_REFILL_RESERVE_ML",
     "WATER_REFILL_THRESHOLD_ML", "EXPERIMENT_TAG",
     "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SHAKE_WAIT_PROTOCOL",
     "SELECTED_BUFFER", "TURBIDITY_PROTOCOL_FILE",
@@ -327,6 +333,8 @@ def get_study_config():
         "randomized_measurement_order": RANDOMIZED_MEASUREMENT_ORDER,
         "measurement_randomization_seed": MEASUREMENT_RANDOMIZATION_SEED,
         "execution_block_size": EXECUTION_BLOCK_SIZE,
+        "stock_refill_sources": STOCK_REFILL_SOURCES,
+        "stock_refill_reserve_ml": STOCK_REFILL_RESERVE_ML,
     }
 
 
@@ -1294,6 +1302,100 @@ def simulate_dye_fluorescence(well_indices, batch_recipes, dye_protocol):
 # REFILL ENGINE
 # ============================================================================
 
+def stock_refill_sources(vial_name):
+    return STOCK_REFILL_SOURCES.get(vial_name, [f"{vial_name.rsplit('_stock', 1)[0]}_refill"])
+
+
+def validate_stock_refill_sources(lash_e, stock_names, dilution_recipes):
+    """Check all configured containers before preparation or validation transfers."""
+    if not isinstance(STOCK_REFILL_SOURCES, dict):
+        raise ValueError("STOCK_REFILL_SOURCES must map stock vial names to ordered lists")
+    reserve = STOCK_REFILL_RESERVE_ML
+    if isinstance(reserve, bool) or not isinstance(reserve, (int, float)) or not math.isfinite(reserve) or reserve < 0:
+        raise ValueError("STOCK_REFILL_RESERVE_ML must be finite and nonnegative")
+    if type(REFILL_CHECK_CHUNK_SIZE) is not int or REFILL_CHECK_CHUNK_SIZE < 1:
+        raise ValueError("REFILL_CHECK_CHUNK_SIZE must be a positive integer")
+    unknown = set(STOCK_REFILL_SOURCES) - set(stock_names)
+    if unknown:
+        raise ValueError(f"Unknown stocks in STOCK_REFILL_SOURCES: {sorted(unknown)}")
+    working = {*stock_names, "water", "water_2", get_dye_protocol()["dye_vial"],
+               *(r["Vial_Name"] for r in dilution_recipes)}
+    if ADD_BUFFER:
+        working.add(SELECTED_BUFFER)
+    dependencies = {r["Vial_Name"]: r["Source_Vial"] for r in dilution_recipes}
+    for vial in dependencies:
+        path = set()
+        source = vial
+        while source in dependencies:
+            if source in path:
+                raise ValueError(f"Circular substock refill dependency involving {source}")
+            path.add(source)
+            source = dependencies[source]
+        if source not in stock_names:
+            raise ValueError(f"Unknown substock source: {source}")
+    used = set()
+    for stock in stock_names:
+        sources = stock_refill_sources(stock)
+        if (not isinstance(sources, list) or not sources
+                or any(not isinstance(s, str) or not s.strip() for s in sources)
+                or len(set(sources)) != len(sources)):
+            raise ValueError(f"STOCK_REFILL_SOURCES[{stock}] must be a nonempty list of distinct vial names")
+        if set(sources) & (working | used):
+            raise ValueError(f"Refill sources for {stock} must be separate from working vials and other stocks' sources")
+        used.update(sources)
+        for source in [stock, *sources]:
+            _recorded_volume(lash_e, source)
+        lash_e.logger.info(f"Stock refill order for {stock}: {' -> '.join(sources)}; reserve {reserve:g} mL per source")
+
+
+def _recorded_volume(lash_e, vial):
+    try:
+        value = float(lash_e.nr_robot.get_vial_info(vial, "vial_volume"))
+    except (TypeError, ValueError, KeyError, IndexError) as exc:
+        raise ValueError(f"Missing vial or invalid recorded volume: {vial}") from exc
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"Invalid recorded volume for {vial}: {value}")
+    return value
+
+
+def plan_stock_refill(source_volumes, volume, reserve):
+    """Allocate an entire top-up before moving liquid; keep transfers >=200 uL."""
+    from workflows.fluorescence_calibration_workflow import plan_solvent_sources
+    try:
+        return plan_solvent_sources(source_volumes, volume, "stock refill", reserve)
+    except ValueError as exc:
+        raise ValueError(f"Insufficient usable stock refill supply in {', '.join(source_volumes)}: {exc}") from exc
+
+
+def refill_surfactant_vial(lash_e, vial_name, liquid="SDS"):
+    """Top up to 7.5 mL from ordered backups, leaving each source's reserve."""
+    current = _recorded_volume(lash_e, vial_name)
+    needed = 7.5 - current
+    if needed <= 1e-9:
+        return
+    needed = max(0.2, needed)
+    sources = stock_refill_sources(vial_name)
+    volumes = {source: _recorded_volume(lash_e, source) for source in sources}
+    transfers = plan_stock_refill(volumes, needed, STOCK_REFILL_RESERVE_ML)
+    for source, amount in transfers:
+        lash_e.logger.info(f"Stock refill: {source} -> {vial_name}, {amount:.3f} mL")
+        lash_e.nr_robot.dispense_from_vial_into_vial(
+            source_vial_name=source, dest_vial_name=vial_name, volume=amount, liquid=liquid)
+
+
+def create_substocks_from_recipes(lash_e, recipes, all_recipes=None, minimum_ml=0.0):
+    """Keep source stocks/dilutions supplied before each preparation transfer."""
+    all_recipes = recipes if all_recipes is None else all_recipes
+    results = _create_substocks_from_recipes(
+        lash_e, recipes, refill_threshold_ml=max(REFILL_THRESHOLD_ML, minimum_ml),
+        ensure_source=lambda source, amount: ensure_vial_above_threshold(
+            lash_e, source, all_recipes, required_ml=amount))
+    failed = [row["vial_name"] for row in results if row.get("error")]
+    if failed:
+        raise RuntimeError(f"Substock preparation failed: {', '.join(failed)}")
+    return results
+
+
 def _classify_vial(vial_name, dilution_recipes):
     """Return ('water'|'stock'|'substock'|'buffer', recipe_or_none)."""
     if vial_name in ("water", "water_2"):
@@ -1308,14 +1410,13 @@ def _classify_vial(vial_name, dilution_recipes):
     raise ValueError(f"Cannot classify vial '{vial_name}' for refill routing")
 
 
-def ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes):
+def ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes, required_ml=0.0):
     """Check current volume; refill if below the kind-specific threshold."""
     kind, recipe = _classify_vial(vial_name, dilution_recipes)
     threshold = WATER_REFILL_THRESHOLD_ML if kind == "water" else REFILL_THRESHOLD_ML
+    threshold = max(threshold, required_ml + _WORKING_VIAL_RESERVE_ML)
 
-    current_ml = lash_e.nr_robot.get_vial_info(vial_name, "vial_volume")
-    if current_ml is None:
-        raise ValueError(f"No volume tracked for vial '{vial_name}'")
+    current_ml = _recorded_volume(lash_e, vial_name)
     if current_ml >= threshold:
         return False
 
@@ -1331,12 +1432,16 @@ def ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes):
     elif kind == "stock":
         refill_surfactant_vial(lash_e, vial_name, liquid="SDS")
     elif kind == "substock":
-        create_substocks_from_recipes(lash_e, [recipe])
+        create_substocks_from_recipes(lash_e, [recipe], all_recipes=dilution_recipes, minimum_ml=threshold)
     elif kind == "buffer":
         raise RuntimeError(
             f"Buffer vial '{vial_name}' at {current_ml:.2f} mL is below "
             f"{REFILL_THRESHOLD_ML} mL and has no automated refill source"
         )
+    remaining = _recorded_volume(lash_e, vial_name)
+    if remaining + 1e-9 < required_ml + _WORKING_VIAL_RESERVE_ML:
+        raise ValueError(f"Insufficient liquid in {vial_name} after refill: need {required_ml:.3f} mL "
+                         f"plus reserve, have {remaining:.3f} mL")
     return True
 
 
@@ -1366,9 +1471,20 @@ def _dispense_vial_in_chunks(
         return
 
     should_condition = should_condition_first
-    for chunk_start in range(0, len(wells), REFILL_CHECK_CHUNK_SIZE):
-        chunk_df = wells.iloc[chunk_start : chunk_start + REFILL_CHECK_CHUNK_SIZE]
-        refilled = ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes)
+    kind, recipe = _classify_vial(vial_name, dilution_recipes)
+    capacity = (8.0 if kind == "water" else 7.5 if kind == "stock" else
+                float(recipe["Final_Volume_mL"]) if kind == "substock" else
+                _recorded_volume(lash_e, vial_name))
+    chunk_start = 0
+    while chunk_start < len(wells):
+        candidates = wells.iloc[chunk_start : chunk_start + REFILL_CHECK_CHUNK_SIZE]
+        cumulative = candidates[volume_column].cumsum() / 1000
+        count = int((cumulative <= capacity - _WORKING_VIAL_RESERVE_ML + 1e-9).sum())
+        if count == 0:
+            raise ValueError(f"One well requires more usable liquid than {vial_name} can hold")
+        chunk_df = candidates.iloc[:count]
+        demand = float(chunk_df[volume_column].sum()) / 1000
+        refilled = ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes, required_ml=demand)
         if refilled:
             should_condition = True
             if reposition_after_refill is not None:
@@ -1387,6 +1503,7 @@ def _dispense_vial_in_chunks(
             well_plate_type=WELLPLATE_TYPE,
         )
         should_condition = False
+        chunk_start += count
 
 
 # ============================================================================
@@ -1796,6 +1913,8 @@ def execute_study_workflow(
 
     wellplate_size = validate_execution_block_size(lash_e)
     well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
+    validate_stock_refill_sources(
+        lash_e, [f"{surfactant_a_name}_stock", f"{surfactant_b_name}_stock"], dilution_recipes)
     if validate_liquids or validation_only:
         from pipetting_data.embedded_liquid_validations import run_liquid_validations
         dye_protocol = get_dye_protocol()

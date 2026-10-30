@@ -62,6 +62,48 @@ using `WATER_REFILL_THRESHOLD_ML` (kept high so the check always triggers;
 the separate `REFILL_THRESHOLD_ML = 4.0 mL`. `EXPERIMENT_TAG` is appended to
 the generated output folder name.
 
+Stock refills can draw from multiple vials in order. The local preset now uses:
+
+```yaml
+STOCK_REFILL_SOURCES:
+  SDS_stock: [SDS_refill, SDS_refill_2]
+  BDDAC_stock: [BDDAC_refill, BDDAC_refill_2]
+STOCK_REFILL_RESERVE_ML: 0.1
+```
+
+The dedicated inventory assigns `SDS_refill_2` to `large_vial_rack[2]` and
+`BDDAC_refill_2` to `large_vial_rack[3]`. These new entries start at **0 mL**.
+Load each with the same solution and concentration as its corresponding parent
+stock, then enter the actual loaded volume in the vial CSV before running.
+The four-slot large-vial rack holds the two original sources and these backups.
+Additional sources can be listed if they have suitable, physically available
+inventory locations. Do not assign the same source to different stock solutions.
+An empty mapping retains the original `SDS_refill` / `BDDAC_refill` convention.
+Queued scheduler jobs retain their own settings: reload the updated preset or
+edit their refill lists and inventory before launching them.
+
+At startup, the workflow validates source lists, recorded volumes, and substock
+dependencies. Each stock top-up targets 7.5 mL and is allocated completely before
+its first transfer. It uses each source down to its configured reserve, then
+continues with the next source, including splitting one top-up between vials.
+Contributions below 200 uL are left behind; allocations leave at least 200 uL
+for the final contribution. Top-ups smaller than 200 uL are rounded up to
+200 uL, keeping the destination below its 8 mL capacity. Each transfer is logged.
+If the pool cannot supply a complete top-up, the workflow raises an error
+before that top-up transfers any liquid. This is a check of each refill, not a
+prediction that the entire experiment has enough supply. Selection uses the
+controller's recorded volumes, not physical empty-vial detection; accurate
+loading and inventory records remain necessary.
+
+Substock preparation now checks its parent source before every transfer and
+can refill either a stock or an upstream dilution. Preparation failures stop
+the Ailsa workflow. Other workflows retain the shared helper's existing behavior.
+Before plate dispensing, each chunk is limited by both `REFILL_CHECK_CHUNK_SIZE`
+and the working vial's usable volume. If scaled wells need more liquid than
+the current vial holds, it refills before that chunk, even above the normal
+4 mL threshold. Chunks retain 0.1 mL in the working vial. Water continues to
+use reservoir 1; these backup lists apply to the parent surfactant stocks.
+
 Simulations skip study CSVs, measurement backups, plots, and scoring by default.
 Set the private `_SAVE_SIMULATION_OUTPUT` constant in the workflow to `True`
 for a diagnostic run that needs those files. The scheduler still records its
