@@ -10,6 +10,51 @@ pairs. See [config_lists/README.md](config_lists/README.md) for the format and
 path rules. Each row gets an independent config snapshot and must pass the
 normal simulation review before live execution.
 
+Use **Save Queue** beside Import Queue to save the current row order and each
+row's committed Setup configuration. The YAML list and its adjacent uniquely
+named config folder belong together; keep both when moving a saved queue.
+Import Queue restores these independent copies, including repeated workflows
+with different settings. Saving does not change row configurations or simulation
+approval. Vial inventory, robot/track state and referenced input files retain
+their existing repository paths; they are not archived by Save Queue.
+
+## Manual Robot Recovery
+
+After an interrupted workflow exits, select the queue row whose vial CSV matches
+the robot's current physical contents and click **Reset Robot**. The confirmation
+shows that row and file. Save or Reload pending Robot/Track Status edits first.
+This is a real hardware action, available without a successful simulation.
+
+The separate `scheduler.reset_runner` process acquires the same hardware lock as
+live jobs, verifies the confirmed inputs have not changed, and initializes
+`Lash_E(vial_file=..., simulate=False, initialize_track=False,
+initialize_biotek=False, show_gui=False)`. `North_Robot.__init__` already calls
+`reset_after_initialization`, so the runner does not call it twice. This reuses
+the existing pump loading, cleanup and homing behavior, including its retries.
+Recorded held vial/liquid indices must exist in the selected CSV. The action
+does not execute the selected workflow or alter its configuration.
+
+Queue editing, launching and window closing are blocked until reset exits.
+Progress is mirrored to the console and saved under
+`scheduler/state/reset_<id>/console.log`, alongside input and result reports.
+Errors requiring an interactive terminal prompt fail the reset for review.
+Success requires no logged errors or recorded held vial, tip or liquid afterward.
+Both success and failure reload shared status and clear simulation approval;
+review the resulting state and simulate again before Run.
+
+A confirmed reset also discards the earlier simulation session and cached job
+prefixes, even when recovery leaves identical file contents. The next simulation
+copies the current robot/track YAML and vial CSVs into a fresh private session.
+Reloading after success, failure or a child crash updates the editor baselines
+without writing their previous values back to disk. Queue configurations stay
+intact. If a state file is unreadable, simulation remains blocked until that
+file is corrected and reloaded; the GUI can recover without restarting.
+
+This action recovers the robot arm, not the track's plate inventory. Track reset
+currently preserves held plates and pending transfers without recovery motion;
+those still require operator review. It also relies on accurate saved physical
+state and does not prevent independent hardware scripts from running.
+
 Each selected workflow row owns a private configuration snapshot, copied once
 from `workflow_configs/<workflow>.yaml`. Repeated workflows have independent
 settings. The queue has five columns; all configuration actions are in Setup.

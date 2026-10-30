@@ -40,6 +40,79 @@ class HarmlessProcess(QProcess):
 
 
 class SimulationGuiTests(unittest.TestCase):
+    def test_reset_then_simulate_uses_current_files_after_success_failure_or_crash(self):
+        for outcome in ("success", "failure", "crash", "invalid_report"):
+            with self.subTest(outcome=outcome):
+                self.window.start_simulation()
+                self.wait_for_queue()
+                configurations = [Path(self.window.row_config_path(self.window.table.cellWidget(row, 0))).read_bytes()
+                                  for row in range(2)]
+                self.window.table.selectRow(0)
+                with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+                        patch.object(HarmlessProcess, "start"):
+                    self.window.reset_robot()
+                self.assertIsNotNone(self.window.reset_process)
+                # Emulate state changes written by reset before any kind of exit.
+                robot_file = self.root / "robot_state" / "robot_status.yaml"
+                robot = yaml.safe_load(robot_file.read_text())
+                robot["pipets_used"]["rack"] = 7
+                robot_file.write_text(yaml.safe_dump(robot))
+                vial_file = self.root / "status" / "first.csv"
+                vial_file.write_text("vial_name,location,location_index,vial_volume\nfirst,main_8mL_rack,0,0.75\n")
+                expected_robot, expected_vials = robot_file.read_bytes(), vial_file.read_bytes()
+                if outcome != "crash":
+                    (self.window.reset_folder / "result.json").write_text(json.dumps({
+                        "completed": outcome == "success", "exception": None if outcome == "success" else "cleanup failed"
+                    } if outcome != "invalid_report" else []))
+                with patch.object(QMessageBox, "warning"):
+                    self.window.reset_finished(0 if outcome == "success" else 1,
+                                               QProcess.CrashExit if outcome == "crash" else QProcess.NormalExit)
+                self.assertTrue(self.window.shared_state_ready())
+                self.assertFalse(self.window.shared_state_dirty())
+                self.assertTrue(self.window.simulate_button.isEnabled())
+                self.assertFalse(self.window.run_button.isEnabled())
+                self.assertIsNone(self.window.simulation_session)
+                self.assertEqual(self.window.simulation_signatures, [])
+                self.assertEqual(robot_file.read_bytes(), expected_robot)
+                self.assertEqual(vial_file.read_bytes(), expected_vials)
+                self.assertEqual(self.window.robot_status_widget.robot_data["pipets_used"]["rack"], 7)
+                launches_before = len(HarmlessProcess.launches)
+                self.window.start_simulation()
+                self.wait_for_queue()
+                self.assertEqual(len(HarmlessProcess.launches) - launches_before, 2)
+                session = self.window.simulation_session
+                first = json.loads((session / "jobs" / "000" / "result.json").read_text())
+                self.assertEqual(first["tips_before"], 7)
+                self.assertTrue(self.window.run_button.isEnabled())
+                manifest = json.loads((session / "session.json").read_text())
+                self.assertEqual(Path(manifest["vial_files"][str(vial_file.resolve())]).read_bytes(), expected_vials)
+                self.assertEqual(robot_file.read_bytes(), expected_robot)
+                self.assertEqual(configurations, [Path(self.window.row_config_path(self.window.table.cellWidget(row, 0))).read_bytes()
+                                                  for row in range(2)])
+
+    def test_unreadable_state_after_reset_can_be_corrected_and_reloaded(self):
+        self.window.table.selectRow(0)
+        robot_file = self.root / "robot_state" / "robot_status.yaml"
+        valid_state = robot_file.read_bytes()
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+                patch.object(HarmlessProcess, "start"):
+            self.window.reset_robot()
+        robot_file.write_text("gripper_status: [unterminated\n")
+        with patch.object(QMessageBox, "warning"), patch.object(QMessageBox, "critical"):
+            self.window.reset_finished(1, QProcess.CrashExit)
+        self.assertFalse(self.window.simulate_button.isEnabled())
+        self.assertFalse(self.window.run_button.isEnabled())
+        self.assertTrue(self.window.table.isEnabled())
+        # Operator corrects the damaged state, then reloads it in the same GUI.
+        robot_file.write_bytes(valid_state)
+        self.window.reload_shared_state(self.window.robot_status_widget,
+                                        self.window.robot_status_widget._load_robot_status, confirm=False)
+        self.assertTrue(self.window.shared_state_ready())
+        self.assertTrue(self.window.simulate_button.isEnabled())
+        self.window.start_simulation()
+        self.wait_for_queue()
+        self.assertTrue(self.window.run_button.isEnabled())
+
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])

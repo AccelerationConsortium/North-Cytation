@@ -16,12 +16,12 @@ def test_vortex(repeats):
     #lash_e.nr_robot.move_robot_home()
 
     for i in range (0, repeats):
-        lash_e.nr_robot.c9.open_gripper()
+        lash_e.nr_robot.c9.set_output(7, False)  
         time.sleep(0.5)
-        lash_e.nr_robot.c9.close_gripper()
+        lash_e.nr_robot.c9.set_output(7, True)  
         time.sleep(0.5)
         
 
   
 
-test_vortex(100)
+test_vortex(5)

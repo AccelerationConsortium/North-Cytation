@@ -22,6 +22,7 @@ import os
 import time
 import math
 import random
+from numbers import Real
 import pandas as pd
 
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
@@ -29,9 +30,7 @@ from master_usdl_coordinator import Lash_E, flatten_cytation_data
 from workflows.surfactant_grid_adaptive_concentrations import (
     ADD_BUFFER,
     REFILL_THRESHOLD_ML,
-    SHAKE_WAIT_PROTOCOL,
     SELECTED_BUFFER,
-    TURBIDITY_PROTOCOL_FILE,
     create_substocks_from_recipes as _create_substocks_from_recipes,
     dispense_component_to_wellplate,
     fill_water_vial,
@@ -77,6 +76,8 @@ _RECIPE_VOLUME_COLUMNS = (
 DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
 DYE_VIAL = "dye_vial"
+DYE_BACKUP_VIALS = []
+DYE_SOURCE_RESERVE_ML = 2.0
 DYE_VOLUME_UL = 5
 # "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
 DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
@@ -124,24 +125,31 @@ _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
     "MAX_WELLS", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DYE",
     "DYE_SOLVENT", "DYE_VIAL", "VALIDATE_LIQUIDS", "VALIDATION_ONLY",
+    "DYE_BACKUP_VIALS", "DYE_SOURCE_RESERVE_ML",
     "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
     "MEASUREMENT_REPLICATES", "MEASUREMENT_SCHEDULE_MIN", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
     "RANDOMIZED_MEASUREMENT_ORDER", "MEASUREMENT_RANDOMIZATION_SEED",
     "EXECUTION_BLOCK_SIZE", "REFILL_CHECK_CHUNK_SIZE",
     "STOCK_REFILL_SOURCES", "STOCK_REFILL_RESERVE_ML",
     "WATER_REFILL_THRESHOLD_ML", "EXPERIMENT_TAG",
-    "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SHAKE_WAIT_PROTOCOL",
-    "SELECTED_BUFFER", "TURBIDITY_PROTOCOL_FILE",
+    "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SELECTED_BUFFER",
 ]
 
 # Safe rack positions assigned by position_surfactant_vials_by_concentration,
 # in the same order that function uses (concentrated -> dilute).
 _SURF_SAFE_POSITIONS = [47, 46, 45, 44, "clamp", 43, 36]
 
+# Cytation protocols are plate-specific: the BioTek API cannot change a protocol's
+# plate type, so each protocol exists as _24/_48/_96 copies in C:\Protocols and
+# {plate} is filled from WELLPLATE_TYPE at run time.
+_PLATE_PROTOCOL_SUFFIX = {"96 WELL PLATE": "96", "48 WELL PLATE": "48", "24 WELL PLATE": "24"}
+_SHAKE_WAIT_PROTOCOL = r"C:\Protocols\shake_5_wait_5_{plate}.prt"
+_TURBIDITY_PROTOCOL = r"C:\Protocols\CMC_Absorbance_{plate}.prt"
+
 _DYE_PROTOCOLS = {
     "pyrene": {
         "implemented": True,
-        "fluorescence_protocol_file": r"C:\Protocols\CMC_Fluorescence_96.prt",
+        "fluorescence_protocol_file": r"C:\Protocols\CMC_Fluorescence_{plate}.prt",
         "raw_column_mapping": {
             "334_373": "fluorescence_334_373",
             "334_384": "fluorescence_334_384",
@@ -156,7 +164,7 @@ _DYE_PROTOCOLS = {
     },
     "coumarin-6": {
         "implemented": True,
-        "fluorescence_protocol_file": r"C:\Protocols\Coumarin_96.prt",
+        "fluorescence_protocol_file": r"C:\Protocols\Coumarin_{plate}.prt",
         "raw_column_mapping": {
             "485_530": "fluorescence_485_530",
         },
@@ -166,7 +174,7 @@ _DYE_PROTOCOLS = {
     },
     "nile-red": {
         "implemented": True,
-        "fluorescence_protocol_file": r"C:\Protocols\NileRed_96.prt",
+        "fluorescence_protocol_file": r"C:\Protocols\NileRed_{plate}.prt",
         "raw_column_mapping": {
             "550_648": "fluorescence_550_648",
         },
@@ -180,6 +188,14 @@ _DYE_PROTOCOLS = {
 # STUDY METADATA
 # ============================================================================
 
+def get_plate_protocol(template):
+    """Return the Cytation protocol path matching the configured wellplate type."""
+    if WELLPLATE_TYPE not in _PLATE_PROTOCOL_SUFFIX:
+        valid_types = ", ".join(sorted(_PLATE_PROTOCOL_SUFFIX))
+        raise ValueError(f"No Cytation protocols for WELLPLATE_TYPE '{WELLPLATE_TYPE}'. Valid types: {valid_types}")
+    return template.format(plate=_PLATE_PROTOCOL_SUFFIX[WELLPLATE_TYPE])
+
+
 def get_dye_protocol():
     """Return the active dye protocol with runtime dispense settings."""
     if DYE not in _DYE_PROTOCOLS:
@@ -188,13 +204,23 @@ def get_dye_protocol():
     dye_vial = DYE_VIAL
     if not isinstance(dye_vial, str) or not dye_vial.strip():
         raise ValueError("DYE_VIAL must be a non-empty vial name")
-    if DYE_VOLUME_UL <= 0:
+    backups = DYE_BACKUP_VIALS
+    if (not isinstance(backups, list)
+            or any(not isinstance(vial, str) or not vial.strip() for vial in backups)
+            or len(set([dye_vial, *backups])) != len(backups) + 1):
+        raise ValueError("DYE_BACKUP_VIALS must be a list of distinct vial names separate from DYE_VIAL")
+    reserve = DYE_SOURCE_RESERVE_ML
+    if isinstance(reserve, bool) or not isinstance(reserve, (int, float)) or not math.isfinite(reserve) or reserve < 0:
+        raise ValueError("DYE_SOURCE_RESERVE_ML must be finite and nonnegative")
+    if not math.isfinite(DYE_VOLUME_UL) or DYE_VOLUME_UL <= 0:
         raise ValueError(f"DYE_VOLUME_UL must be positive, got {DYE_VOLUME_UL}")
 
     protocol = dict(_DYE_PROTOCOLS[DYE])
+    protocol["fluorescence_protocol_file"] = get_plate_protocol(protocol["fluorescence_protocol_file"])
     protocol["dye"] = DYE
     protocol["dye_solvent"] = DYE_SOLVENT
     protocol["dye_vial"] = dye_vial
+    protocol["dye_vials"] = [dye_vial, *backups]
     protocol["dye_volume_ul"] = DYE_VOLUME_UL * get_volume_scale()
     return protocol
 
@@ -317,6 +343,8 @@ def get_study_config():
         "dye": dye_protocol["dye"],
         "dye_solvent": DYE_SOLVENT,
         "dye_vial": dye_protocol["dye_vial"],
+        "dye_source_vials": dye_protocol["dye_vials"],
+        "dye_source_reserve_ml": DYE_SOURCE_RESERVE_ML,
         "dye_volume_ul": dye_protocol["dye_volume_ul"],
         "base_dye_volume_ul": DYE_VOLUME_UL,
         "volume_scale": get_volume_scale(),
@@ -344,7 +372,8 @@ def add_study_metadata(results_df, preparation_replicate):
     results_df = results_df.copy()
     results_df["dye"] = dye_protocol["dye"]
     results_df["dye_solvent"] = DYE_SOLVENT
-    results_df["dye_vial"] = dye_protocol["dye_vial"]
+    results_df["dye_vial"] = (results_df["dye_source_vial"] if "dye_source_vial" in results_df
+                              else dye_protocol["dye_vial"])
     results_df["dye_volume_ul"] = dye_protocol["dye_volume_ul"]
     results_df["base_dye_volume_ul"] = DYE_VOLUME_UL
     results_df["volume_scale"] = get_volume_scale()
@@ -563,11 +592,12 @@ def measure_study_turbidity(lash_e, well_indices, batch_recipes, shake_and_wait=
 
 def measure_study_turbidity_protocol_only(lash_e, well_indices, batch_recipes):
     """Run turbidity protocol using the configured wellplate type."""
-    lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
+    protocol_file = get_plate_protocol(_TURBIDITY_PROTOCOL)
+    lash_e.logger.info(f"Running turbidity protocol: {protocol_file}")
 
     if not lash_e.simulate:
         turbidity_data = lash_e.cytation.run_protocol(
-            TURBIDITY_PROTOCOL_FILE,
+            protocol_file,
             well_indices,
             plate_type=WELLPLATE_TYPE,
         )
@@ -924,11 +954,58 @@ def split_into_plates(well_recipes_df, wellplate_size=None):
 # DYE DISPENSE AND MEASUREMENT
 # ============================================================================
 
+def validate_dye_sources(lash_e, stock_names, dilution_recipes):
+    """Require separate 8 mL dye containers with main-rack home positions."""
+    sources = get_dye_protocol()["dye_vials"]
+    other_roles = {*stock_names, "water", "water_2", *(r["Vial_Name"] for r in dilution_recipes)}
+    if ADD_BUFFER:
+        other_roles.add(SELECTED_BUFFER)
+    for stock in stock_names:
+        other_roles.update(stock_refill_sources(stock))
+    if set(sources) & other_roles:
+        raise ValueError("Dye sources must be separate from water, buffer, surfactant and refill vials")
+    homes = set()
+    for source in sources:
+        if _recorded_volume(lash_e, source) > 8.0 + 1e-9:
+            raise ValueError(f"Dye source {source} exceeds its 8 mL capacity")
+        robot = lash_e.nr_robot
+        if (robot.get_vial_info(source, "vial_type") != "8_mL"
+                or robot.get_vial_info(source, "home_location") != "main_8mL_rack"):
+            raise ValueError(f"Dye source {source} must be an 8 mL vial with a main-rack home position")
+        index = robot.get_vial_info(source, "home_location_index")
+        if (not isinstance(index, Real) or not math.isfinite(index)
+                or index != int(index) or not 0 <= index < 48
+                or index in homes or index in {36, 43, 44, 45, 46, 47}):
+            raise ValueError(f"Dye source {source} has a shared or staging home position: {index}")
+        homes.add(index)
+
+
+def plan_dye_sources(lash_e, well_count):
+    """Allocate complete well doses from recorded volumes in configured order."""
+    protocol = get_dye_protocol()
+    dose_ml = protocol["dye_volume_ul"] / 1000
+    remaining = well_count
+    allocations = []
+    for source in protocol["dye_vials"]:
+        current = _recorded_volume(lash_e, source)
+        usable = max(0.0, current - DYE_SOURCE_RESERVE_ML)
+        count = min(remaining, math.floor((usable + 1e-9) / dose_ml))
+        if count:
+            allocations.append((source, count))
+            remaining -= count
+    if remaining:
+        raise ValueError(f"Insufficient dye supply across {', '.join(protocol['dye_vials'])}: "
+                         f"need {well_count} well doses ({well_count * dose_ml:.3f} mL), "
+                         f"short by {remaining} doses while retaining {DYE_SOURCE_RESERVE_ML:g} mL per vial")
+    return allocations
+
+
 def dispense_dye(lash_e, well_recipes_df):
-    """Dispense the configured dye solution to all wells in the plate DataFrame."""
+    """Dispense whole well doses from the primary dye vial, then its backups."""
     dye_protocol = get_dye_protocol()
+    allocations = plan_dye_sources(lash_e, len(well_recipes_df))
     lash_e.logger.info(
-        f"Dispensing dye {dye_protocol['dye']} from vial {dye_protocol['dye_vial']} "
+        f"Dispensing dye {dye_protocol['dye']} from sources {dye_protocol['dye_vials']} "
         f"using solvent/liquid {dye_protocol['dye_solvent']} "
         f"at {dye_protocol['dye_volume_ul']} uL per well"
     )
@@ -936,18 +1013,22 @@ def dispense_dye(lash_e, well_recipes_df):
     batch_df = well_recipes_df.copy()
     batch_df["dye_volume_ul"] = dye_protocol["dye_volume_ul"]
 
-    lash_e.nr_robot.move_vial_to_location(
-        dye_protocol["dye_vial"], "clamp", 0
-    )
-    dispense_study_component_to_wellplate(
-        lash_e,
-        batch_df,
-        dye_protocol["dye_vial"],
-        dye_protocol["dye_solvent"],
-        "dye_volume_ul",
-    )
-    lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.return_vial_home(dye_protocol["dye_vial"])
+    offset = 0
+    for source, count in allocations:
+        subset = batch_df.iloc[offset:offset + count]
+        lash_e.logger.info(f"Dye source: {source}, {count} wells, "
+                           f"{count * dye_protocol['dye_volume_ul'] / 1000:.3f} mL")
+        lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.move_vial_to_location(source, "clamp", 0)
+        dispense_study_component_to_wellplate(
+            lash_e, subset, source, dye_protocol["dye_solvent"], "dye_volume_ul")
+        lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.return_vial_home(source)
+        # Keep the actual source with each well in the measurement/output tables.
+        if "dye_source_vial" not in well_recipes_df:
+            well_recipes_df["dye_source_vial"] = pd.Series(index=well_recipes_df.index, dtype=object)
+        well_recipes_df.loc[subset.index, "dye_source_vial"] = source
+        offset += count
     lash_e.logger.info(f"  Dye added to {len(well_recipes_df)} wells")
 
     return well_recipes_df
@@ -1120,8 +1201,9 @@ def position_study_wellplate_at_track(lash_e):
 def shake_study_wellplate(lash_e):
     """Run the configured shake protocol using the configured wellplate type."""
     if not lash_e.simulate:
-        lash_e.logger.info(f"Running shake protocol: {SHAKE_WAIT_PROTOCOL}")
-        lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0], plate_type=WELLPLATE_TYPE)
+        protocol_file = get_plate_protocol(_SHAKE_WAIT_PROTOCOL)
+        lash_e.logger.info(f"Running shake protocol: {protocol_file}")
+        lash_e.cytation.run_protocol(protocol_file, [0], plate_type=WELLPLATE_TYPE)
     else:
         lash_e.logger.info("Shake protocol simulated")
 
@@ -1318,7 +1400,7 @@ def validate_stock_refill_sources(lash_e, stock_names, dilution_recipes):
     unknown = set(STOCK_REFILL_SOURCES) - set(stock_names)
     if unknown:
         raise ValueError(f"Unknown stocks in STOCK_REFILL_SOURCES: {sorted(unknown)}")
-    working = {*stock_names, "water", "water_2", get_dye_protocol()["dye_vial"],
+    working = {*stock_names, "water", "water_2", *get_dye_protocol()["dye_vials"],
                *(r["Vial_Name"] for r in dilution_recipes)}
     if ADD_BUFFER:
         working.add(SELECTED_BUFFER)
@@ -1703,9 +1785,7 @@ def execute_preparation_replicate(
         lash_e.current_experiment_name = experiment_name
         lash_e.logger.info("Simulation study output disabled")
 
-    lash_e.logger.info("Replicate setup: filling water + stock vials to capacity")
-    fill_water_vial(lash_e, "water")
-    fill_water_vial(lash_e, "water_2")
+    lash_e.logger.info("Replicate setup: filling stock vials to capacity")
     refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid="SDS")
     refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid="SDS")
 
@@ -1915,11 +1995,21 @@ def execute_study_workflow(
     well_recipes_df = scale_well_recipes(well_recipes_df, lash_e)
     validate_stock_refill_sources(
         lash_e, [f"{surfactant_a_name}_stock", f"{surfactant_b_name}_stock"], dilution_recipes)
+    validate_dye_sources(
+        lash_e, [f"{surfactant_a_name}_stock", f"{surfactant_b_name}_stock"], dilution_recipes)
+    dye_well_count = 1 if validation_only else len(well_recipes_df) * PREPARATION_REPLICATES
+    plan_dye_sources(lash_e, dye_well_count)
+    # Fill water before validation, which draws from "water"
+    lash_e.logger.info("Filling water vials to capacity")
+    fill_water_vial(lash_e, "water")
+    fill_water_vial(lash_e, "water_2")
     if validate_liquids or validation_only:
         from pipetting_data.embedded_liquid_validations import run_liquid_validations
         dye_protocol = get_dye_protocol()
-        sources = [("water", "water", well_recipes_df["water_volume_ul"]),
-                   (dye_protocol["dye_vial"], DYE_SOLVENT, [dye_protocol["dye_volume_ul"]])]
+        sources = [("water", "water", well_recipes_df["water_volume_ul"])]
+        sources.extend((source, DYE_SOLVENT, [dye_protocol["dye_volume_ul"]])
+                       for source, _ in plan_dye_sources(
+                           lash_e, dye_well_count))
         for label, column in ((surfactant_a_name, "surf_A_volume_ul"),
                               (surfactant_b_name, "surf_B_volume_ul")):
             sources.append((f"{label}_stock", "SDS", well_recipes_df[column]))

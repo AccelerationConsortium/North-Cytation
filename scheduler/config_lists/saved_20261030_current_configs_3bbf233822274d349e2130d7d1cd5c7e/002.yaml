@@ -1,0 +1,57 @@
+# Workflow Configuration File
+# Generated: 2026-10-30 17:22:20
+# Workflow: bbbb8773b1b644629b0d842663452370_draft_388a18d2fa684f90a4207c7d1e6a7546
+#
+# Edit this file to customize workflow behavior.
+# Changes will be loaded automatically on next run.
+#
+
+SIMULATE: true
+EXPERIMENT_TAG: study_11
+PREPARATION_REPLICATES: 1
+MEASUREMENT_REPLICATES: 3
+RANDOMIZED_ORDER: false
+RANDOMIZATION_SEED: null
+DYE: pyrene
+DYE_SOLVENT: DMSO
+WELLPLATE_TYPE: 24 WELL PLATE
+DYE_VIAL: dye_pyrene
+DYE_BACKUP_VIALS:
+- dye_pyrene_2
+DYE_SOURCE_RESERVE_ML: 2.0
+DYE_VOLUME_UL: 5
+DISPENSE_ORDER:
+- surfactant_A
+- water
+- surfactant_B
+- dye
+ADD_BUFFER: false
+INPUT_VIAL_STATUS_FILE: status/surfactant_grid_ailsa_vials.csv
+RECIPES_CSV: inputs/gradient_proposal_snapped_96well_recipe.csv
+STOCKS_CSV: inputs/experiment_plan_stock_solutions_SDS_BDDAC.csv
+REFILL_THRESHOLD_ML: 4.0
+SHAKE_WAIT_PROTOCOL: C:\Protocols\shake_5_wait_5.prt
+SELECTED_BUFFER: NaCl
+TURBIDITY_PROTOCOL_FILE: C:\Protocols\CMC_Absorbance_96.prt
+MAX_WELLS: 96
+EXECUTION_BLOCK_SIZE: 96
+REFILL_CHECK_CHUNK_SIZE: 24
+STOCK_REFILL_SOURCES:
+  BDDAC_stock:
+  - BDDAC_refill
+  - BDDAC_refill_2
+  SDS_stock:
+  - SDS_refill
+  - SDS_refill_2
+STOCK_REFILL_RESERVE_ML: 0.1
+WATER_REFILL_THRESHOLD_ML: 8.0
+VOLUME_SCALE_BY_PLATE:
+  24 WELL PLATE: 4
+  48 WELL PLATE: 2
+  96 WELL PLATE: 1
+MEASUREMENT_SCHEDULE_MIN:
+- 0
+RANDOMIZED_MEASUREMENT_ORDER: false
+MEASUREMENT_RANDOMIZATION_SEED: null
+VALIDATE_LIQUIDS: false
+VALIDATION_ONLY: false

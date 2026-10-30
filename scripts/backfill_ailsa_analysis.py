@@ -84,9 +84,9 @@ def load_plot_function():
     sys.modules[curve_module.__name__] = curve_module
     path = ROOT / "workflows/surfactant_grid_ailsa.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    functions = {"get_dye_protocol", "get_volume_scale", "generate_study_1d_plots"}
+    functions = {"get_dye_protocol", "get_plate_protocol", "get_volume_scale", "generate_study_1d_plots"}
     constants = {"DYE", "DYE_SOLVENT", "DYE_VIAL", "DYE_VOLUME_UL", "WELLPLATE_TYPE",
-                 "VOLUME_SCALE_BY_PLATE", "_DYE_PROTOCOLS"}
+                 "VOLUME_SCALE_BY_PLATE", "_DYE_PROTOCOLS", "_PLATE_PROTOCOL_SUFFIX"}
     nodes = [node for node in tree.body if
              (isinstance(node, ast.FunctionDef) and node.name in functions) or
              (isinstance(node, ast.Assign) and any(

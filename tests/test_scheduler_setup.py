@@ -25,6 +25,71 @@ from vial_manager_gui import VIAL_MOVE_MIME, VialManagerMainWindow
 
 
 class SchedulerSetupTests(unittest.TestCase):
+    def test_reset_robot_uses_selected_row_and_clears_approval(self):
+        window, selector = self.row_window()
+        other_vials = self.root / "status" / "other.csv"
+        other_vials.write_bytes(self.vials.read_bytes())
+        other_config = self.root / "other.yaml"
+        config = yaml.safe_load(self.config.read_bytes())
+        config["INPUT_VIAL_STATUS_FILE"] = "status/other.csv"
+        other_config.write_text(yaml.safe_dump(config))
+        window.add_row("surfactant_grid_ailsa", config_file=other_config)
+        window.table.selectRow(1)
+        window.approved_simulation_inputs = {"old": "approval"}
+        window.simulation_session = self.root / "old_simulation"
+        window.simulation_signatures = [{"old": "cached"}]
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes) as confirm, \
+                patch.object(scheduler_gui.QProcess, "start") as start:
+            window.reset_robot()
+        self.assertIsNotNone(window.reset_process)
+        self.assertFalse(window.table.isEnabled())
+        self.assertFalse(window.interrupt_button.isEnabled())
+        self.assertFalse(window.stop_button.isEnabled())
+        self.assertIsNone(window.approved_simulation_inputs)
+        self.assertIsNone(window.simulation_session)
+        self.assertEqual(window.simulation_signatures, [])
+        self.assertIn(str(other_vials.resolve()), confirm.call_args.args[2])
+        job = json.loads((window.reset_folder / "input.json").read_text())
+        self.assertEqual(job["vial_file"], str(other_vials.resolve()))
+        self.assertIn("scheduler.reset_runner", start.call_args.args[1])
+        (window.reset_folder / "result.json").write_text(json.dumps({"completed": True}))
+        window.reset_finished(0, scheduler_gui.QProcess.NormalExit)
+        self.assertIsNone(window.reset_process)
+        self.assertTrue(window.table.isEnabled())
+        self.assertIsNone(window.approved_simulation_inputs)
+        self.assertIn("reset completed", window.statusBar().currentMessage())
+
+    def test_reset_decline_or_busy_never_launches_hardware(self):
+        window, selector = self.row_window()
+        window.approved_simulation_inputs = {"keep": "approval"}
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.No) as confirm, \
+                patch.object(scheduler_gui.QProcess, "start") as start:
+            window.reset_robot()
+            confirm.assert_called_once()
+            start.assert_not_called()
+            self.assertEqual(window.approved_simulation_inputs, {"keep": "approval"})
+            confirm.reset_mock()
+            window._execution_busy = True
+            window.reset_robot()
+            confirm.assert_not_called()
+            start.assert_not_called()
+
+    def test_save_queue_restores_current_private_configs(self):
+        window, selector = self.row_window()
+        window.add_row("surfactant_grid_ailsa")
+        original = Path(window.row_config_path(selector)).read_bytes()
+        Path(window.row_config_path(selector)).write_bytes(original + b"\nQUEUE_TEST: custom\n")
+        saved = self.root / "saved.yaml"
+        with patch.object(scheduler_gui.QFileDialog, "getSaveFileName", return_value=(str(saved), "")):
+            window.save_queue()
+        jobs = scheduler_gui.read_config_list(saved, window.workflow_names)
+        self.assertEqual(len(jobs), 2)
+        self.assertEqual(yaml.safe_load(jobs[0][1].read_bytes())["QUEUE_TEST"], "custom")
+        self.assertNotIn("QUEUE_TEST", yaml.safe_load(jobs[1][1].read_bytes()))
+        self.assertEqual(self.config.read_bytes(), original)
+        buttons = window.findChildren(QPushButton)
+        self.assertTrue(any(button.text() == "Save Queue" for button in buttons))
+
     def test_import_queue_preserves_order_and_private_configs(self):
         window, selector = self.row_window()
         window.table.removeRow(0)

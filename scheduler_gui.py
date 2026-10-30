@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import yaml
 from scheduler.console_output import ConsoleLogMirror
-from scheduler.config_lists import read_config_list
+from scheduler.config_lists import read_config_list, write_config_list
 from PySide6.QtCore import Qt, QProcess, QProcessEnvironment
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
@@ -283,6 +283,7 @@ class SchedulerWindow(QMainWindow):
         self.approved_simulation_inputs = None
         self.pending_simulation_inputs = None
         self.simulation_process = None
+        self.reset_process = None
         self.simulation_session = None
         self.simulation_rows = []
         self.simulation_index = 0
@@ -328,6 +329,15 @@ class SchedulerWindow(QMainWindow):
         import_queue.setToolTip("Append workflows from an ordered YAML list of config files")
         import_queue.clicked.connect(self.import_queue)
         toolbar.addWidget(import_queue)
+        save_queue = QPushButton("Save Queue")
+        save_queue.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        save_queue.setToolTip("Save queue order and each row's current configuration for later import")
+        save_queue.clicked.connect(self.save_queue)
+        toolbar.addWidget(save_queue)
+        reset_robot = QPushButton("Reset Robot")
+        reset_robot.setToolTip("Recover the real robot using the selected row's vial file")
+        reset_robot.clicked.connect(self.reset_robot)
+        toolbar.addWidget(reset_robot)
         for label, icon, action in (
             ("Remove selected workflow", QStyle.SP_TrashIcon, self.remove_row),
             ("Move selected workflow up", QStyle.SP_ArrowUp, lambda: self.move_row(-1)),
@@ -506,6 +516,131 @@ class SchedulerWindow(QMainWindow):
             self.statusBar().showMessage("Cannot load shared robot/track state; check the YAML files and Reload")
         elif self.shared_state_ready():
             self.statusBar().showMessage("Shared state reloaded; simulate again before Run")
+
+    def reset_robot(self):
+        if self._execution_busy or self.setup_window is not None or self.simulation_process is not None:
+            return
+        if not self.shared_state_ready():
+            QMessageBox.warning(self, "Cannot Reset Robot", "Save or Reload robot/track state before resetting.")
+            return
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Cannot Reset Robot", "Select the queue row whose vial file matches the robot's current state.")
+            return
+        selector = self.table.cellWidget(row, 0)
+        name = selector.currentData()
+        try:
+            if name not in self.workflow_names or selector.currentText() != name:
+                raise ValueError("Select a workflow before resetting the robot.")
+            config_path, vial_path = read_workflow_vial_path(name, self.row_config_path(selector))
+            from scheduler.live_runner import fingerprint
+            robot_state = REPO_ROOT / "robot_state" / "robot_status.yaml"
+            paths = list((REPO_ROOT / "robot_state").glob("*.yaml")) + [config_path]
+            if vial_path is not None:
+                paths.append(vial_path)
+            job = {"vial_file": str(vial_path) if vial_path is not None else None,
+                   "robot_state": str(robot_state), "input_hashes": fingerprint(paths)}
+        except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Cannot Reset Robot", str(error))
+            return
+        answer = QMessageBox.question(
+            self, "Reset Real Robot?",
+            f"Reset REAL hardware using row {row + 1}: {name}\n"
+            f"Vial file: {vial_path if vial_path is not None else 'None (no vial tracking)'}\n\n"
+            "Confirm this vial file and the saved Robot Status match the physical robot, "
+            "and no other hardware workflow is running.\n"
+            "Reset may return liquid and held vials, remove a tip, and move the robot home. "
+            "Track plates and incomplete plate transfers require separate review.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            folder = REPO_ROOT / "scheduler" / "state" / ("reset_" + uuid4().hex)
+            folder.mkdir(parents=True)
+            (folder / "input.json").write_text(json.dumps(job, indent=2), encoding="utf-8")
+        except OSError as error:
+            QMessageBox.warning(self, "Cannot Reset Robot", str(error))
+            return
+        self.approved_simulation_inputs = None
+        self.pending_simulation_inputs = None
+        # Recovery starts a new physical baseline, even if its final file bytes
+        # happen to equal the old ones. Never reuse a pre-reset simulated prefix.
+        self.simulation_session = None
+        self.simulation_signatures = []
+        self.reset_folder = folder
+        process = QProcess(self)
+        process.setWorkingDirectory(str(REPO_ROOT))
+        process.setProcessChannelMode(QProcess.MergedChannels)
+        process.setStandardOutputFile(str(folder / "console.log"))
+        environment = QProcessEnvironment.systemEnvironment()
+        environment.insert("PYTHONIOENCODING", "utf-8")
+        process.setProcessEnvironment(environment)
+        self.reset_console_mirror = ConsoleLogMirror(folder / "console.log", sys.stdout, self)
+        process.finished.connect(self.reset_finished)
+        process.errorOccurred.connect(lambda error: self.reset_finished(-1, QProcess.CrashExit)
+                                     if error == QProcess.FailedToStart else None)
+        self.reset_process = process
+        self.set_simulation_busy(True)
+        self.stop_button.setEnabled(False)
+        self.interrupt_button.setEnabled(False)
+        self.statusBar().showMessage(f"Resetting real robot using {vial_path}; see console for progress")
+        process.start(sys.executable, ["-u", "-m", "scheduler.reset_runner", "--job-folder", str(folder)])
+
+    def reset_finished(self, exit_code, exit_status):
+        process = self.reset_process
+        if process is None:
+            return
+        self.reset_process = None
+        self.reset_console_mirror.finish()
+        try:
+            result = json.loads((self.reset_folder / "result.json").read_text(encoding="utf-8"))
+            if not isinstance(result, dict):
+                raise ValueError("Reset report must be a JSON object.")
+            okay = exit_code == 0 and exit_status == QProcess.NormalExit and result.get("completed") is True
+            message = result.get("exception") or "Reset did not complete. Review the console log."
+        except (OSError, ValueError) as error:
+            okay = False
+            message = f"No valid reset report: {error}. {process.errorString()}"
+        process.deleteLater()
+        self.set_simulation_busy(False)
+        for widget, reload in ((self.robot_status_widget, self.robot_status_widget._load_robot_status),
+                               (self.track_status_widget, self.track_status_widget._load_track_status)):
+            self.reload_shared_state(widget, reload, confirm=False)
+        self.refresh_vial_layout()
+        self.statusBar().showMessage(
+            f"Robot reset {'completed; simulate again before Run' if okay else 'failed; review state and console log'} | {self.reset_folder}")
+        if not okay:
+            QMessageBox.warning(self, "Robot Reset Failed", f"{message}\n\nLog: {self.reset_folder / 'console.log'}")
+
+    def save_queue(self):
+        if self._execution_busy or self.setup_window is not None or self.simulation_process is not None:
+            return
+        jobs = []
+        for row in range(self.table.rowCount()):
+            selector = self.table.cellWidget(row, 0)
+            name = selector.currentData()
+            if name not in self.workflow_names or selector.currentText() != name:
+                QMessageBox.warning(self, "Cannot Save Queue", f"Select a workflow for row {row + 1}.")
+                return
+            jobs.append((name, self.row_config_path(selector)))
+        if not jobs:
+            QMessageBox.warning(self, "Cannot Save Queue", "Add at least one workflow before saving the queue.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Queue", str(REPO_ROOT / "scheduler" / "config_lists" / "queue.yaml"),
+            "YAML config lists (*.yaml *.yml)",
+        )
+        if not path:
+            return
+        if not Path(path).suffix:
+            path += ".yaml"
+        try:
+            write_config_list(path, jobs)
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Cannot Save Queue", str(error))
+            return
+        self.statusBar().showMessage(f"Saved {len(jobs)} jobs to {path}. Use Import Queue to restore them.")
 
     def import_queue(self):
         if self._execution_busy or self.setup_window is not None or self.simulation_process is not None:
@@ -1146,8 +1281,8 @@ class SchedulerWindow(QMainWindow):
         dialog.exec()
 
     def closeEvent(self, event):
-        if self.simulation_process is not None:
-            QMessageBox.warning(self, "Workflow Running", "Wait for the current workflow to finish before closing.")
+        if self.simulation_process is not None or self.reset_process is not None:
+            QMessageBox.warning(self, "Hardware Process Running", "Wait for the current workflow or robot reset to finish before closing.")
             event.ignore()
             return
         super().closeEvent(event)

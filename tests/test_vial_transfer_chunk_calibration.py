@@ -68,7 +68,7 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
         for aspirate_call, dispense_call, expected in zip(
                 self.aspirate.call_args_list, self.dispense.call_args_list,
                 expected_volumes):
-            self.assertAlmostEqual(aspirate_call.args[2], round(expected, 3))
+            self.assertAlmostEqual(aspirate_call.args[2], expected)
             self.assertAlmostEqual(dispense_call.args[2], expected)
             self.assertIs(aspirate_call.kwargs['parameters'],
                           dispense_call.kwargs['parameters'])

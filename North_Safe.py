@@ -835,21 +835,17 @@ class North_Spin:
     def open_lid(self):
         self.logger.debug("Opening centrifuge lid")
         self.c9.set_output(11, True)  # Open lid pneumatic
-        self.c9.set_output(3, True)
 
     def close_lid(self):
         self.logger.debug("Closing centrifuge lid")
-        self.c9.set_output(3, False)
         self.c9.set_output(11, False)  # Close lid pneumatic
 
     def turn_on_vacuum(self):
         self.logger.debug("Turning on centrifuge vacuum")
-        self.c9.set_output(3, True)
         self.c9.set_output(10, True)  # Turn on vacuum pneumatic
 
     def turn_off_vacuum(self):
         self.logger.debug("Turning off centrifuge vacuum")
-        self.c9.set_output(3, False)
         self.c9.set_output(10, False)  # Turn off vacuum pneumatic
 
 class North_Robot(North_Base):
@@ -1152,6 +1148,7 @@ class North_Robot(North_Base):
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
         self.c9.zero_scale()
+        self.c9.set_output(7, False)  # Ensure gripper is initially open
         self.c9.delay(3)
        
         
@@ -1188,7 +1185,8 @@ class North_Robot(North_Base):
         # Final setup
         # Now load pumps after homing
         
-        self.c9.open_gripper()
+        #self.c9.open_gripper()
+        self.c9.set_output(7, False)  
  
     def _perform_physical_cleanup(self):
         """
@@ -2014,7 +2012,9 @@ class North_Robot(North_Base):
 
         #Reject aspiration if the volume is not high enough
         if source_vial_volume < amount_mL:
-            self.pause_after_error("Cannot aspirate more volume than in vial")
+            self.pause_after_error(
+                f"Cannot aspirate more volume than in vial: {amount_mL:.3f} mL requested from "
+                f"'{source_vial_name}' ({location}), which has {source_vial_volume:.3f} mL")
 
         # Initialize mass monitoring if requested
         measured_mass = None
@@ -2352,7 +2352,8 @@ class North_Robot(North_Base):
             last_run = (i == repeats - 1)
 
             # Aspirate from source (at normal speed)
-            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters,
+            # Debit and credit the same volume, including fractional microlitres.
+            self.aspirate_from_vial(source_vial_index, volume, parameters=parameters,
                                    liquid=liquid, specified_tip=resolved_tip, use_safe_location=use_safe_location)
 
             # Set custom movement speed if specified - after aspiration when carrying liquid
@@ -2570,9 +2571,11 @@ class North_Robot(North_Base):
 
         if max_vial_volume is not None:
             post_dispense_volume = dest_vial_volume + amount_mL
-            if post_dispense_volume > max_vial_volume:
+            if (post_dispense_volume > max_vial_volume
+                    and not math.isclose(post_dispense_volume, max_vial_volume,
+                                         rel_tol=0.0, abs_tol=1e-9)):
                 self.pause_after_error(f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
-                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                                     f"would exceed capacity ({post_dispense_volume:.6f} mL > {max_vial_volume:.6f} mL max)")
                 return
 
         # Recording opts into the existing weighing path; it never prepares a vial.
@@ -3713,7 +3716,8 @@ class North_Robot(North_Base):
 
         release_speed = self.get_speed('precise_movement')
         self.c9.goto_safe(destination, vel=move_speed if move_speed is not None else self.get_speed('default_robot')) #move vial to destination
-        self.c9.open_gripper()
+        #self.c9.open_gripper()
+        self.c9.set_output(7, False)  
         if not self.simulate:
             time.sleep(release_settle_time_s)
 
@@ -3746,7 +3750,9 @@ class North_Robot(North_Base):
         )
         #self.open_gripper()
         self.goto_location_if_not_there(initial_location, move_speed=move_speed) #move to vial
-        self.c9.close_gripper() #grip vial
+        #self.c9.close_gripper() #grip vial
+        self.c9.set_output(7, True)  
+
         if not self.simulate:
             time.sleep(grab_settle_time_s)
         
@@ -3816,7 +3822,10 @@ class North_Robot(North_Base):
         self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
         if not self.simulate:
             time.sleep(position_settle_time_s)
-        self.c9.close_gripper()
+        
+        #self.c9.close_gripper()
+        self.c9.set_output(7, True) 
+
         if not self.simulate:
             time.sleep(grip_settle_time_s)
         self.c9.uncap(revs=revs)
@@ -3852,7 +3861,8 @@ class North_Robot(North_Base):
             time.sleep(position_settle_time_s)
 
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
-        self.c9.open_gripper() #Open the gripper to release the cap
+        #self.c9.open_gripper() #Open the gripper to release the cap
+        self.c9.set_output(7, False)  
         
         self.GRIPPER_STATUS = None
         self.c9.open_clamp()

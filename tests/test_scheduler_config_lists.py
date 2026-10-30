@@ -4,10 +4,32 @@ from pathlib import Path
 
 import yaml
 
-from scheduler.config_lists import read_config_list
+from scheduler.config_lists import read_config_list, write_config_list
 
 
 class ConfigListTests(unittest.TestCase):
+    def test_save_round_trip_keeps_order_and_independent_configuration_copies(self):
+        second = self.root / "second.yaml"
+        second.write_text("PREPARE_ONLY: false\n", encoding="utf-8")
+        write_config_list(self.path, [("demo", second), ("demo", self.config)])
+        jobs = read_config_list(self.path, ["demo"])
+        self.assertEqual([name for name, _ in jobs], ["demo", "demo"])
+        self.assertEqual([yaml.safe_load(p.read_bytes()) for _, p in jobs],
+                         [{"PREPARE_ONLY": False}, {"PREPARE_ONLY": True}])
+        second.unlink()
+        self.config.write_text("PREPARE_ONLY: changed\n", encoding="utf-8")
+        write_config_list(self.path, [("demo", self.config)])
+        self.assertEqual(yaml.safe_load(jobs[0][1].read_bytes()), {"PREPARE_ONLY": False})
+        self.assertEqual(yaml.safe_load(jobs[1][1].read_bytes()), {"PREPARE_ONLY": True})
+
+    def test_invalid_save_does_not_replace_existing_queue(self):
+        write_config_list(self.path, [("demo", self.config)])
+        before = self.path.read_bytes()
+        for jobs in ([], [("demo", None)], [("demo", self.root / "missing.yaml")]):
+            with self.subTest(jobs=jobs), self.assertRaises((ValueError, OSError)):
+                write_config_list(self.path, jobs)
+            self.assertEqual(self.path.read_bytes(), before)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

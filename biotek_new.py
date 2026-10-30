@@ -295,7 +295,7 @@ class Biotek_Wrapper:
         else:
             return "Unknown"
 
-    def run_protocol(self, protocol_path, wells=None, plate_type="96 WELL PLATE"):
+    def run_protocol(self, protocol_path, wells=None, plate_type="96 WELL PLATE", plate_setup=None):
         """
         Execute a complete protocol file on specified wells.
         
@@ -307,6 +307,8 @@ class Biotek_Wrapper:
             wells (list, optional): List of well indices to measure (0-based)
                 If None, measures all wells according to protocol
             plate_type (str): Plate format - "96 WELL PLATE", "48 WELL PLATE", or "24 WELL PLATE"
+            plate_setup (callable, optional): Inspect or update the newly added
+                Gen5 plate procedure before the normal read path. Defaults to no action.
             
         Returns:
             pandas.DataFrame: Combined measurement data from all wells
@@ -346,6 +348,8 @@ class Biotek_Wrapper:
                 # Process each group of wells sequentially
                 for well_group in grouped_wells:
                     plate = plates.add()
+                    if plate_setup is not None:
+                        plate_setup(plate)
                     prot_type = self.determine_read_type(plate)
                     data_group = self.run_plate(plate, well_group, prot_type=prot_type)
                     

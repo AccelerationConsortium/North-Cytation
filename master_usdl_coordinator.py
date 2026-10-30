@@ -530,7 +530,7 @@ class Lash_E:
         return plate_id
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type=None, repeats=1, use_lid=None, safe_movement=True, preparation_protocol=None, plate_id=None):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type=None, repeats=1, use_lid=None, safe_movement=True, preparation_protocol=None, plate_id=None, plate_setup=None):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
         An optional preparation_protocol runs once after loading, before all reads,
@@ -543,6 +543,8 @@ class Lash_E:
         Args:
             plate_type (str): Robot's wellplate type (e.g., "96 WELL PLATE", "quartz") - used for robot movements
             use_lid (bool): Whether the wellplate has a lid (default: False)
+            plate_setup (callable, optional): Procedure inspection/modification hook
+                passed to the reader for measurement protocols only.
         """
         self.logger.info("Measuring wellplate %d with protocols: %s", wellplate_index, protocol_file_path)
         
@@ -572,7 +574,8 @@ class Lash_E:
                     print(f"Running protocol {protocol_path} (rep {i+1})")
                     try:
                         # Use cytation_plate_type for the biotek system, not the robot's plate_type
-                        data = self._run_plate_protocol(protocol_path, wells_to_measure, plate_type=cytation_plate_type)
+                        setup_options = {} if plate_setup is None else {"plate_setup": plate_setup}
+                        data = self._run_plate_protocol(protocol_path, wells_to_measure, plate_type=cytation_plate_type, **setup_options)
                         if data is not None:
                             # Add a MultiIndex: (replicate + protocol name, wavelength/column)
                             label = f"rep{i+1}_{os.path.splitext(os.path.basename(protocol_path))[0]}"
