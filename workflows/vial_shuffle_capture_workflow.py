@@ -114,15 +114,9 @@ def _capture_pair(robot, directory, index, config, capture):
 
 
 def _simulated_capture(path, _camera_folder, _timeout):
-    # Clearly synthetic images exercise pairing without accessing the real camera.
-    import cv2
-    import numpy as np
-
-    frame = np.zeros((240, 640, 3), dtype=np.uint8)
-    cv2.putText(frame, "SIMULATION - no camera image", (15, 120),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-    if not cv2.imwrite(str(path), frame):
-        raise OSError(f"Could not write simulated photo: {path}")
+    """Copy a labeled fixture; simulation never opens a camera or image library."""
+    fixture = Path(__file__).with_name("_simulated_vial_capture.jpg")
+    path.write_bytes(fixture.read_bytes())
 
 
 def _notify(lash_e, summary):

@@ -175,18 +175,19 @@ class ShuffleTests(unittest.TestCase):
                     camera.C110FrameCapture.return_value.capture_frames.assert_called_once_with(count=1, timeout=20)
 
     def test_simulation_writes_real_images_without_camera_or_slack(self):
-        import cv2
-
         robot = Robot()
         coordinator = SimpleNamespace(nr_robot=robot, simulate=True, logger=robot.logger)
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "simulation"
-            with patch.object(workflow, "capture_photo") as real_capture:
+            with patch.object(workflow, "capture_photo") as real_capture, \
+                 patch.dict(sys.modules, {"cv2": None, "camera_frame_capture": None}):
                 with patch.dict(sys.modules, {"slack_agent": SimpleNamespace(safe_send_slack_message=Mock())}):
                     summary = workflow.run_collection(coordinator, config(ITERATIONS=1), output)
                     real_capture.assert_not_called()
                     sys.modules["slack_agent"].safe_send_slack_message.assert_not_called()
-            self.assertIsNotNone(cv2.imread(str(output / "000001.jpg")))
+            image = (output / "000001.jpg").read_bytes()
+            self.assertTrue(image.startswith(b"\xff\xd8\xff"))
+            self.assertTrue(image.endswith(b"\xff\xd9"))
             self.assertFalse(summary["verification_enabled"])
             self.assertEqual(summary["images_saved"], 1)
 
