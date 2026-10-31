@@ -40,6 +40,10 @@ MAX_EXTRAPOLATION_FRACTION = 0.25
 # between tips. A preference only: further extrapolation is still used, with a warning.
 NEAR_EXTRAPOLATION_FRACTION = 0.10
 
+# (liquid, volume uL) pairs whose extrapolation was already reported in this process,
+# so a run logs each once rather than on every lookup.
+_REPORTED_EXTRAPOLATIONS = set()
+
 class PipettingWizard:
     """
     Intelligent pipetting parameter provider based on calibration data.
@@ -153,6 +157,33 @@ class PipettingWizard:
             return (target_volume_ul - max_vol) / max_vol
         return 0.0
 
+    def report_extrapolation(self, liquid: str, volume_ml: float, tip_type: str = None,
+                             volumes=None) -> None:
+        """Log once per run when a volume is outside the calibrated range.
+
+        Near the edge (<= NEAR_EXTRAPOLATION_FRACTION) is expected behaviour and logged as
+        info; further out is a warning. Silent inside the range.
+        """
+        if volumes is None:
+            file_result = self.find_best_calibration_file(liquid, volume_ml, tip_type=tip_type)
+            if file_result is None:
+                return
+            volumes = file_result[1]['volume_target'].values
+        target_volume_ul = volume_ml * 1000
+        min_vol, max_vol = float(np.min(volumes)), float(np.max(volumes))
+        if min_vol <= target_volume_ul <= max_vol:
+            return
+        key = (str(liquid).casefold(), round(target_volume_ul, 1))
+        if key in _REPORTED_EXTRAPOLATIONS:
+            return
+        _REPORTED_EXTRAPOLATIONS.add(key)
+        edge = min_vol if target_volume_ul < min_vol else max_vol
+        fraction = abs(target_volume_ul - edge) / edge
+        side = "below" if target_volume_ul < min_vol else "above"
+        log = self.logger.info if fraction <= NEAR_EXTRAPOLATION_FRACTION else self.logger.warning
+        log(f"Target volume {volume_ml}mL ({target_volume_ul}uL) is {side} available range "
+            f"({min_vol}-{max_vol}uL) for {liquid} (tip: {tip_type or 'unspecified'}). Extrapolating...")
+
     def find_best_calibration_file(self, liquid: str, target_volume_ml: float,
                                    tip_type: str = None) -> Optional[Tuple[Path, pd.DataFrame]]:
         """
@@ -246,12 +277,7 @@ class PipettingWizard:
             target_volume_ul = float(volumes[matches][0])
         min_vol, max_vol = volumes.min(), volumes.max()
         
-        # Check if we need to extrapolate and warn user
-        if target_volume_ul < min_vol:
-            self.logger.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}uL) is below available range ({min_vol}-{max_vol}uL). Extrapolating...")
-        elif target_volume_ul > max_vol:
-            self.logger.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}uL) is above available range ({min_vol}-{max_vol}uL). Extrapolating...")
-        
+
         # If exact match exists, return it
         exact_match = df[df['volume_target'] == target_volume_ul]
         if not exact_match.empty:
@@ -380,7 +406,7 @@ class PipettingWizard:
         return df
     
     def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = True,
-                                 tip_type: str = None) -> Optional[Dict[str, float]]:
+                                 tip_type: str = None, report: bool = True) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         
@@ -388,6 +414,7 @@ class PipettingWizard:
             liquid: Liquid name (e.g., 'water', 'glycerol')
             volume_ml: Target volume in mL
             compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
+            report: If False, skip the extrapolation log (e.g. while comparing tips)
 
         Returns:
             Dictionary with pipetting parameters, or None if not available
@@ -424,6 +451,9 @@ class PipettingWizard:
             )
             return None
         
+        if report:
+            self.report_extrapolation(liquid, volume_ml, tip_type, volumes)
+
         # Apply overvolume compensation before interpolation if requested
         if compensate_overvolume:
             df = self.apply_overvolume_compensation(df.copy())

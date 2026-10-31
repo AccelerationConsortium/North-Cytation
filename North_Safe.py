@@ -1605,7 +1605,7 @@ class North_Robot(North_Base):
         return selected_tip
     
     def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, tip_type=None,
-                                  require_calibration=False):
+                                  require_calibration=False, report=True):
         """
         Get optimized pipetting parameters using intelligent hierarchy:
         defaults â†’ liquid-calibrated â†’ user overrides
@@ -1627,7 +1627,7 @@ class North_Robot(North_Base):
             try:
                 wizard = PipettingWizard(logger=self.logger)
                 calibrated_params = wizard.get_pipetting_parameters(
-                    liquid, volume, compensate_overvolume, tip_type=tip_type)
+                    liquid, volume, compensate_overvolume, tip_type=tip_type, report=report)
                 if calibrated_params is None and require_calibration:
                     return None
                 
@@ -1706,7 +1706,7 @@ class North_Robot(North_Base):
                 params = self._get_optimized_parameters(
                     volume, liquid, user_parameters, compensate_overvolume,
                     tip_type=tip if tip_calibration else None,
-                    require_calibration=tip_calibration)
+                    require_calibration=tip_calibration, report=False)
             except ValueError as error:
                 failures.append(f"{tip}: {error}")
                 continue
@@ -1719,6 +1719,8 @@ class North_Robot(North_Base):
                 failures.append(f"{tip}: {tip_load * 1000:.1f} uL reaches tip capacity")
                 continue
             if tip_load <= config['volume'] - config.get('capacity_margin', 0):
+                if tip_calibration:
+                    wizard.report_extrapolation(liquid, volume, tip)
                 return params, tip
             self.logger.info("%s load %.1f uL is within its %.0f uL capacity margin; "
                              "trying other tips", tip, tip_load * 1000,
@@ -1730,6 +1732,8 @@ class North_Robot(North_Base):
                 "No tip fits %s at %g uL with room; using %s with load %.1f uL of %.0f uL",
                 liquid, volume * 1000, tip, tip_load * 1000, self.PIPET_TIPS[tip]['volume'] * 1000,
             )
+            if tip_calibration:
+                wizard.report_extrapolation(liquid, volume, tip)
             return params, tip
         # Prefer any calibrated tip that fits before falling back to defaults.
         # Only unavailable calibration permits fallback; capacity failures do not.

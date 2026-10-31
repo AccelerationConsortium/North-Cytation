@@ -34,7 +34,7 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
             return_value=None))
 
         def calibration(wizard, liquid, volume, compensate_overvolume=True,
-                         tip_type=None):
+                         tip_type=None, report=True):
             self.lookup_volumes.append(volume)
             self.lookup_flags.append(compensate_overvolume)
             if volume > 1.0:

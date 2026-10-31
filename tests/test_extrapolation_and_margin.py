@@ -77,3 +77,25 @@ def test_zero_margin_restores_smallest_tip_that_fits(robot):
         config['capacity_margin'] = 0
     _, tip = robot.resolve_pipetting_setup(.192, 'testliquid', compensate_overvolume=False)
     assert tip == 'small_tip'
+
+
+def test_extrapolation_is_reported_once_for_the_chosen_tip(robot, monkeypatch, caplog):
+    from pipetting_data import pipetting_wizard
+    monkeypatch.setattr(pipetting_wizard, '_REPORTED_EXTRAPOLATIONS', set())
+    with caplog.at_level(logging.INFO):
+        # 195 uL: the small tip is tried and rejected (tight load), the large tip is used.
+        for _ in range(3):
+            _, tip = robot.resolve_pipetting_setup(.195, 'testliquid', compensate_overvolume=False)
+            robot._get_optimized_parameters(.195, 'testliquid')
+    assert tip == 'large_tip'
+    messages = [r for r in caplog.records if 'Extrapolating' in r.getMessage()]
+    assert len(messages) == 1
+    assert messages[0].levelno == logging.INFO and 'below' in messages[0].getMessage()
+
+
+def test_far_extrapolation_is_still_a_warning(calibration, monkeypatch, caplog):
+    from pipetting_data import pipetting_wizard
+    monkeypatch.setattr(pipetting_wizard, '_REPORTED_EXTRAPOLATIONS', set())
+    with caplog.at_level(logging.INFO):
+        PipettingWizard(str(calibration)).get_pipetting_parameters('testliquid', .600, False, tip_type='large_tip')
+    assert [r.levelno for r in caplog.records if 'Extrapolating' in r.getMessage()] == [logging.WARNING]
