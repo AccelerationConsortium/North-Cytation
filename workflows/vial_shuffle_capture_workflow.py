@@ -35,6 +35,9 @@ CAPTURE_ATTEMPTS = 3
 SETTLE_SECONDS = 1.0
 RANDOM_SEED = None
 
+# Simulations exercise the shuffle and timing sequence without writing photos or manifests.
+_SAVE_SIMULATION_OUTPUT = False
+
 _WORKFLOW_NAME = Path(__file__).stem
 _CONFIG_KEYS = [
     "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ITERATIONS", "TARGET_EXPERIMENT_TIME_HOURS", "MIN_VIALS_MOVED",
@@ -174,12 +177,14 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
     """
     robot = lash_e.nr_robot
     slots, names = _validate(config, robot)
+    save = not lash_e.simulate or _SAVE_SIMULATION_OUTPUT
     directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=False)
     capture = capture or (_simulated_capture if lash_e.simulate else capture_photo)
     original = {name: slot for name, slot in positions(robot.VIAL_DF).items() if name in names}
-    robot.VIAL_DF.to_csv(directory / "initial_state.csv", index=False)
-    _write_json(directory / "config.json", config)
+    if save:
+        directory.mkdir(parents=True, exist_ok=False)
+        robot.VIAL_DF.to_csv(directory / "initial_state.csv", index=False)
+        _write_json(directory / "config.json", config)
     rng = random.Random(config["RANDOM_SEED"])
     interval_seconds = config["TARGET_EXPERIMENT_TIME_HOURS"] * 3600 / config["ITERATIONS"]
     summary = dict(status="running", requested=config["ITERATIONS"], images_saved=0,
@@ -197,13 +202,17 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                 config["MAX_OFF_RACK"], rng,
             )
             transfers = apply_transfers(robot, targets, slots)
-            photo, csv = _capture_pair(robot, directory, index, config, capture)
-            summary["images_saved"] += 1
-            pair = dict(index=index, photo=photo.name, vial_csv=csv.name,
+            if save:
+                photo, csv = _capture_pair(robot, directory, index, config, capture)
+                summary["images_saved"] += 1
+            else:
+                robot.move_home()
+                photo = csv = None
+            pair = dict(index=index, photo=photo and photo.name, vial_csv=csv and csv.name,
                         vials_moved=len(targets), transfers=transfers,
                         off_rack=sum(positions(robot.VIAL_DF)[name][0] != RACK for name in names))
             summary["pairs"].append(pair)
-            if verifier is not None:
+            if verifier is not None and save:
                 try:
                     result = verifier(photo, csv)
                     if not isinstance(result, dict) or type(result.get("matched")) is not bool:
@@ -250,8 +259,9 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
     finally:
         summary["elapsed_seconds"] = time.monotonic() - started
         try:
-            robot.VIAL_DF.to_csv(directory / "final_state.csv", index=False)
-            _write_json(directory / "summary.json", summary)
+            if save:
+                robot.VIAL_DF.to_csv(directory / "final_state.csv", index=False)
+                _write_json(directory / "summary.json", summary)
         finally:
             _notify(lash_e, summary)
     return summary

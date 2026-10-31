@@ -61,6 +61,25 @@ def config(**overrides):
 
 
 class ShuffleTests(unittest.TestCase):
+    def setUp(self):
+        # Most tests drive the file pipeline through simulation, so turn saving on.
+        saving = patch.object(workflow, "_SAVE_SIMULATION_OUTPUT", True)
+        saving.start()
+        self.addCleanup(saving.stop)
+
+    def test_simulation_writes_no_files_by_default(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=True, logger=robot.logger)
+        verifier = Mock()
+        with patch.object(workflow, "_SAVE_SIMULATION_OUTPUT", False), tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "collection"
+            summary = workflow.run_collection(coordinator, config(), output, verifier=verifier)
+            self.assertFalse(output.exists())
+        self.assertEqual(summary["status"], "completed")
+        self.assertEqual(len(summary["pairs"]), 5)
+        self.assertEqual(summary["images_saved"], 0)
+        verifier.assert_not_called()
+
     def test_500_shuffles_preserve_fixed_vials_and_bounds_then_restore(self):
         robot = Robot()
         original = positions(robot.VIAL_DF)
