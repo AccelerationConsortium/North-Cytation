@@ -29,7 +29,6 @@ COLUMNS = ["liquid", "tip_type", "volume_target", "overaspirate_ul", "sd_ul", "n
            "drift_sd_ul", "sessions", "base_overaspirate_ul", "updated", "last_session_id", "last_verdict"]
 SURPRISE_SD = 2.0            # check batch this many SDs from expectation -> confirm first
 MIN_DRIFT_FRACTION = 0.01    # Q >= 1% of R: the estimate can always follow real drift
-MIN_REPLICATE_SD_UL = 0.5    # floor for replicate scatter when judging confirm agreement
 DEFAULT_NOISE_FRACTION = 0.02  # no history: assume session noise of 2% of volume
 
 
@@ -145,9 +144,10 @@ def decide(state, check_ul, confirm_ul=None, upper_ul=None, lower_ul=None):
     """Update one row's state from this session's implied overaspirate values (uL).
 
     consistent      check batch matches expectation: normal damped update
-    drift_confirmed check was surprising and the confirm batch agreed: full damped update
-    transient       check was surprising and the confirm batch disagreed: the step is
-                    limited to SURPRISE_SD standard deviations
+    drift_confirmed check was surprising and the confirm batch, run at the value the check
+                    implied, points nearer the check than the old estimate: full damped update
+    transient       check was surprising but the confirm batch points back to the old
+                    estimate: the step is limited to SURPRISE_SD standard deviations
     """
     check = np.asarray(check_ul, float)
     values = check if confirm_ul is None else np.concatenate([check, np.asarray(confirm_ul, float)])
@@ -158,9 +158,8 @@ def decide(state, check_ul, confirm_ul=None, upper_ul=None, lower_ul=None):
     if confirm_ul is None:
         verdict = "consistent"
     else:
-        scatter = max(np.std(values, ddof=1) if len(values) > 1 else 0.0, MIN_REPLICATE_SD_UL)
-        limit = 2 * scatter * math.sqrt(1 / len(check) + 1 / len(confirm_ul))
-        agree = abs(float(np.median(confirm_ul)) - float(np.median(check))) <= limit
+        confirm = float(np.median(confirm_ul))
+        agree = abs(confirm - float(np.median(check))) < abs(confirm - state["estimate_ul"])
         verdict = "drift_confirmed" if agree else "transient"
         if not agree:
             innovation = max(-SURPRISE_SD * spread, min(SURPRISE_SD * spread, innovation))

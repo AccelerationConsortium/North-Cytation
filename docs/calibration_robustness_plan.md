@@ -309,6 +309,10 @@ No tip column; tip inferred from volume (<200 uL small). Water 3940, SDS 2169 ro
    (MAD guard). No "best stage" selection; every accepted replicate counts.
 
 The confirm batch also tests that the new value actually works (what stage 2 did).
+"Agrees" means the confirm batch's implied value lies nearer the check than the old
+estimate (changed 2026-10-31: comparing against replicate scatter called a real 9 uL
+drift on SDS 800 uL "transient" because the two batches differed by 1 uL). History also
+drops dispenses below 10% of target (no-dispense failures, not calibration data).
 GUI compatibility: keep `optimization_stage` (1 = check, 2 = confirm), `accepted`,
 `decision_reason` populated — verify against the GUI.
 

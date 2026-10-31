@@ -39,6 +39,20 @@ def test_unconfirmed_surprise_is_limited():
     assert updated["estimate_ul"] - 5 <= (2 / 6) * limit + 1e-9
 
 
+def test_confirm_near_the_check_is_drift_even_if_batches_differ_slightly():
+    # Live SDS 800 uL, 2026-10-31: check implied ~24.8, confirm (run at 24.8) implied ~25.8.
+    state = dict(STATE, estimate_ul=16.0)
+    updated = corrections.decide(state, [24.5, 25.0, 24.7, 25.1], [25.6, 25.8, 25.4, 26.0])
+    assert updated["verdict"] == "drift_confirmed"
+
+
+def test_failed_dispenses_are_not_calibration_history():
+    history = pd.DataFrame(dict(
+        liquid_type='SDS', tip_type='small_tip', target_volume_ml=.05, measured_volume_ml=[.0503, .0003],
+        overaspirate_vol=.0055, session_id=['a', 'b'], timestamp=['20261001_100000', '20261002_100000']))
+    assert estimation.usable_measurements(history, 'SDS', 'small_tip').session_id.tolist() == ['a']
+
+
 def test_update_respects_tip_bounds():
     updated = corrections.decide(STATE, [50, 50, 50], [50, 50, 50], upper_ul=8.0)
     assert updated["estimate_ul"] == 8.0

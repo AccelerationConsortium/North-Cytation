@@ -25,6 +25,7 @@ MATCHED_SETTINGS = ("aspirate_speed", "dispense_speed", "retract_speed", "aspira
 MIN_SESSIONS_FOR_MODEL = 6
 OUTLIER_MADS = 4.0
 INNOVATION_LIMIT_SD = 3.0
+FAILED_DISPENSE_FRACTION = 0.10  # below 10% of target is no dispense (no tip, empty vial), not calibration data
 
 
 def implied_overaspirate_ul(frame):
@@ -48,7 +49,8 @@ def usable_measurements(measurements, liquid, tip):
         if column in data:
             data[column] = pd.to_numeric(data[column], errors="coerce")
     data = data[np.isfinite(data.target_volume_ml) & np.isfinite(data.measured_volume_ml)
-                & np.isfinite(data.overaspirate_vol)]
+                & np.isfinite(data.overaspirate_vol)
+                & (data.measured_volume_ml >= FAILED_DISPENSE_FRACTION * data.target_volume_ml)]
     return drop_unrecorded_stages(data)
 
 
