@@ -457,3 +457,129 @@ def test_deviant_replicate_is_saved_and_decision_matches_saved_rows(monkeypatch)
     assert len(stage_two) == 1 and stage_two[0]['measured_volume_ml'] > .14
     assert sorted({row['optimization_stage'] for row in saved}) == [1, 2, 3]
     assert all(row['measured_at'] and row['mass_difference_g'] for row in saved)
+
+
+class TipFullRobot(RecordingRobot):
+    """Raises the capacity error for chosen volumes, after a given number of resolutions."""
+
+    def __init__(self, masses, full_volumes, fail_after=0):
+        super().__init__(masses)
+        self.full_volumes = set(full_volumes)
+        self.fail_after = fail_after
+        self.resolutions = 0
+
+    def resolve_pipetting_setup(self, volume, *args, **kwargs):
+        self.resolutions += 1
+        if volume in self.full_volumes and self.resolutions > self.fail_after:
+            raise ValueError(f"No tip fits water at {volume * 1000:g} uL")
+        return super().resolve_pipetting_setup(volume, *args, **kwargs)
+
+
+def test_volume_that_no_longer_fits_is_skipped_before_hardware(recording_validation, tmp_path):
+    robot = TipFullRobot([.1], full_volumes=[.2])
+    lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=logging.getLogger(__name__))
+    result = recording_validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.1, .2], replicates=1,
+        output_folder=str(tmp_path / 'raw'), tip_type='small_tip')
+    assert result['success']
+    assert [volume for volume, _ in robot.transfers] == [.1]
+
+
+def test_volume_that_stops_fitting_mid_session_is_skipped(recording_validation, tmp_path):
+    # Both volumes resolve up front (2 calls); .2 fails when re-resolved after .1 ran.
+    robot = TipFullRobot([.1], full_volumes=[.2], fail_after=2)
+    lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=logging.getLogger(__name__))
+    result = recording_validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.1, .2], replicates=1,
+        output_folder=str(tmp_path / 'raw'), tip_type='small_tip')
+    assert result['success']
+    assert [stat['target_volume_ml'] for stat in result['volume_statistics']] == [.1]
+
+
+def test_all_volumes_skipped_returns_skipped_result(recording_validation, tmp_path):
+    robot = TipFullRobot([], full_volumes=[.2])
+    lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=logging.getLogger(__name__))
+    result = recording_validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.2], replicates=1,
+        output_folder=str(tmp_path / 'raw'), tip_type='small_tip')
+    assert result['skipped'] and not result['success']
+    assert robot.transfers == []
+
+
+def test_masters_record_tip_type(recording_validation, tmp_path):
+    robot = RecordingRobot([.1, .2])
+    lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
+    recording_validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.1, .2], replicates=1,
+        output_folder=str(tmp_path / 'raw'))
+    measurements = pd.read_csv(tmp_path / 'measurements.csv')
+    sessions = pd.read_csv(tmp_path / 'sessions.csv')
+    assert measurements.tip_type.tolist() == ['small_tip', 'large_tip']
+    assert sessions.tip_type.tolist() == ['small_tip', 'large_tip']
+
+
+class CheckConfirmRobot(RecordingRobot):
+    PIPET_TIPS = {'small_tip': {'volume': .2, 'capacity_margin': .005},
+                  'large_tip': {'volume': 1.0, 'capacity_margin': .01}}
+
+    def pause_after_error(self, *args, **kwargs):
+        raise AssertionError("check/confirm should not pause here")
+
+
+@pytest.fixture
+def check_confirm(recording_validation, tmp_path, monkeypatch):
+    from pipetting_data import embedded_liquid_validations, overaspirate_corrections
+    monkeypatch.setattr(overaspirate_corrections, 'CORRECTIONS_FILE', tmp_path / 'tracked.csv')
+    monkeypatch.setattr(embedded_liquid_validations, 'calibrated_volumes_ul', lambda liquid, tip: [100.0])
+    return recording_validation
+
+
+def _run_check_confirm(validation, tmp_path, masses):
+    robot = CheckConfirmRobot(masses)
+    lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
+    result = validation.validate_pipetting_accuracy(
+        lash, 'source', 'dest', 'water', [.1], replicates=4, output_folder=str(tmp_path / 'raw'),
+        compensate_overvolume=True, tip_type='small_tip', protocol='check_confirm')
+    return robot, result
+
+
+def test_check_consistent_with_history_needs_no_confirm(check_confirm, tmp_path):
+    robot, result = _run_check_confirm(check_confirm, tmp_path, [.0998, .1, .1002, .0999])
+    assert len(robot.transfers) == 4
+    tracked = pd.read_csv(tmp_path / 'tracked.csv')
+    assert tracked.last_verdict.tolist() == ['consistent']
+    measurements = pd.read_csv(tmp_path / 'measurements.csv')
+    assert measurements.accepted.all() and (measurements.decision_reason == 'consistent').all()
+    log = pd.read_csv(tmp_path / 'corrections.csv')
+    assert log.validation_type.tolist() == ['check_confirm']
+
+
+def test_surprising_check_is_confirmed_before_a_large_step(check_confirm, tmp_path):
+    robot, result = _run_check_confirm(check_confirm, tmp_path, [.092] * 4 + [.0998] * 4)
+    assert len(robot.transfers) == 8
+    confirm_overaspirate = robot.transfers[-1][1]['overaspirate_vol']
+    assert confirm_overaspirate > .007
+    tracked = pd.read_csv(tmp_path / 'tracked.csv')
+    assert tracked.last_verdict.tolist() == ['drift_confirmed']
+    assert tracked.overaspirate_ul.iloc[0] > 7.0
+    statistics = result['volume_statistics'][0]
+    assert statistics['measured_mean_ml'] < .095  # accuracy reported from the check batch
+
+
+def test_update_problem_never_stops_validation(check_confirm, tmp_path, monkeypatch):
+    from pipetting_data import overaspirate_corrections
+    monkeypatch.setattr(overaspirate_corrections, 'decide', lambda *a, **k: 1 / 0)
+    robot, result = _run_check_confirm(check_confirm, tmp_path, [.1] * 4)
+    assert result['success'] and not (tmp_path / 'tracked.csv').exists()
+
+
+def test_gross_miss_alerts_without_pausing_and_is_not_used(check_confirm, tmp_path, monkeypatch):
+    sent = []
+    import sys
+    monkeypatch.setitem(sys.modules, 'slack_agent', SimpleNamespace(send_slack_message=sent.append))
+    # CheckConfirmRobot.pause_after_error raises, so any pause would fail this test.
+    robot, result = _run_check_confirm(check_confirm, tmp_path, [.1, .1, .1, .07])
+    assert result['success'] and len(robot.transfers) == 4
+    assert any('workflow continues' in message for message in sent)
+    measurements = pd.read_csv(tmp_path / 'measurements.csv')
+    assert measurements.accepted.tolist() == [True, True, True, False]

@@ -138,7 +138,7 @@ class LiquidTab(QWidget):
                     if data.empty or not np.isclose(data.target_volume_ml * 1000, volume).any():
                         recommendations.add(f"Run embedded validation at {volume:g} µL to test and adjust current settings.")
             else:
-                self.pages.addTab(QLabel("Select a current calibration file to review accepted validation results."), "Past Validation Results")
+                self.pages.addTab(QLabel("Select a current calibration file to review as-dispensed validation results."), "Past Validation Results")
             self.build_recommendations(recommendations)
             self.order_pages()
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -164,7 +164,9 @@ class LiquidTab(QWidget):
         ax = figure.subplots()
         if frame is not None:
             for small, y in ((True, 1), (False, 0)):
-                values = frame.loc[(frame.volume_target < 200) == small, "volume_target"]
+                rows_for_tip = ((frame.tip_type == "small_tip") == small if "tip_type" in frame
+                                else (frame.volume_target < 200) == small)
+                values = frame.loc[rows_for_tip, "volume_target"]
                 if not values.empty:
                     ax.plot([values.min(), values.max()], [y, y], color="seagreen", linewidth=8, alpha=.3)
                     ax.scatter(values, np.full(len(values), y), color="seagreen", marker="o", s=25)
@@ -172,8 +174,9 @@ class LiquidTab(QWidget):
         rows, recommendations = [], set()
         for (volume, tip, method), count in sorted(counts.items()):
             status = coverage(frame, volume, tip) if method == "pipette" else "Reservoir: separate calibration required"
-            supported = status in {"Measured point", "Interpolated coverage"}
-            ax.plot(volume, 1 if volume < 200 else 0, "|", color="#333333" if supported else "crimson", markersize=24)
+            supported = status in {"Measured point", "Interpolated coverage", "Near coverage (extrapolated)"}
+            row_y = (1 if tip == "small_tip" else 0) if tip in {"small_tip", "large_tip"} else (1 if volume < 200 else 0)
+            ax.plot(volume, row_y, "|", color="#333333" if supported else "crimson", markersize=24)
             rows.append([f"{volume:g}", str(count), tip or "Not logged", method, status])
             if not supported:
                 if method == "reservoir":
@@ -283,7 +286,7 @@ class LiquidTab(QWidget):
         data, summary, exclusions = summarize_past_validation(matched, excluded, start, end)
         page = QWidget()
         layout = QVBoxLayout(page)
-        title = QLabel(f"{len(data)} accepted measurements between {start:%Y-%m-%d} and {(end - timedelta(days=1)):%Y-%m-%d} "
+        title = QLabel(f"{len(data)} as-dispensed measurements between {start:%Y-%m-%d} and {(end - timedelta(days=1)):%Y-%m-%d} "
                        "match the current dispensing settings (overvolume may vary). "
                        "Each session has equal weight in the historical mean.")
         title.setWordWrap(True)
@@ -298,7 +301,7 @@ class LiquidTab(QWidget):
                 scale_volume_comparison(ax, targets, data.measured_volume_ml * 1000)
                 self._plot_validation_scatter(ax, data, summary)
         else:
-            ax.text(.5, .5, "No accepted validation measurements match this calibration.",
+            ax.text(.5, .5, "No as-dispensed validation measurements match this calibration.",
                     ha="center", va="center", transform=ax.transAxes)
         if data.empty or len(summary) != 1:
             ax.set(xlabel="Target V_T (µL)", ylabel="Measured V_M (µL)")
@@ -315,7 +318,7 @@ class LiquidTab(QWidget):
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.SingleSelection)
         layout.addWidget(table)
-        button = QPushButton("Inspect accepted measurements for selected volume")
+        button = QPushButton("Inspect as-dispensed measurements for selected volume")
         button.setEnabled(not summary.empty)
         layout.addWidget(button)
 
@@ -327,7 +330,7 @@ class LiquidTab(QWidget):
             detail = data[np.isclose(data.target_volume_ml * 1000, volume)].copy()
             detail.insert(0, "error_ul", (detail.measured_volume_ml - detail.target_volume_ml) * 1000)
             dialog = QDialog(self)
-            dialog.setWindowTitle(f"{self.liquid}: accepted validation at {volume:g} µL")
+            dialog.setWindowTitle(f"{self.liquid}: as-dispensed validation at {volume:g} µL")
             dialog.resize(1100, 600)
             inner = QVBoxLayout(dialog)
             inner.addWidget(QLabel("Selected-stage measurements, including reconstructed decisions and results outside tolerance."))
@@ -343,7 +346,8 @@ class LiquidTab(QWidget):
         layout.addWidget(excluded_label)
         note = QLabel("Intervals describe uncertainty in the historical mean across sessions, not the range of individual dispenses. "
                       "One session has no historical interval; intervals with few sessions are uncertain. "
-                      "Accepted results can remain outside tolerance. Historical tip identity is inferred from volume.")
+                      "Each session's first batch is shown: what was dispensed at the V_OA in use, before any correction. "
+                      "Tip identity before Oct 2026 is inferred from volume; later rows record it.")
         note.setWordWrap(True)
         layout.addWidget(note)
         return page

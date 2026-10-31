@@ -83,15 +83,24 @@ def calibration_files(root, liquid):
 
 
 def fingerprint(root):
-    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in (Path(root) / "pipetting_data").glob("optimal_conditions_*.csv")}
+    folder = Path(root) / "pipetting_data"
+    paths = list(folder.glob("optimal_conditions_*.csv")) + list(folder.glob("overaspirate_corrections.csv"))
+    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
 
 
 def load_calibration(path):
+    """Calibration rows as the robot uses them: tracked overaspirate corrections applied."""
+    from pipetting_data.overaspirate_corrections import apply_corrections
+
     frame = pd.read_csv(path)
     frame["volume_target"] = pd.to_numeric(frame["volume_target"], errors="raise")
     if not np.isfinite(frame["volume_target"]).all():
         raise ValueError("Calibration contains non-finite target volumes")
+    if "tip_type" in frame:
+        liquid = Path(path).stem.removeprefix("optimal_conditions_")
+        corrections = Path(path).parent / "overaspirate_corrections.csv"
+        frame = pd.concat([apply_corrections(group, liquid, tip, path=corrections)
+                           for tip, group in frame.groupby("tip_type")])
     return frame.sort_values("volume_target").drop_duplicates("volume_target", keep="last")
 
 
@@ -99,9 +108,24 @@ def regime(volume):
     return "small_tip" if volume < 200 else "large_tip"
 
 
+# Mirrors pipetting_wizard.NEAR_EXTRAPOLATION_FRACTION: the robot still uses calibration here.
+NEAR_FRACTION = 0.10
+
+
 def coverage(frame, volume, tip=""):
     if frame is None or frame.empty:
         return "Missing calibration"
+    if tip and "tip_type" in frame:
+        # Tip-specific calibration: judge against the rows of the tip actually logged.
+        values = frame.loc[frame.tip_type == tip, "volume_target"]
+        if values.empty:
+            return "No calibration for logged tip"
+        if np.isclose(values, volume).any():
+            return "Measured point"
+        if values.min() <= volume <= values.max():
+            return "Interpolated coverage"
+        edge = values.min() if volume < values.min() else values.max()
+        return "Near coverage (extrapolated)" if abs(volume - edge) <= NEAR_FRACTION * edge else "Outside tip-specific coverage"
     if tip and tip != regime(volume):
         return "Tip differs from calibration regime"
     values = frame.loc[(frame.volume_target < 200) == (volume < 200), "volume_target"]
@@ -184,12 +208,17 @@ MIN_RESPONSE, MAX_RESPONSE = 0.3, 3.0
 
 UNRECORDED = "Stage V_OA not recorded (older validation saved the stage 1 value on every stage)"
 NO_STAGES = "Fewer than three stages recorded (V_OA response unknowable)"
+# Within a session delivery moves ~1 uL per uL of V_OA (validation history, Oct 2026), so a
+# session that tested one V_OA still estimates the zero-error V_OA: V_OA - (V_M - V_T).
+ASSUMED_RESPONSE = 1.0
 
 
 def session_overaspirate_estimates(data, start=None, end=None):
-    """Per session and target: the V_OA where a line through the stage means (V_OA, V_M - V_T) crosses zero.
+    """Per session and target: the V_OA where delivery error would be zero.
 
-    Every stage is used, not only the accepted one, because the tested V_OA values are what reveal the response."""
+    With two or more tested V_OA values, a line through the stage means (V_OA, V_M - V_T)
+    gives the crossing. With one (check-only sessions, or old sessions whose later stages
+    saved the stage 1 value), the stage 1 replicates give it with the ~1:1 response."""
     counts = {}
     columns = ["session_id", "target_ul", "when", "oa_ul", "slope", "points"]
     if data.empty:
@@ -208,8 +237,11 @@ def session_overaspirate_estimates(data, start=None, end=None):
         when = pd.to_datetime(group.timestamp, format="%Y%m%d_%H%M%S", errors="coerce").max()
         points = group.assign(oa=group.overaspirate_vol.round(9)).groupby("oa").measured_volume_ml.mean()
         if len(points) < 2:
-            key = NO_STAGES if set(group.optimization_stage.dropna().astype(int)) != {1, 2, 3} else UNRECORDED
-            counts[key] = counts.get(key, 0) + 1
+            stages = pd.to_numeric(group.optimization_stage, errors="coerce") if "optimization_stage" in group else None
+            first = group if stages is None or stages.isna().all() else group[stages == stages.min()]
+            oa = float(np.mean((first.overaspirate_vol - (first.measured_volume_ml - volume)) * 1000))
+            rows.append(dict(session_id=session, target_ul=volume * 1000, when=when, oa_ul=oa,
+                             slope=ASSUMED_RESPONSE, points=1))
             continue
         x = points.index.to_numpy() * 1000
         y = (points.to_numpy() - volume) * 1000
@@ -239,22 +271,26 @@ def summarize_overaspirate(estimates, current_oa_ul):
 
 
 def summarize_past_validation(matched, excluded=None, start=None, end=None):
-    """Accepted outcomes; equal session weighting with a t interval for the mean.
+    """As-dispensed accuracy: each session's first batch, at the V_OA the workflow was using.
 
-    start (inclusive) and end (exclusive) bound the validation timestamp."""
+    Later stages tried other V_OA values; reporting the best of them made accuracy look
+    better than what workflows actually delivered. Equal session weighting with a t
+    interval for the mean. start (inclusive) and end (exclusive) bound the timestamp."""
     from scipy.stats import t
 
     counts = dict(excluded or {})
     if matched.empty:
         return matched.copy(), pd.DataFrame(), counts
     data = matched.copy()
-    if "accepted" not in data:
-        counts["Acceptance unresolved"] = len(data)
-        return data.iloc[:0], pd.DataFrame(), counts
-    accepted = data.accepted.astype(str).str.casefold()
-    counts["Stage not accepted"] = int(accepted.eq("false").sum())
-    counts["Acceptance unresolved"] = int((~accepted.isin(["true", "false"])).sum())
-    data = data[accepted.eq("true")].copy()
+    if "optimization_stage" in data:
+        stage = pd.to_numeric(data.optimization_stage, errors="coerce")
+        first = stage.isna() | (stage == stage.groupby([data.session_id, data.target_volume_ml]).transform("min"))
+        counts["Later stage (different V_OA than in use)"] = int((~first).sum())
+        data = data[first].copy()
+    if "measurement_acceptable" in data:
+        unstable = data.measurement_acceptable.astype(str).str.casefold().eq("false")
+        counts["Unstable balance reading"] = int(unstable.sum())
+        data = data[~unstable].copy()
     if "simulation_mode" in data:
         simulated = data.simulation_mode.astype(str).str.casefold().eq("true")
         counts["Simulated measurements"] = int(simulated.sum())

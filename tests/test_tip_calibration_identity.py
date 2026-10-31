@@ -29,7 +29,7 @@ def test_wizard_extrapolates_only_with_confirmed_tip_rows(tmp_path):
     small = wizard.get_pipetting_parameters('testliquid', .195,
                                             compensate_overvolume=False, tip_type='small_tip')
     assert large['aspirate_speed'] == 5
-    assert large['overaspirate_vol'] == pytest.approx(.010 - 5 * .010 / 300)
+    assert large['overaspirate_vol'] == pytest.approx(.010 * 195 / 200)
     assert small['aspirate_speed'] == 13
     assert small['overaspirate_vol'] == .003
 
@@ -53,7 +53,7 @@ def test_real_195_ul_resolves_tip_and_matching_parameters():
     robot.logger = logging.getLogger(__name__)
     robot.PIPET_TIPS = yaml.safe_load((ROOT / 'robot_state/pipet_tips.yaml').read_text())
     wizard = PipettingWizard()
-    for liquid, expected_tip in [('water', 'large_tip'), ('SDS', 'small_tip'),
+    for liquid, expected_tip in [('water', 'large_tip'), ('SDS', 'large_tip'),
                                  ('DMSO', 'large_tip')]:
         parameters, tip = robot.resolve_pipetting_setup(.195, liquid)
         assert tip == expected_tip
@@ -67,7 +67,7 @@ def test_liquid_file_lookup_does_not_match_a_different_liquid_name():
     assert [path.name for path in files] == ['optimal_conditions_TFA.csv']
 
 
-def test_embedded_correction_inserts_same_volume_for_other_tip(tmp_path, monkeypatch):
+def test_embedded_correction_never_inserts_a_row(tmp_path, monkeypatch):
     from pipetting_data import embedded_calibration_validation as validation
     from pipetting_data.pipetting_parameters import PipettingParameters
 
@@ -85,12 +85,9 @@ def test_embedded_correction_inserts_same_volume_for_other_tip(tmp_path, monkeyp
         'testliquid', .195, .009, .196, 3, tip_type='large_tip',
         resolved_parameters=PipettingParameters(aspirate_speed=5))
     rows = pd.read_csv(path)
-    small = rows[(rows.volume_target == 195) & (rows.tip_type == 'small_tip')].iloc[0]
-    large = rows[(rows.volume_target == 195) & (rows.tip_type == 'large_tip')].iloc[0]
-    assert small.overaspirate_vol == .003
-    assert large.overaspirate_vol == .009
-    assert large.volume_measured == 196
-    assert large.aspirate_speed == 5
+    assert len(rows) == 3
+    assert rows[(rows.volume_target == 195) & (rows.tip_type == 'small_tip')].iloc[0].overaspirate_vol == .003
+    assert rows[(rows.volume_target == 195) & (rows.tip_type == 'large_tip')].empty
 
 
 def test_calibration_update_refreshes_compensation_inputs_for_matching_tip(tmp_path, monkeypatch):

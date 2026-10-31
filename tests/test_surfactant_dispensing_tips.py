@@ -31,7 +31,7 @@ def dispensing():
 
 @pytest.mark.parametrize('liquid,volumes,expected', [
     ('water', [10, 180, 195], ['small_tip', 'small_tip', 'large_tip']),
-    ('SDS', [10, 195, 210], ['small_tip', 'small_tip', 'large_tip']),
+    ('SDS', [10, 175, 210], ['small_tip', 'small_tip', 'large_tip']),
 ])
 def test_groups_and_conditions_using_real_robot_resolution(dispensing, liquid, volumes, expected):
     robot = object.__new__(North_Robot)

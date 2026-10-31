@@ -38,6 +38,7 @@ Usage Examples:
     )
 """
 
+import math
 import os
 import sys
 import numpy as np
@@ -49,7 +50,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 import uuid
-from pipetting_data.validation_decisions import annotate, append_csv, write_csv, DECISION_COLUMNS, tolerance_ul as decision_tolerance_ul
+from pipetting_data.validation_decisions import annotate, annotate_check_confirm, append_csv, write_csv, DECISION_COLUMNS, tolerance_ul as decision_tolerance_ul
 
 
 # Environmental data tracking 
@@ -319,38 +320,13 @@ def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overa
               f"overaspirate {old_overaspirate:.4f} -> {new_overaspirate_ml:.4f}mL, "
               f"measured {measured_volume_ul:.1f}uL")
     else:
-        vols = best_df['volume_target'].values
-        new_row = {}
-        for col in df.columns:
-            if col not in best_df.columns:
-                new_row[col] = np.nan
-            elif pd.api.types.is_numeric_dtype(df[col]):
-                new_row[col] = float(np.interp(target_volume_ul, vols, best_df[col].values))
-            else:
-                nearest_idx = int(np.abs(vols - target_volume_ul).argmin())
-                new_row[col] = best_df.iloc[nearest_idx][col]
-        if resolved_parameters is not None:
-            for col in df.columns:
-                if hasattr(resolved_parameters, col):
-                    new_row[col] = getattr(resolved_parameters, col)
-        new_row['volume_target'] = target_volume_ul
-        if tip_type is not None:
-            new_row['tip_type'] = tip_type
-        new_row['overaspirate_vol'] = new_overaspirate_ml
-        new_row['volume_measured'] = measured_volume_ul
-        if measurement_count is not None and 'measurement_count' in df.columns:
-            new_row['measurement_count'] = measurement_count
-        if 'status' in df.columns:
-            new_row['status'] = 'success'
-        if 'volume_ml' in df.columns:
-            new_row['volume_ml'] = target_volume_ml
-        if 'volume_ul' in df.columns:
-            new_row['volume_ul'] = target_volume_ul
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df = df.sort_values('volume_target').reset_index(drop=True)
-        _write_calibration_csv(df, best_file)
-        print(f"    Inserted row in {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
-              f"overaspirate {new_overaspirate_ml:.4f}mL, measured {measured_volume_ul:.1f}uL")
+        # Validation never adds calibration rows: rows at arbitrary volumes made the
+        # interpolated curve jagged. The measurement stays in the master files.
+        message = (f"Not adding a calibration row for {liquid_type} {target_volume_ul:.1f}uL "
+                   f"({tip_type or 'any tip'}): only existing calibrated volumes are updated")
+        if lash_e is not None:
+            lash_e.logger.warning(message)
+        print(f"    {message}")
 
 
 def _generate_simulated_mass(target_volume_ml: float, density: float, 
@@ -620,6 +596,247 @@ def calculate_quality_threshold(volume_ml: float) -> float:
         threshold = 0.008 + slope * (volume_ml - 0.005)
         return threshold
 
+def _notify(lash_e, message):
+    """Report a validation problem on Slack and in the log; never pause or stop the workflow."""
+    lash_e.logger.warning(message)
+    if lash_e.simulate:
+        return
+    try:
+        import slack_agent
+        slack_agent.send_slack_message(message)
+    except Exception as error:
+        lash_e.logger.warning(f"Could not send Slack message: {error}")
+
+
+def _skipped_validation_result(liquid_type, source_vial, tip_type):
+    """Result for a session whose every volume was skipped (no measurements taken)."""
+    return {'success': False, 'skipped': True, 'liquid_type': liquid_type,
+            'source_vial': source_vial, 'tip_type': tip_type, 'volume_statistics': []}
+
+
+def _measure_replicates(*, lash_e, source_vial, destination_vial, volume_ml, liquid_type, tip, density,
+                        replicates, switch_pipet, compensate_overvolume, threshold, env_fields, volume_idx,
+                        all_results, session_id, calib_folder, params, stage, simulated_overaspirate):
+    """Dispense and weigh ``replicates`` times with ``params``; record each as ``stage``."""
+    param_values = _get_parameter_values(params, "pipetting")
+    for rep in range(replicates):
+        print(f"  Replicate {rep + 1}/{replicates}...")
+
+        # Quality-controlled retry loop for calibration/validation
+        max_retries = 3
+        retry_count = 0
+        measurement_acceptable = False
+
+        while not measurement_acceptable and retry_count <= max_retries:
+            if retry_count > 0:
+                print(f"    Retry attempt {retry_count}/{max_retries}")
+
+            # Pipette using optimized parameters with continuous mass monitoring
+            transfer_result = lash_e.nr_robot.dispense_from_vial_into_vial(
+                source_vial_name=source_vial,
+                dest_vial_name=destination_vial,
+                volume=volume_ml,
+                parameters=params,
+                record_measurement=False,
+                liquid=liquid_type,
+                specified_tip=tip,
+                remove_tip=switch_pipet,  # Use built-in pipet removal control
+                use_safe_location=False,
+                return_vial_home=False,   # Keep destination vial in clamp for mass measurement
+                compensate_overvolume=compensate_overvolume,
+                measure_weight=True,  # Enable mass measurement with continuous monitoring
+                continuous_mass_monitoring=True,
+                save_mass_data=not lash_e.simulate
+
+            )
+
+            # Handle new return format (mass, stability_info)
+            if isinstance(transfer_result, tuple):
+                mass_difference, stability_info = transfer_result
+                # Evaluate measurement quality for calibration/validation
+                measurement_acceptable = lash_e.simulate or _evaluate_measurement(stability_info, threshold)
+            else:
+                # Backwards compatibility - old format returns just mass
+                mass_difference = transfer_result
+                stability_info = None
+                measurement_acceptable = True
+
+            retry_count += 1
+
+            if not measurement_acceptable and retry_count <= max_retries:
+                print(f"    Measurement quality insufficient, retrying...")
+
+        if not measurement_acceptable:
+            print(f"    WARNING: Measurement still poor quality after {max_retries} retries")
+
+        # Handle simulation mode - generate realistic simulated mass
+        # CRITICAL SAFETY: Multiple checks to prevent fake data in real runs
+        if (hasattr(lash_e, 'simulate') and lash_e.simulate and
+            (mass_difference is None or mass_difference == 0) and
+            getattr(lash_e, 'simulate', False) is True):  # Double-check simulate flag
+
+            # Set environment variable for additional safety
+            os.environ['ROBOT_SIMULATION_MODE'] = 'TRUE'
+
+            mass_difference = _generate_simulated_mass(
+                target_volume_ml=volume_ml,
+                density=density,
+                current_overaspirate=simulated_overaspirate,
+                replicate_num=rep + 1,
+                validation_mode=True  # Use low-noise validation mode
+            )
+            print(f"    SIMULATION: Generated mass {mass_difference:.6f}g for validation")
+        gross_miss = False
+        if not lash_e.simulate:
+            measured_ul = (mass_difference / density) * 1000
+            target_ul = volume_ml * 1000
+            error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
+            if abs(measured_ul - target_ul) > error_threshold_ul:
+                # Likely a tip, liquid or vial problem: report it, keep it out of
+                # corrections, and carry on - validation must not stop the workflow.
+                gross_miss = True
+                _notify(lash_e,
+                        f"Validation {liquid_type} {target_ul:g} uL: dispensed {measured_ul:.2f} uL "
+                        f"(error {measured_ul - target_ul:+.1f} uL, threshold +/-{error_threshold_ul:.1f} uL). "
+                        f"Check tip attachment, liquid availability, and vial positioning. "
+                        f"Excluded from calibration updates; workflow continues.")
+
+        measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
+
+        # Store result
+        result = {
+            'target_volume_ml': volume_ml,
+            'measured_volume_ml': measured_volume_ml,
+            'mass_difference_g': mass_difference,
+            'density_used': density,
+            'liquid_type': liquid_type,
+            'replicate': rep + 1,
+            'timestamp': datetime.now().isoformat(),
+            'source_vial': source_vial,
+            'destination_vial': destination_vial,
+            'switch_pipet': switch_pipet,
+            'retry_count': retry_count,
+            'stability_info': stability_info,
+            'volume_index': volume_idx,  # Track which volume in the list
+            'optimization_stage': stage,
+            'measurement_acceptable': measurement_acceptable,
+            'gross_miss': gross_miss,
+            **env_fields,
+            'tip_type': tip,
+            **param_values  # Parameters actually used for this measurement
+        }
+        _record_measurement(all_results, result, session_id=session_id,
+                            simulate=lash_e.simulate, calib_folder=calib_folder)
+
+        print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)")
+
+
+def _implied_overaspirate_ul(records):
+    """Overaspirate each record implies would have hit target (delivery moves ~1:1 with it)."""
+    return np.array([(r['overaspirate_vol'] - (r['measured_volume_ml'] - r['target_volume_ml'])) * 1000
+                     for r in records], float)
+
+
+def _check_confirm_update(measure, params, user_parameters, log_corrections):
+    """Check -> confirm if surprising -> damped update of one calibrated row's overaspirate.
+
+    The check batch (stage 1) was dispensed at the overaspirate the workflow uses. If it
+    is far from what the row's history expects, a confirm batch (stage 2) is dispensed at
+    the value the check implies. Never raises: any problem skips the update with a warning.
+    """
+    from pipetting_data import overaspirate_corrections as corrections
+    from pipetting_data import overaspirate_estimation as estimation
+    from pipetting_data.embedded_liquid_validations import calibrated_volumes_ul
+
+    lash_e, volume_ml = measure['lash_e'], measure['volume_ml']
+    liquid, tip, volume_ul = measure['liquid_type'], measure['tip'], measure['volume_ml'] * 1000
+    try:
+        if not any(np.isclose(row, volume_ul, atol=.05) for row in calibrated_volumes_ul(liquid, tip)):
+            lash_e.logger.warning(f"Not updating {liquid} {tip} {volume_ul:g} uL: not a calibrated volume")
+            return None
+        stage_rows = lambda stage: [r for r in measure['all_results']
+                                    if r['target_volume_ml'] == volume_ml and r['optimization_stage'] == stage]
+        check_rows = stage_rows(1)
+        check = _implied_overaspirate_ul(check_rows)
+        keep = corrections.robust_values(check) & ~np.array([bool(r.get('gross_miss')) for r in check_rows])
+        for record, used in zip(check_rows, keep):
+            record['used_for_update'] = bool(used)
+        if not keep.any():
+            lash_e.logger.warning(f"Not updating {liquid} {tip} {volume_ul:g} uL: no usable check replicates")
+            return None
+
+        settings = estimation.row_settings(pd.Series(_get_parameter_values(params, "pipetting")))
+        history = (pd.read_csv(MASTER_PIPETTING_MEASUREMENTS_DB, low_memory=False)
+                   if os.path.exists(MASTER_PIPETTING_MEASUREMENTS_DB) else None)
+        from pipetting_data.pipetting_wizard import PipettingWizard
+        calibration = PipettingWizard().find_best_calibration_file(liquid, volume_ml, tip_type=tip)[1]
+        base_row = calibration[np.isclose(calibration.volume_target, volume_ul, atol=.05)].iloc[0]
+        base_ul = corrections.effective_base_ul(base_row)
+        state = corrections.prior_state(liquid, tip, volume_ul, params.overaspirate_vol * 1000,
+                                        settings, history, base_ul=base_ul)
+
+        tip_config = lash_e.nr_robot.PIPET_TIPS[tip]
+        upper_ul = (tip_config['volume'] - tip_config.get('capacity_margin', 0) - volume_ml
+                    - max(0, params.post_asp_air_vol or 0)) * 1000
+        lower_ul = -volume_ul
+
+        confirm = None
+        if corrections.is_surprising(state, check[keep]):
+            confirm_ul = max(lower_ul, min(upper_ul, float(np.median(check[keep]))))
+            print(f"    Check batch unexpected (implies {confirm_ul:+.2f} uL vs expected "
+                  f"{state['estimate_ul']:+.2f} uL) - confirming")
+            confirm_params = PipettingParameters(**{**_get_parameter_values(params, "pipetting"),
+                                                    'overaspirate_vol': confirm_ul / 1000})
+            _measure_replicates(**measure, params=confirm_params, stage=2,
+                                simulated_overaspirate=confirm_ul / 1000)
+            confirm_rows = stage_rows(2)
+            confirm_all = _implied_overaspirate_ul(confirm_rows)
+            keep_confirm = (corrections.robust_values(confirm_all)
+                            & ~np.array([bool(r.get('gross_miss')) for r in confirm_rows]))
+            for record, used in zip(confirm_rows, keep_confirm):
+                record['used_for_update'] = bool(used)
+            if not keep_confirm.any():
+                lash_e.logger.warning(f"Not updating {liquid} {tip} {volume_ul:g} uL: no usable confirm replicates")
+                return None
+            confirm = confirm_all[keep_confirm]
+
+        updated = corrections.decide(state, check[keep], confirm, upper_ul=upper_ul, lower_ul=lower_ul)
+        print(f"    {updated['verdict']}: overaspirate {updated['previous_ul']:+.2f} -> "
+              f"{updated['estimate_ul']:+.2f} uL (gain {updated['gain']:.2f}, "
+              f"+/- {math.sqrt(updated['variance']):.2f} uL)")
+        if log_corrections:
+            base = None if state['source'] == 'tracked' else base_ul
+            corrections.save_state(liquid, tip, volume_ul, updated, base, measure['session_id'])
+            corrections.log_update(PARAMETER_CORRECTIONS_LOG, liquid=liquid, tip=tip, volume_ul=volume_ul,
+                                   state=updated, session_id=measure['session_id'],
+                                   environment=measure['env_fields'])
+        else:
+            print("    SIMULATION: correction not saved")
+        return updated
+    except Exception as error:
+        lash_e.logger.warning(f"Overaspirate update skipped for {liquid} {volume_ul:g} uL: {error}")
+        return None
+
+
+def _check_confirm_message(liquid_type, tip_type, session_id, outcomes, stats_df):
+    """One Slack summary per validation session (replaces the per-volume stage message)."""
+    lines = [f"Pipetting check: {liquid_type} ({tip_type or 'auto tip'}) - session {session_id}"]
+    errors = {row['target_volume_ml']: row for _, row in stats_df.iterrows()} if stats_df is not None else {}
+    for volume_ml in sorted(outcomes):
+        outcome = outcomes[volume_ml]
+        stat = errors.get(volume_ml)
+        error = (f"{(stat['measured_mean_ml'] - volume_ml) * 1000:+.1f} uL error, n={int(stat['n_replicates'])}"
+                 if stat is not None else "no statistics")
+        lines.append(f"  {volume_ml * 1000:g} uL: {error}; {outcome['verdict'].replace('_', ' ')}; "
+                     f"overaspirate {outcome['previous_ul']:+.2f} -> {outcome['estimate_ul']:+.2f} uL "
+                     f"(+/- {math.sqrt(outcome['variance']):.2f})")
+    env = _get_latest_environmental_data()
+    if env and (env.get("temp_c") is not None or env.get("humidity_pct") is not None):
+        parts = [f"{env['temp_c']:.1f} C" if env.get("temp_c") is not None else None,
+                 f"{env['humidity_pct']:.1f}% RH" if env.get("humidity_pct") is not None else None]
+        lines.append("  Environment: " + " | ".join(p for p in parts if p))
+    return "\n".join(lines)
+
 def validate_pipetting_accuracy(
     lash_e,
     source_vial: str,
@@ -638,11 +855,17 @@ def validate_pipetting_accuracy(
     parameters: Optional[PipettingParameters] = None,
     adaptive_correction: bool = False,
     tip_type: Optional[str] = None,
+    protocol: str = "stages",
 ) -> Dict:
-    
+
 
     """
     Validate pipetting accuracy for specified volumes and generate analysis.
+
+    ``protocol="check_confirm"`` replaces the 3-stage optimisation: a check batch at the
+    overaspirate in use, a confirm batch only when the check is surprising, then a damped
+    update of the tracked overaspirate (``overaspirate_corrections``). Accuracy statistics
+    come from the check batch, i.e. what the workflow actually dispensed.
     
     Args:
         lash_e: Lash_E coordinator instance (must be initialized)
@@ -678,13 +901,22 @@ def validate_pipetting_accuracy(
         from pipetting_data.pipetting_wizard import PipettingWizard
         if not PipettingWizard().find_calibration_files(liquid_type):
             raise ValueError(f"No calibration file for {liquid_type}; cannot validate {tip_type}")
-    # Resolve every requested measurement before any hardware motion.
+    # Resolve every requested measurement before any hardware motion. A volume that
+    # cannot be set up is skipped with a warning; validation must not end the workflow.
     resolved_tips = {}
     for requested_volume in volumes_ml:
-        _, resolved_tips[requested_volume] = lash_e.nr_robot.resolve_pipetting_setup(
-            requested_volume, liquid_type, parameters, specified_tip=tip_type,
-            compensate_overvolume=compensate_overvolume)
-    
+        try:
+            _, resolved_tips[requested_volume] = lash_e.nr_robot.resolve_pipetting_setup(
+                requested_volume, liquid_type, parameters, specified_tip=tip_type,
+                compensate_overvolume=compensate_overvolume)
+        except ValueError as error:
+            lash_e.logger.warning(
+                f"Skipping {liquid_type} validation at {requested_volume * 1000:g} uL "
+                f"({tip_type or 'auto tip'}): {error}")
+    volumes_ml = [volume for volume in volumes_ml if volume in resolved_tips]
+    if not volumes_ml:
+        return _skipped_validation_result(liquid_type, source_vial, tip_type)
+
     # === SIMULATION SAFETY SETUP ===
     # Set simulation environment flag if in simulation mode
     if hasattr(lash_e, 'simulate') and lash_e.simulate:
@@ -758,7 +990,9 @@ def validate_pipetting_accuracy(
     all_results = []
     failed_optimization_volumes = set()
     completed_selection_volumes = set()
-    
+    skipped_volumes = set()
+    check_confirm_outcomes = {}
+
     # Pre-position destination vial in clamp before starting pipetting
     lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
 
@@ -772,123 +1006,38 @@ def validate_pipetting_accuracy(
         # Resolve parameters for THIS volume specifically - mirrors exactly what
         # dispense_from_vial_into_vial resolves internally, so the logged values always
         # reflect the volume actually being measured, never a different volume in this sweep.
-        stage1_resolved_params, stage1_tip = lash_e.nr_robot.resolve_pipetting_setup(
-            volume_ml, liquid_type, parameters, specified_tip=tip_type,
-            compensate_overvolume=compensate_overvolume)
+        # Earlier corrections in this session can change the setup, so skip rather than fail.
+        try:
+            stage1_resolved_params, stage1_tip = lash_e.nr_robot.resolve_pipetting_setup(
+                volume_ml, liquid_type, parameters, specified_tip=tip_type,
+                compensate_overvolume=compensate_overvolume)
+        except ValueError as error:
+            lash_e.logger.warning(
+                f"Skipping {liquid_type} validation at {volume_ml * 1000:g} uL "
+                f"({tip_type or 'auto tip'}): {error}")
+            skipped_volumes.add(volume_ml)
+            continue
         stage1_param_values = _get_parameter_values(stage1_resolved_params, "pipetting")
         stage1_resolved_params = PipettingParameters(**stage1_param_values)
         env = _get_latest_environmental_data() or {}
         env_fields = {k: env.get(k) for k in ('temp_c', 'humidity_pct', 'pressure_pa')}
         
-        for rep in range(replicates):
-            print(f"  Replicate {rep + 1}/{replicates}...")
-            
-            # Quality-controlled retry loop for calibration/validation
-            max_retries = 3
-            retry_count = 0
-            measurement_acceptable = False
-            
-            while not measurement_acceptable and retry_count <= max_retries:
-                if retry_count > 0:
-                    print(f"    Retry attempt {retry_count}/{max_retries}")
-                
-                # Pipette using optimized parameters with continuous mass monitoring
-                transfer_result = lash_e.nr_robot.dispense_from_vial_into_vial(
-                    source_vial_name=source_vial,
-                    dest_vial_name=destination_vial,
-                    volume=volume_ml,
-                    parameters=stage1_resolved_params,
-                    record_measurement=False,
-                    liquid=liquid_type,
-                    specified_tip=stage1_tip,
-                    remove_tip=switch_pipet,  # Use built-in pipet removal control
-                    use_safe_location=False,
-                    return_vial_home=False,   # Keep destination vial in clamp for mass measurement
-                    compensate_overvolume=compensate_overvolume,
-                    measure_weight=True,  # Enable mass measurement with continuous monitoring
-                    continuous_mass_monitoring=True, 
-                    save_mass_data=not lash_e.simulate
-                    
-                )
-                
-                # Handle new return format (mass, stability_info)
-                if isinstance(transfer_result, tuple):
-                    mass_difference, stability_info = transfer_result
-                    # Evaluate measurement quality for calibration/validation
-                    measurement_acceptable = lash_e.simulate or _evaluate_measurement(stability_info, current_threshold)
-                else:
-                    # Backwards compatibility - old format returns just mass
-                    mass_difference = transfer_result
-                    stability_info = None
-                    measurement_acceptable = True
-                
-                retry_count += 1
-                
-                if not measurement_acceptable and retry_count <= max_retries:
-                    print(f"    Measurement quality insufficient, retrying...")
-            
-            if not measurement_acceptable:
-                print(f"    WARNING: Measurement still poor quality after {max_retries} retries")
+        measure = dict(lash_e=lash_e, source_vial=source_vial, destination_vial=destination_vial,
+                       volume_ml=volume_ml, liquid_type=liquid_type, tip=stage1_tip, density=density,
+                       replicates=replicates, switch_pipet=switch_pipet,
+                       compensate_overvolume=compensate_overvolume, threshold=current_threshold,
+                       env_fields=env_fields, volume_idx=volume_idx, all_results=all_results,
+                       session_id=session_id, calib_folder=calib_folder)
+        _measure_replicates(**measure, params=stage1_resolved_params, stage=1,
+                            simulated_overaspirate=parameters.overaspirate_vol if parameters else 0.004)
 
-            # Handle simulation mode - generate realistic simulated mass
-            # CRITICAL SAFETY: Multiple checks to prevent fake data in real runs
-            if (hasattr(lash_e, 'simulate') and lash_e.simulate and 
-                (mass_difference is None or mass_difference == 0) and
-                getattr(lash_e, 'simulate', False) is True):  # Double-check simulate flag
-                
-                # Set environment variable for additional safety
-                import os
-                os.environ['ROBOT_SIMULATION_MODE'] = 'TRUE'
-                
-                current_overaspirate = parameters.overaspirate_vol if parameters else 0.004
-                mass_difference = _generate_simulated_mass(
-                    target_volume_ml=volume_ml, 
-                    density=density,
-                    current_overaspirate=current_overaspirate,
-                    replicate_num=rep + 1,
-                    validation_mode=True  # Use low-noise validation mode
-                )
-                print(f"    SIMULATION: Generated mass {mass_difference:.6f}g for validation")
-            else:
-                measured_ul = (mass_difference / density) * 1000
-                target_ul = volume_ml * 1000
-                error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
-                if abs(measured_ul - target_ul) > error_threshold_ul:
-                    error_msg = (
-                        f"Stage 1 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
-                        f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
-                        f"Check tip attachment, liquid availability, and vial positioning."
-                    )
-                    lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                    raise ValueError(error_msg)
+        if protocol == "check_confirm":
+            outcome = _check_confirm_update(measure, stage1_resolved_params, parameters,
+                                            log_corrections=not lash_e.simulate)
+            if outcome is not None:
+                check_confirm_outcomes[volume_ml] = outcome
+            continue
 
-            measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
-            
-            # Store result
-            result = {
-                'target_volume_ml': volume_ml,
-                'measured_volume_ml': measured_volume_ml,
-                'mass_difference_g': mass_difference,
-                'density_used': density,
-                'liquid_type': liquid_type,
-                'replicate': rep + 1,
-                'timestamp': datetime.now().isoformat(),
-                'source_vial': source_vial,
-                'destination_vial': destination_vial,
-                'switch_pipet': switch_pipet,
-                'retry_count': retry_count,
-                'stability_info': stability_info,
-                'volume_index': volume_idx,  # Track which volume in the list
-                'optimization_stage': 1,  # Mark initial measurements as Stage 1
-                'measurement_acceptable': measurement_acceptable,
-                **env_fields,
-                **stage1_param_values  # Parameters actually resolved for this volume
-            }
-            _record_measurement(all_results, result, session_id=session_id,
-                                simulate=lash_e.simulate, calib_folder=calib_folder)
-            
-            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)")
-        
         # === ITERATIVE ADAPTIVE CORRECTION (3-STAGE PROCESS) ===
         if adaptive_correction:
             # Stage 1: Evaluate initial measurements 
@@ -1039,6 +1188,7 @@ def validate_pipetting_accuracy(
                             'volume_index': volume_idx,
                             'optimization_stage': 2,
                             **env_fields,
+                            'tip_type': stage1_tip,
                             **_get_parameter_values(stage2_params, "pipetting")  # Params actually used for Stage 2
                         }
                         _record_measurement(all_results, stage2_result_dict, session_id=session_id,
@@ -1162,6 +1312,7 @@ def validate_pipetting_accuracy(
                             'volume_index': volume_idx,
                             'optimization_stage': 3,
                             **env_fields,
+                            'tip_type': stage1_tip,
                             **_get_parameter_values(stage3_params, "pipetting")  # Params actually used for Stage 3
                         }
                         _record_measurement(all_results, stage3_result_dict, session_id=session_id,
@@ -1296,21 +1447,33 @@ def validate_pipetting_accuracy(
                             result['optimization_stage'] = 1
             else:
                 print(f"    ✅ Stage 1 measurements within tolerance - no optimization needed")
-    
+
+    volumes_ml = [volume for volume in volumes_ml if volume not in skipped_volumes]
+    if not volumes_ml:
+        try:
+            lash_e.nr_robot.remove_pipet()
+            lash_e.nr_robot.return_vial_home(destination_vial)
+        except Exception as e:
+            print(f"Warning: Could not return vial to home: {e}")
+        return _skipped_validation_result(liquid_type, source_vial, tip_type)
+
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)
     df['session_id'] = session_id
     df['simulate'] = lash_e.simulate
-    
+
     # Record the final selected stage, not merely the highest attempted stage.
     annotated_groups = []
     decisions_by_volume = {}
     for volume in volumes_ml:
         subset = df[df['target_volume_ml'] == volume]
-        annotated, decision = annotate(
-            subset, adaptive_correction,
-            failed=volume in failed_optimization_volumes,
-        )
+        if protocol == "check_confirm":
+            annotated, decision = annotate_check_confirm(subset, check_confirm_outcomes.get(volume))
+        else:
+            annotated, decision = annotate(
+                subset, adaptive_correction,
+                failed=volume in failed_optimization_volumes,
+            )
         annotated_groups.append(annotated)
         decisions_by_volume[volume] = decision
     df = pd.concat(annotated_groups, ignore_index=True)
@@ -1334,6 +1497,7 @@ def validate_pipetting_accuracy(
     if all_measurements_low:
         mean_ratio = df_analysis['volume_ratio'].mean()
         min_ratio = df_analysis['volume_ratio'].min()
+        # Near-zero delivery means a real hardware problem (no tip, empty vial): pause.
         lash_e.nr_robot.pause_after_error(
             f"VALIDATION FAILURE: All measurements below 10% of target. "
             f"Mean ratio: {mean_ratio:.1%}, Min ratio: {min_ratio:.1%}. "
@@ -1509,11 +1673,12 @@ def validate_pipetting_accuracy(
             'temp_c': row['temp_c'],
             'humidity_pct': row['humidity_pct'],
             'pressure_pa': row['pressure_pa'],
+            'tip_type': row.get('tip_type'),
             **row_param_values,
             **{key: row[key] for key in DECISION_COLUMNS}
         }
         measurements_data.append(measurement_record)
-    
+
     _append_to_master_measurements(measurements_data, "pipetting", simulate=lash_e.simulate)
     
     # Prepare session summary data - separate records for each volume
@@ -1524,6 +1689,7 @@ def validate_pipetting_accuracy(
             'simulate': lash_e.simulate,
             'validation_type': 'vial_to_vial',
             'liquid_type': liquid_type,
+            'tip_type': resolved_tips.get(volume_stat['target_volume_ml']),
             'density_used': density,
             'target_volume_ml': volume_stat['target_volume_ml'],
             'num_replicates': volume_stat['n_replicates'],
@@ -1545,7 +1711,18 @@ def validate_pipetting_accuracy(
         }
         
         _append_to_master_sessions(session_record, "pipetting", simulate=lash_e.simulate)
-    
+
+    if protocol == "check_confirm" and check_confirm_outcomes:
+        message = _check_confirm_message(liquid_type, tip_type, session_id, check_confirm_outcomes, stats_df)
+        if lash_e.simulate:
+            print("    SIMULATION: Would send Slack summary:\n" + message)
+        else:
+            try:
+                import slack_agent
+                slack_agent.send_slack_message(message)
+            except Exception as slack_error:
+                print(f"    Could not send Slack summary: {slack_error}")
+
     # === CLEANUP ===
     # Return destination vial to home position at the very end
     try:

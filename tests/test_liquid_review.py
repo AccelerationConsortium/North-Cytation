@@ -22,25 +22,27 @@ class LiquidReviewTests(unittest.TestCase):
                          overaspirate_vol=.002, measured_volume_ml=.05))
         data = pd.DataFrame(rows)
         estimates, dropped = session_overaspirate_estimates(data)
-        self.assertEqual(sorted(estimates.oa_ul.round(6)), [4, 6])
-        self.assertEqual(dropped['Fewer than three stages recorded (V_OA response unknowable)'], 1)
+        # Session 'one' tested a single V_OA: estimated with the ~1:1 response (2 uL).
+        self.assertEqual(sorted(estimates.oa_ul.round(6)), [2, 4, 6])
+        self.assertEqual(estimates.set_index('session_id').points['one'], 1)
         recent, dropped = session_overaspirate_estimates(data, pd.Timestamp('2026-09-01'), pd.Timestamp('2026-11-01'))
-        self.assertEqual(list(recent.session_id), ['a'])
+        self.assertEqual(sorted(recent.session_id), ['a', 'one'])
         self.assertEqual(dropped['Outside date range'], 2)
-        summary = summarize_overaspirate(estimates, {50.0: 5.0})
+        summary = summarize_overaspirate(estimates[estimates.session_id != 'one'], {50.0: 5.0})
         self.assertAlmostEqual(summary.iloc[0].mean_ul, 5)
         self.assertEqual(summary.iloc[0].sessions, 2)
 
-    def test_past_validation_uses_accepted_sessions_with_equal_weight(self):
-        rows = [dict(target_volume_ml=.05, measured_volume_ml=.049, session_id='a',
-                     timestamp='20261001_120000', accepted=True) for _ in range(10)]
-        rows += [dict(target_volume_ml=.05, measured_volume_ml=.053, session_id='b',
+    def test_past_validation_reports_first_batch_with_equal_session_weight(self):
+        rows = [dict(target_volume_ml=.05, measured_volume_ml=.049, session_id='a', optimization_stage=1,
+                     timestamp='20261001_120000', accepted=False) for _ in range(10)]
+        rows += [dict(target_volume_ml=.05, measured_volume_ml=.050, session_id='a', optimization_stage=2,
+                      timestamp='20261001_120000', accepted=True),
+                 dict(target_volume_ml=.05, measured_volume_ml=.053, session_id='b', optimization_stage=1,
                       timestamp='20261009_120000', accepted=True),
-                 dict(target_volume_ml=.05, measured_volume_ml=.080, session_id='c',
-                      timestamp='20261010_120000', accepted=False),
-                 dict(target_volume_ml=.05, measured_volume_ml=.090, session_id='d',
-                      timestamp='20261011_120000', accepted=None)]
+                 dict(target_volume_ml=.05, measured_volume_ml=.090, session_id='c', optimization_stage=1,
+                      timestamp='20261010_120000', measurement_acceptable=False)]
         data, summary, excluded = summarize_past_validation(pd.DataFrame(rows))
+        # Session a's best stage (50 uL) is not reported; its as-dispensed 49 uL is.
         self.assertEqual(len(data), 11)
         row = summary.iloc[0]
         self.assertEqual(row.mean_ul, 51)
@@ -48,8 +50,8 @@ class LiquidReviewTests(unittest.TestCase):
         self.assertEqual(row.last_validation, '2026-10-09')
         self.assertLess(row.ci_low_ul, 51)
         self.assertGreater(row.ci_high_ul, 51)
-        self.assertEqual(excluded['Stage not accepted'], 1)
-        self.assertEqual(excluded['Acceptance unresolved'], 1)
+        self.assertEqual(excluded['Later stage (different V_OA than in use)'], 1)
+        self.assertEqual(excluded['Unstable balance reading'], 1)
         _, one, _ = summarize_past_validation(pd.DataFrame(rows[:10]))
         self.assertTrue(pd.isna(one.iloc[0].ci_low_ul))
 
@@ -156,13 +158,33 @@ class LiquidReviewTests(unittest.TestCase):
             self.assertIn('Overvolume Changes', names)
             tab.deleteLater()
 
-    def test_sessions_that_saved_one_overaspirate_for_all_stages_are_not_estimated(self):
+    def test_sessions_that_saved_one_overaspirate_for_all_stages_use_stage_one_only(self):
         data = pd.DataFrame([dict(session_id='old', timestamp='20260501_120000', target_volume_ml=.05,
                                   optimization_stage=stage, overaspirate_vol=.002, measured_volume_ml=measured)
                              for stage, measured in ((1, .046), (2, .054), (3, .050))])
         estimates, dropped = session_overaspirate_estimates(data)
-        self.assertTrue(estimates.empty)
-        self.assertEqual(sum(dropped.values()), 1)
+        # Stages 2-3 saved the wrong V_OA; stage 1 alone implies 2 - (46 - 50) = 6 uL.
+        self.assertEqual(estimates.oa_ul.round(6).tolist(), [6])
+
+    def test_coverage_uses_logged_tip_and_near_extrapolation(self):
+        frame = pd.DataFrame({'volume_target': [20, 180, 200, 500],
+                              'tip_type': ['small_tip', 'small_tip', 'large_tip', 'large_tip']})
+        self.assertEqual(coverage(frame, 182, 'small_tip'), 'Near coverage (extrapolated)')
+        self.assertEqual(coverage(frame, 190, 'large_tip'), 'Near coverage (extrapolated)')
+        self.assertEqual(coverage(frame, 150, 'large_tip'), 'Outside tip-specific coverage')
+        self.assertEqual(coverage(frame, 100, 'small_tip'), 'Interpolated coverage')
+
+    def test_calibration_shows_tracked_overaspirate(self):
+        from scheduler.liquid_review import load_calibration
+        with tempfile.TemporaryDirectory() as folder:
+            data = Path(folder)
+            pd.DataFrame([dict(volume_target=100, tip_type='small_tip', overaspirate_vol=.004,
+                               volume_measured=98)]).to_csv(data / 'optimal_conditions_water.csv', index=False)
+            pd.DataFrame([dict(liquid='water', tip_type='small_tip', volume_target=100,
+                               overaspirate_ul=2.5)]).to_csv(data / 'overaspirate_corrections.csv', index=False)
+            frame = load_calibration(data / 'optimal_conditions_water.csv')
+            self.assertAlmostEqual(frame.overaspirate_vol.iloc[0], .0025)
+            self.assertEqual(frame.volume_measured.iloc[0], 100)
 
     def test_legacy_environment_header(self):
         with tempfile.TemporaryDirectory() as folder:

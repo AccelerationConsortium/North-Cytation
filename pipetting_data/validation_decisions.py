@@ -46,6 +46,30 @@ def annotate(frame, adaptive, failed=False, source="recorded"):
     return result, summary
 
 
+def annotate_check_confirm(frame, outcome, source="check_confirm"):
+    """Check/confirm session: every replicate used for the update is accepted.
+
+    Statistics come from the check batch (stage 1): what the workflow actually dispensed
+    at the overaspirate in use, not a best-of-several selection.
+    """
+    result = frame.copy()
+    target = float(result.target_volume_ml.iloc[0])
+    tolerance = tolerance_ul(target)
+    means = result.groupby("optimization_stage").measured_volume_ml.mean()
+    errors = (means * 1000 - target * 1000).abs()
+    used = (result["used_for_update"] if "used_for_update" in result else pd.Series(True, index=result.index))
+    result["accepted"] = used.fillna(True).astype(bool)
+    result["adaptive_correction"] = False
+    result["within_tolerance"] = result.optimization_stage.map(errors <= tolerance)
+    result["tolerance_ul"] = tolerance
+    result["decision_reason"] = outcome["verdict"] if outcome else "not_updated"
+    result["decision_source"] = source
+    check = result[result.optimization_stage == 1]
+    summary = {name: check[name].iloc[0] for name in DECISION_COLUMNS}
+    summary["accepted"] = True
+    return result, summary
+
+
 def read_csv(path):
     """Read the historical correction header with its three unnamed environment columns."""
     with Path(path).open(newline="", encoding="utf-8-sig") as handle:

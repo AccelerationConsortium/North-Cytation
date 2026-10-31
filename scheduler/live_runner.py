@@ -23,6 +23,11 @@ def fingerprint(paths):
     return {str(Path(path).resolve()): hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in paths}
 
 
+def changed_inputs(hashes):
+    current = fingerprint(hashes)
+    return [Path(path).name for path in hashes if current[path] != hashes[path]]
+
+
 def reviewed_live_state(job):
     """Use the reviewed start state, then each successful live handoff."""
     expected = job["state_hashes"]
@@ -119,8 +124,9 @@ def run_job(folder):
         if Path(name).name != name or name.startswith("_"):
             raise ValueError("Invalid workflow name")
         with scheduler_live_lock():
-            if fingerprint(job["input_hashes"]) != job["input_hashes"]:
-                raise ValueError("Reviewed inputs changed; simulate again before running.")
+            changed = changed_inputs(job["input_hashes"])
+            if changed:
+                raise ValueError("Reviewed inputs changed; simulate again before running: " + ", ".join(changed))
             if "state_hashes" in job:
                 expected = reviewed_live_state(job)
                 actual = fingerprint(expected)
@@ -134,8 +140,11 @@ def run_job(folder):
             with watch_for_interrupt(folder):
                 module.execute(config=config, show_gui=False)
             issues = live_state_issues(job)
-            if fingerprint(job["input_hashes"]) != job["input_hashes"]:
-                raise ValueError("Reviewed inputs changed during the live job; simulate again before running.")
+            # This job already ran with the code it imported at start; the next job's
+            # pre-run check blocks it until the queue is simulated again.
+            changed = changed_inputs(job["input_hashes"])
+            if changed:
+                logger.warning("Files edited during this run (simulate again before the next run): " + ", ".join(changed))
             result["completed"] = True
             for issue in issues:
                 result["records"].append({"level": "ERROR", "message": f"Live handoff blocked: {issue}"})

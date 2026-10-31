@@ -204,7 +204,7 @@ class LiveRunnerTests(unittest.TestCase):
         importer.assert_not_called()
         self.assertIn("Reviewed inputs changed", result["exception"])
 
-    def test_config_edit_during_job_blocks_handoff(self):
+    def test_config_edit_during_job_warns_and_next_job_is_blocked(self):
         self.prepare_live_chain()
 
         def execute(config, show_gui):
@@ -212,9 +212,10 @@ class LiveRunnerTests(unittest.TestCase):
 
         with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
             result = runner.run_job(self.root)
-        self.assertFalse(result["handoff_ok"])
-        self.assertNotIn("state_hashes", result)
-        self.assertIn("Reviewed inputs changed during the live job", result["exception"])
+        self.assertTrue(result["completed"])
+        self.assertIsNone(result["exception"])
+        warnings = [record["message"] for record in result["records"] if record["level"] == "WARNING"]
+        self.assertTrue(any("Files edited during this run" in message for message in warnings))
 
     def test_logged_error_does_not_publish_inventory_handoff(self):
         next_folder = self.prepare_live_chain()

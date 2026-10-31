@@ -36,6 +36,10 @@ REQUIRED_COLUMNS = ['volume_target'] + PIPETTING_PARAMETERS
 # fall back to system default parameters instead of extrapolating that far.
 MAX_EXTRAPOLATION_FRACTION = 0.25
 
+# Within this fraction outside the range, a tip counts as near-calibrated when choosing
+# between tips. A preference only: further extrapolation is still used, with a warning.
+NEAR_EXTRAPOLATION_FRACTION = 0.10
+
 class PipettingWizard:
     """
     Intelligent pipetting parameter provider based on calibration data.
@@ -129,6 +133,25 @@ class PipettingWizard:
                 candidate = float(volumes.max())
                 max_volume_ul = candidate if max_volume_ul is None else max(max_volume_ul, candidate)
         return None if max_volume_ul is None else max_volume_ul / 1000
+
+    def extrapolation_fraction(self, liquid: str, volume_ml: float,
+                               tip_type: str = None) -> Optional[float]:
+        """Return how far outside the calibrated range a volume is (0 when inside).
+
+        The distance is relative to the nearest edge row, e.g. 0.1 for 198 uL against
+        a 180 uL top row. None when no calibration rows exist for this liquid and tip.
+        """
+        file_result = self.find_best_calibration_file(liquid, volume_ml, tip_type=tip_type)
+        if file_result is None:
+            return None
+        volumes = file_result[1]['volume_target'].values
+        target_volume_ul = volume_ml * 1000
+        min_vol, max_vol = volumes.min(), volumes.max()
+        if target_volume_ul < min_vol:
+            return (min_vol - target_volume_ul) / min_vol
+        if target_volume_ul > max_vol:
+            return (target_volume_ul - max_vol) / max_vol
+        return 0.0
 
     def find_best_calibration_file(self, liquid: str, target_volume_ml: float,
                                    tip_type: str = None) -> Optional[Tuple[Path, pd.DataFrame]]:
@@ -245,24 +268,28 @@ class PipettingWizard:
         
         # Interpolate between closest points
         result = {'volume_ml': target_volume_ml}
-        
+
+        # Outside the range, only the edge row is used: a noisy neighbouring row must
+        # not steer the result. Overaspirate scales with volume from the edge row;
+        # other parameters (speeds, waits, air) keep the edge row's value.
+        edge = None
+        if extrapolate and target_volume_ul < min_vol:
+            edge = int(np.argmin(volumes))
+        elif extrapolate and target_volume_ul > max_vol:
+            edge = int(np.argmax(volumes))
+
         for param in PIPETTING_PARAMETERS:
             if param in df.columns:
                 param_values = df[param].values
 
-                # Use numpy interp for linear interpolation (volumes in uL)
-                if extrapolate and len(volumes) >= 2 and target_volume_ul < min_vol:
-                    interpolated_value = param_values[0] + (target_volume_ul - volumes[0]) * (
-                        param_values[1] - param_values[0]) / (volumes[1] - volumes[0])
-                elif extrapolate and len(volumes) >= 2 and target_volume_ul > max_vol:
-                    interpolated_value = param_values[-1] + (target_volume_ul - volumes[-1]) * (
-                        param_values[-1] - param_values[-2]) / (volumes[-1] - volumes[-2])
+                if edge is not None and param == 'overaspirate_vol':
+                    interpolated_value = param_values[edge] * target_volume_ul / volumes[edge]
+                elif edge is not None:
+                    interpolated_value = param_values[edge]
                 else:
+                    # Use numpy interp for linear interpolation (volumes in uL)
                     interpolated_value = np.interp(target_volume_ul, volumes, param_values)
                 value = float(interpolated_value)
-                if extrapolate and param != 'overaspirate_vol' and value < 0:
-                    self.logger.warning("Extrapolated %s below zero; using zero", param)
-                    value = 0.0
                 
                 # Convert speed parameters to integers to avoid conversion warnings
                 if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
@@ -376,7 +403,10 @@ class PipettingWizard:
             return None
         
         file_path, df = file_result
-        
+        if tip_type is not None:
+            from pipetting_data.overaspirate_corrections import apply_corrections
+            df = apply_corrections(df, liquid, tip_type, logger=self.logger)
+
         # Refuse to extrapolate too far beyond the calibrated range - beyond
         # MAX_EXTRAPOLATION_FRACTION outside it, parameters are unreliable, so
         # fall back to system defaults (the caller does this when None is returned).

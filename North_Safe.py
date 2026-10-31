@@ -9,7 +9,7 @@ import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
-from pipetting_data.pipetting_wizard import PipettingWizard
+from pipetting_data.pipetting_wizard import PipettingWizard, NEAR_EXTRAPOLATION_FRACTION
 from pipetting_data.dispense_recording import recording_density, record_dispense, capture_aspiration
 import matplotlib.patches as patches
 import threading
@@ -1669,15 +1669,24 @@ class North_Robot(North_Base):
 
     def resolve_pipetting_setup(self, volume, liquid=None, user_parameters=None,
                                 specified_tip=None, compensate_overvolume=True):
-        """Resolve a tip and parameters together before aspirating from a vial."""
-        tip_calibration = (liquid is not None and
-                           bool(PipettingWizard(logger=self.logger).find_calibration_files(liquid)))
+        """Resolve a tip and parameters together before aspirating from a vial.
+
+        Calibrated tips are tried in order of how well their calibrated range covers the
+        volume (inside, near, further out), smaller tip first. A tip whose load comes
+        within its capacity_margin is a tight fit, used only when no calibrated tip fits
+        with room. Range and margin are preferences: they choose between tips, never
+        reject a volume that today's capacity check would accept.
+        """
+        wizard = PipettingWizard(logger=self.logger)
+        tip_calibration = liquid is not None and bool(wizard.find_calibration_files(liquid))
         candidates = ([specified_tip] if specified_tip else
                       sorted(self.PIPET_TIPS, key=lambda name:
                              self.PIPET_TIPS[name].get('volume', 0)))
         failures = []
         fallback_tips = []
-        for tip in candidates:
+        tight_fits = []
+        ranked = []
+        for size_order, tip in enumerate(candidates):
             if tip not in self.PIPET_TIPS:
                 raise ValueError(f"Unknown pipet tip: {tip}")
             config = self.PIPET_TIPS[tip]
@@ -1687,6 +1696,12 @@ class North_Robot(North_Base):
             if volume >= config['volume']:
                 failures.append(f"{tip}: target reaches tip capacity")
                 continue
+            fraction = wizard.extrapolation_fraction(liquid, volume, tip) if tip_calibration else 0.0
+            coverage = (3 if fraction is None else 0 if fraction == 0
+                        else 1 if fraction <= NEAR_EXTRAPOLATION_FRACTION else 2)
+            ranked.append((coverage, size_order, tip))
+        for _, _, tip in sorted(ranked):
+            config = self.PIPET_TIPS[tip]
             try:
                 params = self._get_optimized_parameters(
                     volume, liquid, user_parameters, compensate_overvolume,
@@ -1703,10 +1718,22 @@ class North_Robot(North_Base):
             if tip_load >= config['volume']:
                 failures.append(f"{tip}: {tip_load * 1000:.1f} uL reaches tip capacity")
                 continue
+            if tip_load <= config['volume'] - config.get('capacity_margin', 0):
+                return params, tip
+            self.logger.info("%s load %.1f uL is within its %.0f uL capacity margin; "
+                             "trying other tips", tip, tip_load * 1000,
+                             config.get('capacity_margin', 0) * 1000)
+            tight_fits.append((params, tip, tip_load))
+        if tight_fits:
+            params, tip, tip_load = tight_fits[0]
+            self.logger.warning(
+                "No tip fits %s at %g uL with room; using %s with load %.1f uL of %.0f uL",
+                liquid, volume * 1000, tip, tip_load * 1000, self.PIPET_TIPS[tip]['volume'] * 1000,
+            )
             return params, tip
         # Prefer any calibrated tip that fits before falling back to defaults.
         # Only unavailable calibration permits fallback; capacity failures do not.
-        for tip in fallback_tips:
+        for tip in sorted(fallback_tips, key=candidates.index):
             params = self._get_optimized_parameters(
                 volume, None, user_parameters, compensate_overvolume)
             tip_load = volume + max(0, params.overaspirate_vol) + max(0, params.post_asp_air_vol)

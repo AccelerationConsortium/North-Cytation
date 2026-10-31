@@ -128,6 +128,8 @@ def record_dispense(robot, *, liquid, density, target, mass, stability,
         if reservoir_index is not None:
             # Existing reservoir schema; no new classification columns.
             row["reservoir_index"] = reservoir_index
+        else:
+            row["tip_type"] = info["tip_type"]
         from pipetting_data.embedded_calibration_validation import _get_latest_environmental_data
         environment = _get_latest_environmental_data()
         if environment:

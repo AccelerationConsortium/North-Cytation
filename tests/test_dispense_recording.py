@@ -121,6 +121,7 @@ def test_records_existing_schema_and_preserves_unweighed_return(robot):
     assert data.source_vial.iloc[0] == 'source'
     assert data.destination_vial.iloc[0] == 'dest'
     assert json.loads(data.stability_info.iloc[0])['tip_type'] == 'small_tip'
+    assert data.tip_type.iloc[0] == 'small_tip'
     assert data.optimization_stage.isna().all()
 
 
