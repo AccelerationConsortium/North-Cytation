@@ -203,7 +203,6 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                         vials_moved=len(targets), transfers=transfers,
                         off_rack=sum(positions(robot.VIAL_DF)[name][0] != RACK for name in names))
             summary["pairs"].append(pair)
-            _write_json(directory / "summary.json", summary)
             if verifier is not None:
                 try:
                     result = verifier(photo, csv)
@@ -230,7 +229,9 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                     "Sample %s finished %.3f seconds behind target; continuing without dropping samples",
                     index, pair["schedule_lag_seconds"],
                 )
-            _write_json(directory / "summary.json", summary)
+            if not lash_e.simulate:
+                # Progress record for long live runs; simulation writes once at the end.
+                _write_json(directory / "summary.json", summary)
             if index < config["ITERATIONS"]:
                 # Include manifest-save time when calculating the actual live wait.
                 wait = max(0.0, deadline - time.monotonic()) if not lash_e.simulate and interval_seconds else remaining
