@@ -76,7 +76,15 @@ def _validate(config, robot):
 def _write_json(path, value):
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(value, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    # Windows denies the replace while another process (e.g. a virus scan) briefly holds the target.
+    for attempt in range(10):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if attempt == 9:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def _capture_pair(robot, directory, index, config, capture):
