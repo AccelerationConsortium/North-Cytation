@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'output'
 moves = []
 for entry in sorted(OUT.iterdir()):
@@ -57,7 +57,7 @@ def edit(relative, replacements):
 
 changed = set()
 # Preserve the original user-edited sources before applying this migration.
-backup = ROOT / 'temp/output_reorganization_source_backup'
+backup = ROOT / 'output/temp/output_reorganization_source_backup'
 def save_original(path):
     destination = backup / path.relative_to(ROOT)
     if not destination.exists():
@@ -128,6 +128,6 @@ edit('workflows/pipette_calibration_workflow.py', [
     ('CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config.yaml"',
      'CALIBRATION_CONFIG_FILE = "sdl_pipette_calibration/experiment_config_workflow.yaml"')])
 
-(ROOT / 'temp/output_move_plan.json').write_text(json.dumps(moves, indent=2), encoding='utf-8')
-(ROOT / 'temp/output_changed_files.json').write_text(json.dumps(sorted(changed), indent=2), encoding='utf-8')
+(ROOT / 'output/temp/output_move_plan.json').write_text(json.dumps(moves, indent=2), encoding='utf-8')
+(ROOT / 'output/temp/output_changed_files.json').write_text(json.dumps(sorted(changed), indent=2), encoding='utf-8')
 print(json.dumps({'planned_moves': len(moves), 'changed_files': sorted(changed)}, indent=2))

@@ -26,6 +26,7 @@ from numbers import Real
 import pandas as pd
 
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
+from workflows._planning_markers import mark_clock_start, mark_wait_until
 
 from workflows.surfactant_grid_adaptive_concentrations import (
     ADD_BUFFER,
@@ -134,6 +135,98 @@ _CONFIG_KEYS = [
     "WATER_REFILL_THRESHOLD_ML", "EXPERIMENT_TAG",
     "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SELECTED_BUFFER",
 ]
+
+# Planning annotations, one per _CONFIG_KEYS entry (plain literals, read with ast).
+# Fields follow workflows/workflow_template.py; software_tests/test_config_docs.py enforces them.
+_CONFIG_DOCS = {
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (stocks, refills, substocks, water, dye) for this run.",
+                               "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "RECIPES_CSV": {"description": "Per-well recipe CSV: surfactant concentrations and component volumes for each well.",
+                    "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"],
+                    "shares": "input_file", "ask": True,
+                    "effect": "one well per row (after MAX_WELLS); plates per replicate = ceil(rows / plate wells)"},
+    "STOCKS_CSV": {"description": "Substock dilution recipes (source vial, source/water volumes) matching RECIPES_CSV.",
+                   "unit": None, "affects": ["duration", "tips", "vials", "liquids"], "shares": "input_file",
+                   "effect": "substocks below REFILL_THRESHOLD_ML are topped up or remade at each preparation replicate start"},
+    "SIMULATE": {"description": "Run without hardware; the scheduler sets this per job.", "unit": None, "affects": []},
+    "MAX_WELLS": {"description": "Run only the first N recipe rows; 0 runs every row.", "unit": None,
+                  "affects": ["duration", "tips", "plates", "liquids"], "ask": True,
+                  "effect": "recipe truncated to its first MAX_WELLS rows (0 = all) before plate splitting"},
+    "WELLPLATE_TYPE": {"description": "Physical plate type; selects matching Cytation protocols and volume scale.",
+                       "unit": None, "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
+                       "affects": ["duration", "tips", "plates", "liquids"], "shares": "plate_type",
+                       "effect": "plates per replicate = ceil(wells / plate num_wells); volumes x VOLUME_SCALE_BY_PLATE[type]"},
+    "VOLUME_SCALE_BY_PLATE": {"description": "Volume multiplier per plate type applied to the 96-well base recipe.",
+                              "unit": None, "affects": ["tips", "liquids"],
+                              "effect": "all recipe component volumes and DYE_VOLUME_UL multiplied by the selected plate's factor"},
+    "DYE": {"description": "Fluorescent probe; selects its fluorescence protocol.", "unit": None,
+            "choices": ["pyrene", "coumarin-6", "nile-red"], "affects": ["duration", "liquids"],
+            "shares": "dye", "ask": True},
+    "DYE_SOLVENT": {"description": "Liquid class (pipetting parameters) used for dye dispenses.", "unit": None,
+                    "affects": []},
+    "DYE_VIAL": {"description": "Primary dye stock vial (8 mL, main rack).", "unit": None,
+                 "affects": ["vials", "liquids"]},
+    "VALIDATE_LIQUIDS": {"description": "Run gravimetric dispense checks before the experiment.", "unit": None,
+                         "affects": ["duration", "tips", "liquids"],
+                         "effect": "validates water, each planned dye source and both surfactant stocks before any plate"},
+    "VALIDATION_ONLY": {"description": "Run only the gravimetric checks, then stop.", "unit": None,
+                        "affects": ["duration", "tips", "plates", "liquids"],
+                        "effect": "runs the validation series and returns before any plate is prepared"},
+    "DYE_BACKUP_VIALS": {"description": "Extra dye vials used in order once the primary vial reaches its reserve.",
+                         "unit": None, "affects": ["duration", "tips", "vials"],
+                         "effect": "each dye source used in a block adds a vial move and a fresh tip"},
+    "DYE_SOURCE_RESERVE_ML": {"description": "Dye volume left unused in every dye vial.", "unit": "mL",
+                              "affects": ["vials", "liquids"],
+                              "effect": "each dye vial supplies floor((volume - reserve) / dose) wells; run stops at start if all wells x replicates do not fit"},
+    "DYE_VOLUME_UL": {"description": "Dye volume added per well (96-well basis).", "unit": "uL",
+                      "affects": ["vials", "liquids"],
+                      "effect": "dye used = DYE_VOLUME_UL x plate volume scale x wells x PREPARATION_REPLICATES"},
+    "DISPENSE_ORDER": {"description": "Order components are added to each block; must include surfactant_A, water, surfactant_B, dye (and buffer if ADD_BUFFER).",
+                       "unit": None, "affects": []},
+    "PREPARATION_REPLICATES": {"description": "Number of independently prepared copies of the whole plate set.",
+                               "unit": None, "affects": ["duration", "tips", "plates", "liquids"], "ask": True,
+                               "effect": "whole dispense+measure sequence repeated; plates = plates per replicate x replicates"},
+    "MEASUREMENT_REPLICATES": {"description": "Repeated plate reads at each timepoint.", "unit": None,
+                               "affects": ["duration"], "ask": True,
+                               "effect": "each block read (turbidity with shake, then fluorescence) this many times per timepoint"},
+    "MEASUREMENT_SCHEDULE_MIN": {"description": "Read times in minutes after each block finishes dispensing; starts at 0, strictly increasing.",
+                                 "unit": "min", "affects": ["duration"], "ask": True,
+                                 "effect": "each block waits until dispense end + t before each timepoint's reads"},
+    "RANDOMIZED_ORDER": {"description": "Shuffle which physical well each recipe goes into, within each block.",
+                         "unit": None, "affects": []},
+    "RANDOMIZATION_SEED": {"description": "Seed for the well-position shuffle (None = random).", "unit": None,
+                           "affects": []},
+    "RANDOMIZED_MEASUREMENT_ORDER": {"description": "Read wells in a shuffled order instead of plate order.",
+                                     "unit": None, "affects": ["duration"],
+                                     "effect": "each well read by its own Cytation protocol run for both assays instead of one run per block"},
+    "MEASUREMENT_RANDOMIZATION_SEED": {"description": "Seed for the read-order shuffle (None = random).", "unit": None,
+                                       "affects": []},
+    "EXECUTION_BLOCK_SIZE": {"description": "Wells dispensed and then measured together as one block.", "unit": None,
+                             "affects": ["duration", "tips"],
+                             "effect": "each plate split into ceil(wells / size) blocks; each block gets its own full dispense pass and measurement schedule"},
+    "REFILL_CHECK_CHUNK_SIZE": {"description": "Wells dispensed from one vial between volume/refill checks.",
+                                "unit": None, "affects": ["duration", "tips"],
+                                "effect": "volume check before each chunk; a refill drops the tip and conditions a new one"},
+    "STOCK_REFILL_SOURCES": {"description": "Ordered refill vials per surfactant stock (empty = <surfactant>_refill).",
+                             "unit": None, "affects": ["vials", "liquids"]},
+    "STOCK_REFILL_RESERVE_ML": {"description": "Volume left unused in each stock refill vial.", "unit": "mL",
+                                "affects": ["vials", "liquids"]},
+    "WATER_REFILL_THRESHOLD_ML": {"description": "Water vials below this are topped up from the reservoir before a chunk.",
+                                  "unit": "mL", "affects": ["duration", "tips"],
+                                  "effect": "default 8 mL refills before every water chunk (skipped if within 0.1 mL of full)"},
+    "EXPERIMENT_TAG": {"description": "Label appended to the output folder name.", "unit": None, "affects": []},
+    "ADD_BUFFER": {"description": "Add buffer from SELECTED_BUFFER using the recipe's buffer volumes.", "unit": None,
+                   "affects": ["duration", "tips", "vials", "liquids"],
+                   "effect": "adds one buffer dispense pass per block; the buffer vial has no automatic refill"},
+    "REFILL_THRESHOLD_ML": {"description": "Stocks and substocks below this volume are refilled before use.", "unit": "mL",
+                            "affects": ["duration", "tips", "liquids"]},
+    "SELECTED_BUFFER": {"description": "Buffer vial name (used only when ADD_BUFFER is true).", "unit": None,
+                        "affects": ["vials", "liquids"]},
+}
+
+# Solutions this workflow makes (planning estimates start them empty):
+# surfactant dilution substocks named <surfactant>_dilution_<n>.
+_PRODUCT_VIALS = ["*_dilution_*"]
 
 # Safe rack positions assigned by position_surfactant_vials_by_concentration,
 # in the same order that function uses (concentrated -> dilute).
@@ -1815,7 +1908,10 @@ def execute_preparation_replicate(
             execute_dispensing_with_refills(lash_e, block_df, dilution_recipes)
 
             measurement_start = time.monotonic()
+            planning_clock = f"prep{preparation_replicate}_plate{plate_idx + 1}_block{block_idx + 1}"
+            mark_clock_start(lash_e.logger, planning_clock)
             for timepoint_min in validate_measurement_schedule():
+                mark_wait_until(lash_e.logger, planning_clock, timepoint_min * 60)
                 wait_seconds = measurement_start + timepoint_min * 60 - time.monotonic()
                 if wait_seconds > 0 and not simulate:
                     time.sleep(wait_seconds)

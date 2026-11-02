@@ -1,5 +1,101 @@
 # Changelog
 
+## [2026-11-02] - Reduce Root Utility Clutter
+
+- Moved the booking-email utility into tools/book_robot.py, retaining its
+  repository-root credentials path. No credentials were read or email sent.
+- Retired the unused root experiment_run_logger.py duplicate; the coordinator's
+  experiment_tracking logger remains unchanged.
+- Moved the two existing arm-GUI logs into logs and updated active/archived
+  GUI writers to avoid recreating them at root. Controllers and status paths stay.
+
+## [2026-11-02] - Consolidate Local History and Scratch Folders
+
+- Moved retained prompts into logs/LLM_prompts, pipetting-recovery provenance into
+  pipetting_data/archives/recovery, and remaining temp artifacts into output/temp.
+  Verified all 2,824 retained files unchanged before path-only helper updates.
+- Updated prompt writers/template, scheduler scratch location, arm GUI exports
+  and non-snapshot recovery/helper paths. Historical evidence retains its original
+  recorded paths; source snapshots were not rewritten.
+- Kept prompts and recovery ignored/untracked. Preserved 505 tracked temp files
+  as staged Git renames rather than silently untracking them.
+- Removed the operator-approved bytecode-only backups folder.
+
+## [2026-11-02] - Consolidate Historical Output
+
+- Removed two operator-approved copied-dependency directories from temp:
+  calibration_ax_test and pdf_review_tools (1,029 tracked files). Backups,
+  coordinate exports, GUI checks and installed working environments are unchanged.
+- Moved the ignored other folder into output/other with operator approval;
+  verified all 350 file hashes unchanged and updated the archived reservoir
+  calibration export path. No historical results were deleted or newly tracked.
+
+## [2026-11-02] - Separate Software Tests, Hardware Checks and Tools
+
+- Moved 57 regression test files, conftest and two fixtures into software_tests;
+  moved 31 operator-run diagnostics into hardware_tests. Updated cross-folder
+  imports, fixture paths and documented commands without deleting more programs.
+- Moved five operator utilities out of tests and utilization analysis out of
+  scripts into tools. Moved track_control_gui into tools with file-relative
+  imports and updated the desktop lab_launchers robot menu.
+- Restricted default pytest and VS Code discovery to software_tests. Explicit
+  hardware runs still require operator review; legacy checks can move on import.
+- Preserved existing local edits. Pre-move focused baseline: 98 passed, one
+  existing plate-inventory failure (test robot lacks logger).
+- Post-move focused checks: 162 passed, with that same failure plus two vortex
+  mock failures reproduced against original tracked sources. Default collection
+  finds 693 software-only tests.
+
+## [2026-11-02] - Consolidate Documentation
+
+- Organized sixteen remaining docs-root guides/plans into the existing workflows,
+  platform and plans subfolders. Left only the organization overview at docs root;
+  updated navigation, relative links and the vial-photo documentation pointer.
+- Moved robot reference guides into docs/platform; transferred agent-process
+  documentation and hash-verified literature records to the desktop agent repo.
+  Literature remains local-only under that repo's existing ignored papers area.
+- Moved plans into docs/plans and workflow notes into docs/workflows, preserving
+  existing edits and updating relative/incoming links.
+- Archived the implemented wellplate plan alongside the completed pipetting
+  recovery plan. Operational code, configuration, and data paths are unchanged.
+
+## [2026-11-02] - Retire Unused Maintenance Scripts
+
+- Removed the operator-approved surfactant component tester GUI and its README,
+  multidimensional vial-movement replay, and SERENA_CONSTANTS solvent trial.
+  Regression tests, active workflows and calibration data remain unchanged.
+- Removed five operator-approved obsolete documentation/report artifacts: Ilya
+  handoff, surfactant checklist, historical test-usage inventory, and overaspirate
+  review Markdown/CSV. Updated historical calibration-plan references.
+- Removed five operator-confirmed obsolete scripts: the temporary abort scan,
+  historical simulation-flag repair, ten-study Ailsa analysis backfill, glycerol
+  data sync, and pipetting recovery finalizer.
+- Preserved data, logs, recovery evidence, and remaining operational programs.
+- Removed five more operator-approved historical utilities: completed-run audit,
+  run-history backfill, MQTT environment backfill, validation-decision backfill,
+  and recovery enrichment. Updated the historical migration documentation.
+- Removed six further operator-approved scripts: recovery audit, one-time config
+  generator, calibration-range analysis, Cytation XML probe, partial fluorescence
+  plotting, and fixed vial-volume reset. Retired the probe's dedicated tests and
+  updated its documentation; retained utilization reporting and production code.
+- Removed four operator-approved manual diagnostics: two scale-investigation
+  scripts, a fixed XYZ movement demo, and a fixed Slack-message check. Shared
+  validation, robot movement, Slack support, and automated regression tests remain.
+- Removed six operator-approved older manual trials: duplicate clamp cap/decap
+  scripts, fixed carousel dispensing, safe-position vial movement, pipette reach,
+  and heater-position pipetting. Removed the two empty cap-script presets;
+  retained newer cap-cycle diagnostics, regression tests, and vial inventories.
+- Removed nine operator-approved completed investigations: four historical
+  correction/OAV analyses, three fixed hardware trials, and two temporary Gen5
+  probes. Updated archived analysis references; preserved data, saved evidence,
+  runtime scientific code, and temporary package/snapshot/backup directories.
+- Removed four operator-approved legacy programs: file-based spectral-distance
+  utility, two repeated plate-measurement trials, and direct syringe-pump trial,
+  plus the empty measurement preset. Retained the carrier in/out diagnostic,
+  production reader/pump functionality, and archived workflow dependencies.
+- Removed two operator-approved manual checks: stirring-stop-only and standalone
+  gripper-open scripts. Retained the heating, output-7, and pneumatic diagnostics.
+
 ## [2026-10-26] - Optional Routine Pipette Measurement Recording
 
 - Added opt-in `dispense_recording="auto"` plumbing through `Lash_E` and

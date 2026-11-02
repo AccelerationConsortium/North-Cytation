@@ -20,6 +20,14 @@ this disables vial tracking, not shared robot/track state or config review.
 Live runs send best-effort Slack lifecycle updates; simulation never sends Slack.
 Run outputs belong in output/<workflow_name>/<timestamp>_<mode>_wells-<PARAM2>.
 Create the run folder in both modes using confirmed configuration, not globals.
+Planning: document every _CONFIG_KEYS entry in _CONFIG_DOCS (description,
+unit, which resources it changes and how). The lab Slack agent reads this block
+without importing the workflow to ask requesters the right questions and to
+explain simulation-based estimates; software_tests/test_config_docs.py enforces it.
+Keep docs in this file, not in workflow_configs/*.yaml: saved YAML is rewritten
+without comments. Before any deliberate wait (timepoints, reaction or settling
+times), log workflows._planning_markers markers so duration estimates include
+the wait; simulation skips real waits.
 """
 import sys
 sys.path.append("../utoronto_demo")  # Always first, before any local imports
@@ -57,6 +65,47 @@ _CONFIG_KEYS = [
     "INPUT_VIAL_STATUS_FILE", "MEASUREMENT_PROTOCOL_FILE",
     "PARAM1", "PARAM2", "TARGET_TEMPERATURE", "REACTION_TIME", "VORTEX_TIME",
 ]
+
+# One entry per _CONFIG_KEYS key, as plain literals (read with ast, never imported).
+#   description: what the setting means to a person requesting an experiment
+#   unit:        e.g. "mL", "uL", "min", "s", "C", or None
+#   choices:     optional list of allowed values
+#   affects:     resources the value changes: any of "duration", "tips",
+#                "plates", "vials", "liquids"; [] when it changes none
+#   effect:      optional one-line rule, e.g. "plates = ceil(wells / capacity)"
+#   shares:      optional; items with equal values can share this resource in
+#                one robot session: "vial_layout", "input_file", "dye", "plate_type"
+#   ask:         True if a requester must choose it (no sensible default)
+# [REPLACE] Rewrite these entries for your experiment's settings.
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run without hardware; the scheduler sets this per job.",
+                 "unit": None, "affects": []},
+    "VALIDATE_LIQUIDS": {"description": "Run gravimetric dispense checks before the experiment.",
+                         "unit": None, "affects": ["duration", "tips", "liquids"],
+                         "effect": "adds one validation series per liquid/volume before dispensing"},
+    "VALIDATION_ONLY": {"description": "Run only the gravimetric checks, then stop.",
+                        "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                        "effect": "skips the experiment body"},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (repository-relative) for this run.",
+                               "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "MEASUREMENT_PROTOCOL_FILE": {"description": "Cytation protocol (.prt) used for the readout.",
+                                  "unit": None, "affects": ["duration"]},
+    "PARAM1": {"description": "Total volume to distribute.", "unit": "mL",
+               "affects": ["liquids", "tips"], "ask": True},
+    "PARAM2": {"description": "Number of wells to fill.", "unit": None,
+               "affects": ["duration", "tips", "liquids"], "ask": True,
+               "effect": "one dispense per well; one plate per 96 wells"},
+    "TARGET_TEMPERATURE": {"description": "Heater set point.", "unit": "C", "affects": ["duration"]},
+    "REACTION_TIME": {"description": "Wait after starting the reaction.", "unit": "s",
+                      "affects": ["duration"], "effect": "adds REACTION_TIME once"},
+    "VORTEX_TIME": {"description": "Vortex duration per vial.", "unit": "s", "affects": ["duration"]},
+}
+
+# Vial-name patterns (fnmatch) for solutions this workflow MAKES, e.g. substocks
+# or dilutions. Planning estimates start these vials empty, so an estimate
+# includes making them unless the experiment depends on an earlier run that
+# makes them. Use [] if the workflow only consumes existing liquids.
+_PRODUCT_VIALS = []  # [REPLACE] e.g. ["*_dilution_*"]
 
 
 def validate_experiment(config, lash_e):
@@ -193,7 +242,10 @@ def execute(config=None, show_gui=True):
         # lash_e.nr_robot.move_vial_to_location('target_vial', 'photoreactor_array', 0)
         # lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100)
         # lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600)
-        # time.sleep(c["REACTION_TIME"])
+        # from workflows._planning_markers import mark_wait
+        # mark_wait(logger, "reaction", c["REACTION_TIME"])  # log before any deliberate wait
+        # if not lash_e.simulate:
+        #     time.sleep(c["REACTION_TIME"])
         # lash_e.photoreactor.turn_off_reactor_led(reactor_num=REACTOR_NUM)
         # lash_e.photoreactor.turn_off_stirring(reactor_num=REACTOR_NUM)
 

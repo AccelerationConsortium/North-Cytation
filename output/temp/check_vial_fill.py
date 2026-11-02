@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout
 from PySide6.QtGui import QFontDatabase, QFont
 from vial_manager_gui import VialWidget, VialRackWidget, CombinedRackWidget
@@ -47,4 +47,3 @@ window.show()
 app.processEvents()
 window.grab().save(str(Path(__file__).with_name('vial_fill_preview.png')))
 print('Passed: fill levels, unknown values, cap states, rack capacities, and updates')
-

@@ -515,12 +515,15 @@ FALLBACK_POSITIONS = {
     }
 }
 
+LOG_DIR = Path(__file__).resolve().parents[4] / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('enhanced_arm_position_control.log'),
+        logging.FileHandler(LOG_DIR / 'enhanced_arm_position_control.log'),
         logging.StreamHandler()
     ]
 )
@@ -558,7 +561,7 @@ class EnhancedRobotArmController:
         self.custom_position_name = None  # Will be set in GUI initialization
         
         # Create temp directory for saved positions
-        self.temp_dir = Path("temp")
+        self.temp_dir = Path("output") / "temp"
         self.temp_dir.mkdir(exist_ok=True)
         
         # Movement increments - unified step size for both Z and X-Y movement
@@ -1240,7 +1243,7 @@ class EnhancedRobotArmController:
                 return
             
             # Create temp directory if it doesn't exist
-            temp_dir = Path("temp")
+            temp_dir = Path("output") / "temp"
             temp_dir.mkdir(exist_ok=True)
             
             # Get current position
@@ -1310,7 +1313,7 @@ class EnhancedRobotArmController:
     def show_saved_positions_window(self):
         """Show a window with all saved positions from temp folder."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = Path("output") / "temp"
             if not temp_dir.exists():
                 messagebox.showinfo("Info", "No saved positions found. Save some positions first!")
                 return
@@ -1427,7 +1430,7 @@ class EnhancedRobotArmController:
     def export_saved_positions_csv(self):
         """Export all saved positions to a CSV file."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = Path("output") / "temp"
             if not temp_dir.exists() or not list(temp_dir.glob("*.json")):
                 messagebox.showinfo("Info", "No saved positions found to export")
                 return
@@ -1480,7 +1483,7 @@ class EnhancedRobotArmController:
     def open_temp_folder(self):
         """Open the temp folder in file explorer."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = Path("output") / "temp"
             temp_dir.mkdir(exist_ok=True)  # Create if doesn't exist
             
             import subprocess
@@ -1868,7 +1871,7 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('enhanced_robot_arm_controller.log'),
+            logging.FileHandler(LOG_DIR / 'enhanced_robot_arm_controller.log'),
             logging.StreamHandler()
         ]
     )

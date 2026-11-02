@@ -90,6 +90,117 @@ _CONFIG_KEYS = [
     "TWO_RUNS_PER_PLATE",
 ]
 
+# Planning annotations, one per _CONFIG_KEYS key (plain literals, read with ast;
+# see workflows/workflow_template.py for field meanings).
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run without hardware; the scheduler sets this per job.",
+                 "unit": None, "affects": []},
+    "VALIDATE_LIQUIDS": {"description": "Run gravimetric dispense checks before preparing solutions and plates.",
+                         "unit": None, "affects": ["duration", "tips", "liquids"],
+                         "effect": "adds 3-replicate validations of working-solvent, water and surfactant volumes; tops working solvent up to >=6 mL first"},
+    "VALIDATION_ONLY": {"description": "Run only the gravimetric checks (after vial refills), then stop.",
+                        "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"],
+                        "effect": "returns after validation: no substocks prepared, no plates used or read"},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (repository-relative) listing stock, solvent and media vials.",
+                               "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout",
+                               "effect": "substock vials already holding >1 mL are reused, not remade"},
+    "DYE": {"description": "Fluorescent dye to calibrate.", "unit": None,
+            "choices": ["pyrene", "coumarin-6", "nile-red"], "affects": ["vials", "liquids"],
+            "shares": "dye", "ask": True,
+            "effect": "selects the <dye>_<solvent>_stock vial, default Cytation protocol/channels and stock concentration"},
+    "DYE_SOLVENT": {"description": "Solvent the dye stock is dissolved in (also the working-solvent vial name).",
+                    "unit": None, "affects": ["vials", "liquids"], "shares": "dye",
+                    "effect": "names the stock, substock and <solvent>_working vials"},
+    "SOLVENT_SOURCE_VIALS": {"description": "Bulk pure-solvent containers used, in order, for substocks and working-vial refills.",
+                             "unit": None, "affects": ["vials", "liquids"]},
+    "SOLVENT_SOURCE_RESERVE_ML": {"description": "Volume left untouched in each bulk solvent container.",
+                                  "unit": "mL", "affects": ["liquids"]},
+    "VIAL_NAME_OVERRIDES": {"description": "Map generated stock/substock/working vial names to physical vial names.",
+                            "unit": None, "affects": ["vials"]},
+    "STOCK_CONCENTRATION_UM": {"description": "Parent dye stock concentration; blank uses the dye's default.",
+                               "unit": "uM", "affects": []},
+    "DILUTION_FACTORS": {"description": "Dye levels as fractions of the parent stock (0 = blank, 1 = undiluted stock).",
+                         "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"],
+                         "effect": "wells per repetition = media x factors x REPLICATES; one substock vial per factor strictly between 0 and 1"},
+    "DYE_VOLUME_UL": {"description": "Dye solution added to each well (before plate volume scaling).",
+                      "unit": "uL", "affects": ["liquids"],
+                      "effect": "multiplied by the plate's VOLUME_SCALE_BY_PLATE; medium volume = total - dye unless VOLATILE_SOLVENT"},
+    "TOTAL_VOLUME_UL": {"description": "Final well volume (before plate volume scaling).",
+                        "unit": "uL", "affects": ["liquids"]},
+    "VOLATILE_SOLVENT": {"description": "Dye solvent evaporates, so it is not counted in the well volume.",
+                         "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                         "effect": "drops the solvent medium; medium fills the full total volume and dye is added on top"},
+    "SUBSTOCK_VOLUME_ML": {"description": "Volume of each diluted dye substock prepared.",
+                           "unit": "mL", "affects": ["liquids"],
+                           "effect": "each new substock uses SUBSTOCK_VOLUME_ML x factor of stock plus solvent for the rest"},
+    "REPLICATES": {"description": "Independent wells per medium and dye level.",
+                   "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                   "effect": "multiplies wells per repetition"},
+    "REPETITIONS": {"description": "Number of repeated full experiments.",
+                    "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"],
+                    "effect": "each repetition gets its own plate(s), dispensed then read through the whole schedule before the next plate"},
+    "FRESH_SUBSTOCKS": {"description": "Prepare a new set of substocks for every repetition.",
+                        "unit": None, "affects": ["duration", "tips", "vials", "liquids"],
+                        "effect": "substock sets = REPETITIONS instead of 1"},
+    "PREPARE_ONLY": {"description": "Only prepare the dye substocks; no plates or measurements.",
+                     "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                     "effect": "skips plate dispensing and all reads"},
+    "MEASUREMENT_REPLICATES": {"description": "Repeat reads of the plate at each timepoint.",
+                               "unit": None, "affects": ["duration"],
+                               "effect": "Cytation reads per plate = schedule points x MEASUREMENT_REPLICATES"},
+    "MEASUREMENT_SCHEDULE_MIN": {"description": "Minutes after dispensing at which each plate is read; must start at 0.",
+                                 "unit": "min", "affects": ["duration"],
+                                 "effect": "each plate waits until its last timepoint before the next plate starts"},
+    "MIN_SCHEDULE_GAP_MIN": {"description": "Smallest allowed gap between schedule timepoints (validation only).",
+                             "unit": "min", "affects": []},
+    "RANDOMIZED_ORDER": {"description": "Shuffle well positions within each repetition.",
+                         "unit": None, "affects": []},
+    "RANDOMIZATION_SEED": {"description": "Seed for the well shuffle.", "unit": None, "affects": []},
+    "WELLPLATE_TYPE": {"description": "Plate format.", "unit": None,
+                       "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
+                       "affects": ["plates", "liquids"], "shares": "plate_type",
+                       "effect": "plates per repetition = ceil(wells / 96, 48 or 24); volumes scaled by VOLUME_SCALE_BY_PLATE"},
+    "VOLUME_SCALE_BY_PLATE": {"description": "Well-volume multiplier for each plate format.",
+                              "unit": None, "affects": ["liquids"]},
+    "DISPENSE_ORDER": {"description": "Whether medium or dye is added to the wells first.", "unit": None,
+                       "choices": [["medium", "dye"], ["dye", "medium"]], "affects": []},
+    "TEST_WATER": {"description": "Include water wells.", "unit": None,
+                   "affects": ["duration", "tips", "plates", "liquids"],
+                   "effect": "adds one medium to the well count; refills the water vial to 8 mL"},
+    "TEST_SURFACTANT": {"description": "Include surfactant-solution wells.", "unit": None,
+                        "affects": ["duration", "tips", "plates", "liquids"],
+                        "effect": "adds one medium to the well count; tops surfactant up to 7.5 mL from surfactant_refill"},
+    "TEST_SOLVENT": {"description": "Include pure dye-solvent wells (ignored when VOLATILE_SOLVENT).", "unit": None,
+                     "affects": ["duration", "tips", "plates", "liquids"],
+                     "effect": "adds one medium to the well count, drawn from the working-solvent vial"},
+    "SURFACTANT_NAME": {"description": "Surfactant identity, recorded with the results.", "unit": None, "affects": []},
+    "SURFACTANT_CONCENTRATION_MM": {"description": "Surfactant stock concentration, for records and the CMC check.",
+                                    "unit": "mM", "affects": []},
+    "SURFACTANT_CMC_MM": {"description": "Surfactant CMC; the final concentration must stay above it.",
+                          "unit": "mM", "affects": []},
+    "SURFACTANT_LIQUID": {"description": "Pipetting calibration liquid name for the surfactant solution.",
+                          "unit": None, "affects": []},
+    "VORTEX_SECONDS": {"description": "Vortex time for each newly prepared substock.",
+                       "unit": "s", "affects": ["duration"],
+                       "effect": "once per substock actually prepared"},
+    "PROTOCOL_FILE": {"description": "Cytation read protocol (.prt); blank uses the dye's default.",
+                      "unit": None, "affects": ["duration"]},
+    "RAW_CHANNELS": {"description": "Cytation channel names to analyse; blank uses the dye's default.",
+                     "unit": None, "affects": []},
+    "SHAKE_BEFORE_MEASUREMENT": {"description": "Shake the plate before each timepoint's first read.",
+                                 "unit": None, "affects": ["duration"],
+                                 "effect": "runs SHAKE_PROTOCOL_FILE once per timepoint per plate"},
+    "SHAKE_PROTOCOL_FILE": {"description": "Cytation shake protocol (.prt) used when shaking.",
+                            "unit": None, "affects": ["duration"]},
+    "TWO_RUNS_PER_PLATE": {"description": "Use half a plate per run so two runs share one plate.",
+                           "unit": None, "affects": ["plates"],
+                           "effect": "first run leaves the plate in place, second fills the other half and discards it; needs REPETITIONS 1 and wells <= half a plate"},
+}
+
+# Solutions this workflow makes (planning estimates start them empty):
+# substocks <dye>_<solvent>_s<n>, or _r<batch>_s<n> with FRESH_SUBSTOCKS.
+_PRODUCT_VIALS = ["*_s[0-9]*"]
+
 # Leading underscore keeps these lookup tables out of ConfigManager's
 # auto-detected config (it only picks up non-underscore constants).
 # Pyrene settings match surfactant_grid_ailsa, pending Cytation verification of
@@ -507,6 +618,7 @@ def execute(config=None, show_gui=True):
         c = lash.workflow_config
         plan, recipes = build_plan(c)
         from workflows import two_run_plate
+        from workflows._planning_markers import mark_clock_start, mark_wait_until
         half = None
         if c["TWO_RUNS_PER_PLATE"] and not c["PREPARE_ONLY"]:
             capacity, columns = _PLATES[c["WELLPLATE_TYPE"]]
@@ -709,8 +821,11 @@ def execute(config=None, show_gui=True):
                         volumes, liquid=liquid, strategy="serial", well_plate_type=c["WELLPLATE_TYPE"])
             # Schedule starts after dispensing; optional shaking adds to actual read time.
             t0 = time.monotonic()
+            clock_id = f"rep{int(wells.repetition.iloc[0])}_plate{int(plate)}"
+            mark_clock_start(lash.logger, clock_id)
             for timepoint_min in c["MEASUREMENT_SCHEDULE_MIN"]:
                 target = t0 + timepoint_min * 60
+                mark_wait_until(lash.logger, clock_id, timepoint_min * 60)
                 wait = target - time.monotonic()
                 if wait > 0 and not lash.simulate:
                     time.sleep(wait)

@@ -559,10 +559,10 @@ JSON Response Format:
         from datetime import datetime
         import json
         
-        # Get log directory from config, default to "LLM_prompts"
-        log_base_dir = "LLM_prompts"
+        # Prompt history is retained with the other local logs.
+        log_base_dir = os.path.join("logs", "LLM_prompts")
         if config and "logging" in config:
-            log_base_dir = config["logging"].get("log_directory", "LLM_prompts")
+            log_base_dir = config["logging"].get("log_directory", log_base_dir)
         
         # Create timestamped folder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

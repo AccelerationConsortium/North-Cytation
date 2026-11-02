@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT = ROOT / 'recovery/pipetting_20261021_unresolved_review/all_master_rows_updated_review.csv'
+AUDIT = ROOT / 'archives/recovery/pipetting_20261021_unresolved_review/all_master_rows_updated_review.csv'
 SPECS = {
     'master_pipetting_measurements.csv': ('measurement', '657f8844dd18d5972258844e6e95ae59e42348b4988797567d9338fcde4f6771', 22190, 12758),
     'master_pipetting_sessions.csv': ('session_summary', 'e2ca5ca30409bcfda30e168ee74a1084b62d99a182f189289e57312fcbebd231', 3370, 1517),

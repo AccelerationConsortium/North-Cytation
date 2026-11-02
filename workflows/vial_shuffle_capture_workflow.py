@@ -2,7 +2,7 @@
 
 Run from the repository root: python workflows/vial_shuffle_capture_workflow.py
 Configuration uses the normal workflow YAML/operator review. See
-docs/vial_shuffle_capture.md for output and future verification contracts.
+docs/workflows/vial_shuffle_capture.md for output and future verification contracts.
 """
 from datetime import datetime
 import json

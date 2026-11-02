@@ -277,7 +277,7 @@ class SchedulerWindow(QMainWindow):
         self.setWindowTitle("Workflow Scheduler")
         self.resize(1000, 725)
         self.setup_window = None
-        self.setup_root = REPO_ROOT / "temp" / "scheduler_setup" / uuid4().hex
+        self.setup_root = REPO_ROOT / "output" / "temp" / "scheduler_setup" / uuid4().hex
         self._moving_rows = False
         self.execution_mode = "simulation"
         self.approved_simulation_inputs = None

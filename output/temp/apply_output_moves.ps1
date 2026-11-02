@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$workspaceRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path.TrimEnd('\')
+$workspaceRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path.TrimEnd('\')
 $outputRoot = (Resolve-Path -LiteralPath (Join-Path $workspaceRoot 'output')).Path.TrimEnd('\')
 if ($outputRoot -ne [IO.Path]::Combine($workspaceRoot, 'output')) { throw 'Unexpected output root' }
 $outputPrefix = $outputRoot + '\'

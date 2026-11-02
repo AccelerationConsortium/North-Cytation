@@ -114,7 +114,7 @@ a real vial CSV; opting out does not make those operations valid.
 
 ### Vortex Port Example
 
-`tests/test_vortex.py` remains unchanged. Its scheduler counterpart is
+`hardware_tests/test_vortex.py` remains unchanged. Its scheduler counterpart is
 `workflows/test_vortex_scheduler.py`, with
 `workflow_configs/test_vortex_scheduler.yaml`. Both execute the same three
 robot operations: vortex the selected vial, return it home, and move home.

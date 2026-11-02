@@ -1,4 +1,4 @@
-"""Scheduler-compatible copy of tests/test_vortex.py; the original is untouched.
+"""Scheduler-compatible copy of hardware_tests/test_vortex.py; the original is untouched.
 
 Run this script normally for the existing startup GUI. The scheduler instead
 calls execute(config=complete_config, show_gui=False). Lash_E owns YAML/GUI

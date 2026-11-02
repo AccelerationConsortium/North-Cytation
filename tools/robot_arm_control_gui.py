@@ -63,7 +63,7 @@ from math import cos, sin
 # Resolve resources from this file so launching outside the repo also works.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ROBOT_STATE_DIR = PROJECT_ROOT / "robot_state"
-TEMP_DIR = PROJECT_ROOT / "temp"
+TEMP_DIR = PROJECT_ROOT / "output" / "temp"
 DEFAULT_VIAL_FILE = PROJECT_ROOT / "status" / "surfactant_grid_vials_expanded.csv"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -178,12 +178,15 @@ def load_positions_from_system():
 # Initialize with default positions - will be updated by controller
 WORKFLOW_POSITIONS = load_positions_from_system()
 
+LOG_DIR = PROJECT_ROOT / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(PROJECT_ROOT / "enhanced_arm_position_control.log"),
+        logging.FileHandler(LOG_DIR / "enhanced_arm_position_control.log"),
         logging.StreamHandler()
     ]
 )
@@ -2778,7 +2781,7 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(PROJECT_ROOT / "enhanced_robot_arm_controller.log"),
+            logging.FileHandler(LOG_DIR / "enhanced_robot_arm_controller.log"),
             logging.StreamHandler()
         ]
     )

@@ -403,7 +403,8 @@ Generate {n_suggestions} diverse parameter combinations that explore different r
         """Save prompt and response to timestamped files (matches your existing LLM system)."""
         
         # Get log directory from config (matches your existing pattern)
-        log_base_dir = self.llm_config.get("logging", {}).get("log_directory", "LLM_prompts")
+        log_base_dir = self.llm_config.get("logging", {}).get(
+            "log_directory", os.path.join("logs", "LLM_prompts"))
         
         # Create timestamped folder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -167,6 +167,92 @@ STOCK_CONTROL_VOL_UL = 200     # uL of undiluted stock per stock-reference contr
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_multidim_vials.csv"
 
+# Planning annotation, one entry per derived config key (plain literals, read
+# with ast by the lab Slack agent; never imported). See workflow_template.py.
+# This workflow is adaptive: how many iterations run depends on how many
+# recommended points survive volume filtering, so well/plate/tip totals are
+# estimated from simulation rather than a closed formula.
+_CONFIG_DOCS = {
+    "SURFACTANTS": {"description": "2-5 surfactants (names from SURFACTANT_LIBRARY, e.g. SDS, NaC, CTAB, DTAB, TTAB, DSS, SDBS) forming the mixture space.",
+                    "unit": None, "affects": ["duration", "tips", "vials", "liquids"], "ask": True,
+                    "effect": "one stock + substock series per surfactant; grid init is GRID_POINTS_PER_AXIS^N points"},
+    "EXPERIMENT_TAG": {"description": "Free-text tag added to the experiment/output folder name.", "unit": None, "affects": []},
+    "SIMULATE": {"description": "Run without hardware; the scheduler sets this per job.", "unit": None, "affects": []},
+    "VALIDATE_LIQUIDS": {"description": "Run gravimetric pipetting validation (first surfactant, water, DMSO) before the experiment.",
+                         "unit": None, "affects": ["duration", "tips", "liquids"],
+                         "effect": "adds one validate_pipetting_system pass before the run"},
+    "RECOMMENDER_TYPE": {"description": "Active-learning method that picks the next mixtures.", "unit": None,
+                         "choices": ["bayesian", "triangle", "delaunay", "gradient", "levelset", "sobol", "random"],
+                         "affects": ["duration"],
+                         "effect": "changes compute time per iteration and which points are chosen; well count is set by the loop limits"},
+    "FILTER_UNRELIABLE_RATIOS": {"description": "Hide fluorescence ratios of turbid wells from the recommender.", "unit": None, "affects": []},
+    "TURBIDITY_FILTER_THRESHOLD": {"description": "Turbidity (OD600) above which a well's ratio is treated as unreliable.", "unit": None, "affects": []},
+    "FLAT_TURBIDITY_MAX": {"description": "If max turbidity over all data is at or below this, turbidity is dropped as an AL output.", "unit": None, "affects": []},
+    "TURBIDITY_PLOT_THRESHOLD": {"description": "Turbidity threshold for the final 3D cloud plot only.", "unit": None, "affects": []},
+    "TURBIDITY_PENALTY_THRESHOLD": {"description": "Turbidity above which the recommender penalizes candidates.", "unit": None, "affects": []},
+    "TURBIDITY_PENALTY_DECAY": {"description": "Decay scale of the turbidity penalty.", "unit": None, "affects": []},
+    "TURBIDITY_PENALTY_ENABLED": {"description": "Apply the turbidity penalty in GP recommenders.", "unit": None, "affects": []},
+    "ADD_BUFFER": {"description": "Add buffer to every well (experiment and control).", "unit": None,
+                   "affects": ["duration", "tips", "liquids", "vials"],
+                   "effect": "adds one buffer dispense step per plate batch; needs SELECTED_BUFFER vial"},
+    "BUFFER_VOLUME_UL": {"description": "Buffer volume added per well.", "unit": "uL", "affects": ["liquids"],
+                         "effect": "buffer use = wells x BUFFER_VOLUME_UL; reduces water makeup by the same amount"},
+    "SELECTED_BUFFER": {"description": "Buffer vial name in the vial CSV (backup vial is <name>_1).", "unit": None,
+                        "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "BUFFER_FAILOVER_THRESHOLD_ML": {"description": "Switch to the backup buffer vial when the primary falls below this volume.", "unit": "mL", "affects": ["vials"]},
+    "MIN_WATER_DISPENSE_UL": {"description": "Water dispenses smaller than this are skipped (moved into buffer if used).", "unit": "uL", "affects": []},
+    "VOLUME_COMPARE_EPS_UL": {"description": "Floating-point tolerance for volume-budget checks.", "unit": "uL", "affects": []},
+    "BAYESIAN_ALPHA_SPACING": {"description": "Spacing strength between Bayesian recommender picks (lower allows clustering).", "unit": None, "affects": []},
+    "WELL_VOLUME_UL": {"description": "Total liquid volume per well.", "unit": "uL", "affects": ["liquids"]},
+    "PYRENE_VOLUME_UL": {"description": "Pyrene/DMSO volume reserved per well in recipe math (the actual DMSO dispense uses the adaptive module's own constant).",
+                         "unit": "uL", "affects": ["liquids"]},
+    "WATER_RESERVE_UL": {"description": "Minimum water+buffer volume held back in every well.", "unit": "uL", "affects": ["liquids"]},
+    "SURFACTANT_BUDGET_UL": {"description": "Max total surfactant volume per well (derived: well - pyrene - reserve).", "unit": "uL", "affects": ["liquids"]},
+    "INIT_STRATEGY": {"description": "Initial design: log grid over a per-surfactant cube, or boundary+interior simplex sampling.", "unit": None,
+                      "choices": ["grid", "simplex"], "affects": ["duration", "tips", "plates", "liquids", "vials"],
+                      "effect": "grid: GRID_POINTS_PER_AXIS^N points; simplex: max(5, INIT_BOUNDARY_LEVELS*N*(N-1)) boundary + INIT_INTERIOR_PTS points; both before volume filtering"},
+    "GRID_POINTS_PER_AXIS": {"description": "Grid init: points per surfactant axis.", "unit": None,
+                             "affects": ["duration", "tips", "plates", "liquids", "vials"],
+                             "effect": "initial batch = GRID_POINTS_PER_AXIS^N wells (grid mode only), always run in full"},
+    "INIT_BOUNDARY_LEVELS": {"description": "Simplex init: boundary sampling density.", "unit": None,
+                             "affects": ["duration", "tips", "plates", "liquids"],
+                             "effect": "simplex mode only: max(5, levels*N*(N-1)) boundary points"},
+    "INIT_INTERIOR_PTS": {"description": "Simplex init: number of interior Sobol points.", "unit": None,
+                          "affects": ["duration", "tips", "plates", "liquids"], "effect": "simplex mode only: adds this many initial wells"},
+    "MIN_CONC_MM": {"description": "Lowest concentration on every surfactant axis.", "unit": "mM", "affects": ["vials", "liquids"],
+                    "effect": "sets the low end of the dilution (substock) series"},
+    "FEASIBLE_MAX_CONC_MULTIPLIER": {"description": "Max-concentration multiplier for the feasibility diagnostic plot.", "unit": None, "affects": []},
+    "FEASIBLE_DIAGNOSTIC_GRID_N": {"description": "Grid resolution of the feasibility diagnostic plot.", "unit": None, "affects": []},
+    "GRADIENT_SUGGESTIONS_PER_ITERATION": {"description": "Max new wells per active-learning iteration.", "unit": None,
+                                           "affects": ["duration", "tips"],
+                                           "effect": "each iteration adds min(this, wells left on plate, wells left to target) wells; smaller = more iterations/dispense rounds"},
+    "RECOMMEND_OVERSAMPLE_FACTOR": {"description": "Ask the recommender for this many times more candidates, then keep the feasible ones.", "unit": None,
+                                    "affects": ["duration"], "effect": "recommender compute only"},
+    "TARGET_TOTAL_WELLS": {"description": "Total well budget for the run (controls are counted in the loop check).", "unit": None,
+                           "affects": ["duration", "tips", "plates", "liquids"], "ask": True,
+                           "effect": "iterations stop once total wells (incl. controls) >= this; the initial batch always runs in full even if larger"},
+    "MAX_ITERATIONS": {"description": "Safety cap on active-learning iterations.", "unit": None,
+                       "affects": ["duration", "tips", "plates", "liquids"],
+                       "effect": "loop stops at this many iterations even if TARGET_TOTAL_WELLS is not reached"},
+    "MAX_WELLS_PER_PLATE": {"description": "Wells used per plate before a new plate is fetched.", "unit": None, "affects": ["plates"],
+                            "effect": "new plate when the current one is full; plates ~ ceil(total wells / this)"},
+    "INITIAL_BATCH_CHUNK_SIZE": {"description": "Wells dispensed and measured together in the initial batch.", "unit": None,
+                                 "affects": ["duration"], "effect": "more chunks = more refill/measure rounds for the initial batch"},
+    "ADD_REGULAR_CONTROLS": {"description": "Add a water blank and one stock-reference well per surfactant on the first plate.", "unit": None,
+                             "affects": ["duration", "tips", "plates", "liquids"], "effect": "adds 1 + N control wells"},
+    "ADD_1D_CONTROLS": {"description": "Add a 1D CMC sweep per surfactant on the first plate.", "unit": None,
+                        "affects": ["duration", "tips", "plates", "liquids"],
+                        "effect": "adds up to CMC_CONTROL_POINTS wells per surfactant (unreachable concentrations skipped)"},
+    "CMC_CONTROL_POINTS": {"description": "Wells per surfactant in the 1D CMC control sweep.", "unit": None,
+                           "affects": ["duration", "tips", "plates", "liquids"], "effect": "up to N x this control wells"},
+    "STOCK_CONTROL_VOL_UL": {"description": "Undiluted stock volume in each stock-reference control well.", "unit": "uL", "affects": ["liquids"]},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV for this run.", "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+}
+
+# Solutions this workflow makes (planning estimates start them empty):
+# surfactant dilution substocks named <surfactant>_dilution_<n>.
+_PRODUCT_VIALS = ["*_dilution_*"]
+
 # ================================================================================
 # DERIVED CONFIG (column names, per-surf caps)
 # Lowercase so the config manager treats them as computed — not user-settable.

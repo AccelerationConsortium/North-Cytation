@@ -21,6 +21,20 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
 
 <h2> Folder List: </h2>
 
+The [repository organization assessment and proposed plan](docs/repository_organization.md)
+records folder purposes and the staged, path-preserving cleanup proposal.
+Moves require approval; existing runtime paths are unchanged.
+
+Documentation is grouped by purpose:
+- [Workflow guides](docs/workflows/): running specific experiments and diagnostics.
+- [Platform guides](docs/platform/): controllers, calibration, scheduler and labware.
+- [Plans](docs/plans/): design proposals, with completed plans in its archive.
+- [Archived documentation](docs/archive/): historical workflow summaries.
+- [Papers](docs/papers/): reference literature.
+
+The agent process guide and literature records live in the separate desktop
+lab Slack agent checkout, not in this repository.
+
 - <b> robot_state </b> Contains configuration files that abstract objects in the setup, such as pipet tips, racks, positions etc.
 
 - <b> analysis </b>: Contains programs that analyze data from the robot to produce a result usable by the recommenders
@@ -29,24 +43,39 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
   
 - <b> status: </b> Because we move between different workflows, we keep digital versions of each workflows vial status state. 
 
-- <b> tests: </b> Contains short test or commonly used programs for the setup.
+- <b> software_tests: </b> Automated regression tests using mocks, temporary files,
+  or simulation instead of operating equipment. Run `python -m pytest` from the
+  repository root; default discovery is restricted to this folder.
 
-- <b> tools: </b> Contains standalone robot utilities. Run the arm position and gripper GUI with `python tools/robot_arm_control_gui.py` using the robot's Python environment.
+- <b> hardware_tests: </b> Operator-run equipment checks, even when they offer
+  simulation. Run an individual program deliberately from the repository root.
+  Some legacy checks operate hardware immediately when imported; never collect
+  this folder with pytest or unittest.
+
+- <b> tools: </b> Reusable operator utilities, not experiments or regression
+  tests. Includes camera capture, utilization reporting, recovery/homing utilities,
+  and the arm and track control GUIs. Run `python tools/robot_arm_control_gui.py`
+  or `python tools/track_control_gui.py` using the robot's Python environment.
+  `tools/book_robot.py` sends an actual booking email using the existing root
+  secrets file; review its title/dates before explicitly running it.
   
 - <b> workflows: </b> Contains active workflows that are designed for the setup, such as the color matching workflow.
 
 - <b> photo-reactor </b>: Contains the RPi program for the photoreactor.
 
 - <b> logs </b>: Contains logs from every digital and simulated run
+  and retained LLM prompt/response history under `logs/LLM_prompts`.
 
 - <b> output </b>: Contains output data. This is gitignored so that data remains locally. 
+  Historical results are under `output/other`; scratch artifacts and coordinate
+  exports are under `output/temp`. Previously tracked temp artifacts remain tracked
+  pending their retention review.
+
+- <b> pipetting_data/archives/recovery </b>: Local, ignored pipetting-recovery
+  provenance and investigation snapshots.
 
 <h2> Sample Workflow: </h2>
 
 The sample workflow contained in this video is labelled and contains the programming elements in the sample_workflow.py program in the "workflows" directory. 
 
 [![Sample Workflow](https://img.youtube.com/vi/b5xtcwcI-eg/0.jpg)](https://www.youtube.com/watch?v=b5xtcwcI-eg)
-
-
-
-
