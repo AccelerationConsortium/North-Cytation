@@ -2,6 +2,262 @@
 
 Date: 2026-11-02
 
+Current state and remaining priorities are summarized in
+[the cleanup roadmap](plans/repository_cleanup.md). The status-folder rename
+is deferred; this assessment's older proposals are historical, not authorization
+for additional changes.
+
+## Unused inputs deleted
+
+On 2026-11-02 the operator requested deletion rather than archiving, retaining
+only inputs used by current workflows/tests. Rechecked current experimental and
+hardware entrypoints, software coverage, operator tools, scheduler saved queues,
+selected workflow presets, calibration Python/YAML, robot state and controllers.
+Did not count archived workflows, old-only presets or the obsolete peroxide
+CSV migration as current consumers.
+
+Deleted 57 CSV/TXT inputs: 29 top-level historical/unreferenced files and all
+28 former Not Current inputs. Retained these 19:
+
+- alternating_vial_transfer_vials.csv
+- calibration_vials_heated.csv
+- calibration_vials_short.csv
+- degradation_vial_schedule.csv
+- degradation_vial_status.csv
+- fluorescence_calibration_vials.csv
+- ilya_input_vials.csv (current move-all-vials-home utility)
+- powder_dispense_vials.csv
+- rack_cap_cycle_vials.csv
+- random_shuffle_test_vials.csv
+- reservoir_calibration_vials.csv
+- sample_capped_vial.txt (current heater check)
+- sample_capped_vials.csv
+- sample_input_vials.csv
+- single_vial_rack_cap_cycle_vials.csv
+- SQ_Peptoid_LNP_test_vials.csv
+- surfactant_grid_ailsa_vials.csv
+- surfactant_grid_vials_expanded.csv
+- surfactant_multidim_vials.csv
+
+The pre-existing Ailsa input edit is preserved. No retained input was edited.
+No hardware ran, and no new archive or duplicate files were created. Old
+workflows/presets remain historical source and require restoring their matching
+deleted inputs from Git before reuse. The status README identifies the obsolete
+peroxide migration's missing target; the script itself was not part of this
+input-only deletion. The folder name and refill launcher are unchanged.
+
+Verification: exactly 19 CSV/TXT inputs remain, all 33 checked current preset
+input references resolve, and calibration YAML paths resolve. Removed the empty
+Not Current directory after deletion. Focused software checks: 71 passed, three
+peptoid failures involving existing sample position, call order and output-path
+expectations. The peptoid inventory equals HEAD after Windows newline
+normalization; its workflow AST equals HEAD apart from the prior helper import
+move. No unrelated scientific/test behavior was changed. Whitespace checks pass.
+
+## Workflow folder separation completed
+
+The operator approved preserving scheduler access for the three diagnostics
+under their existing names, and retiring the older workflow booking duplicate.
+The newer tools/book_robot.py remains unchanged; no credentials were read or
+email sent.
+
+- Top-level workflows now contains eight experimental/data-collection
+  entrypoints and workflow_template.py only.
+- Moved interrupt_cleanup, two_run_plate, _planning_markers, _vial_shuffle and
+  vial_risk_analyzer into workflows/helpers, retaining module names and behavior.
+  Updated all inspected imports, including runtime imports inside execute.
+- Moved ailsa_clamp_test, cytation_labware_test and test_vortex_scheduler into
+  hardware_tests. Preserved execute contracts, job names, config filenames,
+  output paths and startup behavior. Updated regression imports and launch docs.
+- Shared scheduler/workflow_modules.py resolves top-level experiments and these
+  three explicitly supported diagnostics without importing them. Other hardware
+  programs are not newly offered as scheduler jobs. Helpers and template are
+  excluded. No forwarding modules or duplicate source copies remain.
+- GUI fingerprints and successful-prefix signatures use the actual module
+  paths; fingerprints also include helpers and scheduler sources. Existing
+  saved name/config queues remain usable, but prior approvals require a new
+  simulation after these code/path changes.
+
+The clamp diagnostic's active code only returns its selected vial home; its
+move-to-clamp steps were already commented out. This move preserves that body
+rather than altering its physical effect.
+
+Pre-move focused software baseline: 95 passed across scheduler runners, GUI,
+isolated state, Cytation, vial-capture, config documentation and cleanup coverage.
+Post-move focused coverage: 114 passed, plus eight queue-list/vortex safety
+checks passed (the two previously known stale vortex mocks excluded).
+Direct fixture checks verified all three diagnostic names through live and
+isolated-simulation resolution, with mocked execution only. Offscreen GUI checks
+verified the exact 11 selectable jobs, saved config resolution and invalidation
+of queue/prefix approvals after helper, resolver or diagnostic source edits.
+All current top-level workflow/helper/hardware/scheduler Python sources compile.
+The broader batch exposed 18 fluorescence/template failures; runtime ASTs of
+those two sources equal HEAD after import-path/docstring normalization, so their
+pre-existing scientific/fixture mismatches were not repaired during organization.
+Historical proposals below retain former paths as provenance.
+
+## Tracked scratch inventory
+
+The initial output/temp inventory contained 505 tracked files (about 25 MB),
+with all present. With operator approval, removed all 505 from the Git index
+while retaining all 884 local files with identical SHA-256 hashes. The existing
+output ignore rule covers future scratch; zero output/temp files remain tracked.
+No local file was deleted. Source search confirms current scheduler setup and
+arm-GUI coordinate writers use output/temp, not a root temp directory.
+
+| Group | Tracked files | Retention concern |
+| --- | ---: | --- |
+| scheduler_setup | 198 | Generated reviewed row configs and screenshots; saved queues may refer to snapshots. |
+| simulation | 57 | Calibration/simulation verification evidence and data. |
+| sr_35a0b4d6 | 13 | One-off scheduler GUI/config comparison evidence. |
+| calibration_pytest_71b1c0ee01994fb38def24e4714eaf67 | 1 | Generated calibration test CSV. |
+| Two Ailsa backfill backup groups | 179 | Scientific CSV/plot backups; not disposable merely because they are backups. |
+| merge_resolution_20261023_142453 | 21 | Original/ours/theirs CSVs and workflow source for merge provenance. |
+| output_reorganization_source_backup | 12 | Original source copies before historical output migration. |
+| Top-level scratch files | 24 | Nine coordinate/other JSONs, coordinate exports, migration helpers/reports, GUI previews and Gen5 notes. |
+
+Recommendation: stop tracking generated scratch while retaining local contents.
+Decide disk deletion separately; coordinate exports, scientific backup data and
+merge provenance require explicit retention decisions. Untracking is now
+complete; the operator chose to retain local scratch and continue vial review.
+
+## Vial/input retention audit started
+
+Inspected references to all 76 CSV/TXT inputs under status against current
+workflows, hardware diagnostics, tools, scheduler saved queues, calibration
+Python/YAML, robot state, software coverage, all 73 workflow presets and desktop
+launchers. Filename matching is conservative: basename-only references do not
+establish that a file in Not Current is reached by a root-level path.
+
+- 20 files have current-code, selected-preset or calibration references.
+- Two have only old saved-preset/archived-workflow references.
+- 28 have archived-code references only.
+- 26 have no filename reference in the searched operational sources.
+- Of the 48 top-level CSV/TXT inputs, 19 are archived-code-only candidates, two
+  are old-preset candidates and eight have no detected reference. The rest of
+  the historical files are already under Not Current.
+
+No reference does not prove disuse: the vial GUI allows manual file selection.
+Schedules/experimental input CSVs are not necessarily vial inventories either.
+Preserve active calibration inputs, the refill-pipets desktop launcher and all
+operator-selected/manual files until explicit retention approval. The status
+folder itself has not been renamed and no input has been moved or deleted.
+
+Three files are byte-identical: CMC_double_input_5.csv, experiment_vials.csv and
+sample_capped_vial.txt. The TXT is used by retained hardware checks; this is not
+authorization to remove either CSV, which may be manually selected.
+
+## Whole hardware-folder retention review
+
+Reviewed all 27 remaining programs on 2026-11-02 using their live code paths,
+current controller definitions and caller searches, without running hardware.
+Removed eight; retained 19. None of the eight had local edits or executable
+callers in the inspected source. Updated the three incoming vortex references
+and removed a commented-out import of the retired stack scratch check.
+
+Retired:
+
+| Program in hardware_tests | Reason |
+| --- | --- |
+| simple_dispense_test.py | Water source labeled as DMSO; disabled validation still reported as successful. |
+| test_pipetting_into_wp_time.py | Removed tip-array attribute and obsolete direct speed/wait keyword dictionaries. |
+| test_vortex.py | Redundant vortex/return/home sequence; reviewed scheduler diagnostic retained. |
+| test_photoreactor.py | Operator selected removal of off-only LED/fan trial. |
+| test_photoreactor_dispense.py | Operator selected removal of fixed reactor-position transfer with deprecated terminal review. |
+| test_pipetting_into_wp.py | Operator selected removal of serial dispensing example with deprecated terminal review. |
+| test_wp_stack.py | Operator selected removal of waste-pickup-only scratch body and obsolete commented stack examples. |
+| test_return_clamp_vial_home.py | Operator selected removal of repair script that writes inferred clamp state into a live vial CSV. |
+
+Retained for distinct diagnostic effect and matching current call interfaces:
+
+| Program in hardware_tests | Unique purpose |
+| --- | --- |
+| alternating_vial_transfer.py | Alternating liquid transfers and staged clamp exchanges. |
+| clamp_vial_roundtrip.py | Clamp cap cycle with GRPR packet tracing. |
+| embedded_validation_solvents.py | Embedded acetone/ethyl acetate validation across tip sizes. |
+| mixed_wellplate_round_trip.py | Mixed source-stack order, reader travel and retained-waste assertions. |
+| rack_cap_cycle.py | Cap-cycle sweep across occupied rack vials. |
+| rack_vial_roundtrip.py | Pickup/release isolation without cap operations. |
+| random_vial_shuffle_test.py | Random rack routing rather than a fixed route. |
+| single_vial_rack_cap_cycle.py | One vial's cap cycle across rack, heater, clamp and reactor stations. |
+| test_96_lid.py | Repeated 96-well lid storage/pipetting-area transfers. |
+| test_biotek.py | Direct reader carrier motion; CarrierIn/CarrierOut remain wrapper methods. |
+| test_get_pipet.py | Tip pickup/removal isolation using current tip names. |
+| test_gripper.py | Raw output-7 actuation. |
+| test_heating.py | Heater/stirrer setpoints and temperature reads. |
+| test_pnematic_valve.py | Raw output-6/output-3 pneumatic actuation. |
+| test_powder_dispense.py | Powder-controller initialization and mass dispensing. |
+| test_quartz_lid.py | Quartz lid movement coupled to actual reader measurements. |
+| test_spin_coater.py | Spinner lid opening/closing. |
+| water_to_bzt_refill.py | Cumulative high-volume transfers with operator measurements. |
+| wellplate_24_round_trip.py | Strict single-24-well readiness/round-trip check with empty-area preconditions. |
+
+Legacy explicit Lash_E initialization remains supported; import-time execution
+or an old filename alone was not treated as evidence of obsolescence. Retention
+is source/interface review, not certification of physical operation. Existing
+operator precautions still apply: random shuffling loops indefinitely, and the
+heater check stops stirring but leaves heater shutdown commented out. Saved
+workflow presets and vial inventories were not deleted or changed. Firmware,
+host controllers and software regression coverage are unchanged.
+
+Verification: all 19 retained hardware sources and both edited Python sources
+compile without importing controllers. All eight retired paths are absent and
+no incoming retired-path/import references remain in the searched source.
+The scheduler vortex runtime AST is unchanged (docstring only). Its three
+focused import/no-vial/cancellation software checks passed; the two known
+pre-existing stale robot-mock tests were excluded. Scoped whitespace checks pass.
+
+## Continued retention review
+
+The operator approved continuing hardware-check retirement, tracked temp review,
+workflow-helper organization and vial-inventory retention review. The eventual
+status rename must include workflow presets and the SDL calibration North robot
+hardware configuration, not only Python imports; no rename is implemented yet.
+
+Removed four explicitly selected hardware checks on 2026-11-02:
+test_move_location.py (rack-33 arm move), test_move_track.py (initialization only),
+test_move_vial.py (fixed vial_1/heater loop), and test_dispense.py (old yellow/blue
+aspiration trial). No local edits were present and no references surfaced in the
+inspected software/hardware tests, workflows, scheduler, tools or docs. None was
+executed; existing diagnostic programs and software regression coverage remain.
+
+output/temp is covered by output's ignore rule for new artifacts, but its 505
+existing tracked files remain tracked. Review deletion versus explicit untracking
+separately. AI authorship alone does not make software coverage obsolete.
+
+## Powder settings and firmware placement
+
+On 2026-11-02 the operator approved moving powder_settings.py into robot_state
+and creating source/firmware/photoreactor for the two Pico source files formerly
+under photo-reactor. Updated the powder controller's single import; presets and
+dispensing logic are unchanged. Pico module filenames/imports are unchanged.
+The local firmware folder is not imported by the host controller, which executes
+commands against installed device modules. Its lib.EMC2101 dependency is not
+included in these two files and must already be available on the Pico.
+No upload, device validation or host-controller relocation is part of this pass.
+The old photo-reactor folder is removed only once empty.
+
+## Scheduler GUI consolidation
+
+Moved scheduler_gui.py into scheduler/scheduler_gui.py with operator approval.
+The GUI resolves REPO_ROOT from its parent before local imports, supporting
+direct-file and module launch without moving resource or child-process roots.
+Updated four software-test imports and Desktop/lab_launchers/run_robot_gui.cmd.
+No compatibility stub remains at root.
+
+Keep North_Safe, the Cytation/photoreactor controllers, master coordinator,
+vial-manager GUI/CSV helper and Slack integration at their existing locations.
+The proposed source-folder migration is not approved for this pass: software
+tests, a hardware diagnostic and archived workflows import automation controllers
+directly, so the coordinator is not the only caller. A future move must also
+audit dynamic imports, mocks, resource roots and external launchers.
+
+Pre-move focused baseline: 32 passed, three pre-existing failures (two obsolete
+runtime-estimate tuple expectations and a missing small_vial_rack fixture).
+The same batch after relocation has identical results. Direct-file import from
+outside the repository and module import both resolve the correct resource root;
+the desktop launcher points to the new file. No hardware was operated.
+
 ## Root utility cleanup
 
 On 2026-11-02 the operator explicitly approved:

@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
 
 
 def test_interrupt_cleanup_runs_track_before_robot():

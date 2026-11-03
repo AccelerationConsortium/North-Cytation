@@ -141,7 +141,7 @@ def execute(config=None, show_gui=True):
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("%s failed or was interrupted", _WORKFLOW_NAME)
         if isinstance(error, KeyboardInterrupt):
-            from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+            from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
             cleanup_after_keyboard_interrupt(lash_e)
         _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted" if isinstance(error, KeyboardInterrupt)
             else f"{_WORKFLOW_NAME} failed: {error}")

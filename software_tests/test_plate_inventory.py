@@ -221,7 +221,7 @@ def test_missing_thickness_only_matters_when_plate_is_beneath(inventory):
 
 
 def test_plate_ids_prevent_reuse_of_replaced_plate(inventory):
-    from workflows.two_run_plate import ready_for_second_run
+    from workflows.helpers.two_run_plate import ready_for_second_run
     inventory.relocate("plate-96", "pipetting_area")
     marker = {"status": "second_half_ready", "plate_id": "plate-96", "plate_type": "96 WELL PLATE"}
     assert ready_for_second_run(inventory.data, marker)

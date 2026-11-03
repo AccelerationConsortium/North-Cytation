@@ -1,10 +1,11 @@
 # Vortex scheduler test (vial mixing)
 
-Scheduler-compatible copy of `hardware_tests/test_vortex.py`; the original is left
-untouched. Run normally for the existing startup GUI:
+The reviewed vortex diagnostic supports both normal and scheduler execution.
+The redundant standalone hardware script has been retired. Run normally for
+the existing startup GUI:
 
 ```powershell
-python -m workflows.test_vortex_scheduler
+python -m hardware_tests.test_vortex_scheduler
 ```
 
 The scheduler instead calls `execute(config=complete_config, show_gui=False)`.

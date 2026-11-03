@@ -43,7 +43,7 @@ convention. Setup compatibility alone does not guarantee execution compatibility
 
 ## Retained Exceptions
 
-`workflows/vial_risk_analyzer.py` remains in place because
+`workflows/helpers/vial_risk_analyzer.py` remains in use because
 `surfactant_multidimensional_workflow.py` imports it. It is an analysis helper,
 not a standalone queued experiment. `workflows/workflow_template.py` remains
 available for creating new workflows; its placeholder inputs are not runnable.

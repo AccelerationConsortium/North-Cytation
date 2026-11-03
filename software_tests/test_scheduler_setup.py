@@ -20,7 +20,7 @@ from PySide6.QtGui import QDrag, QDragEnterEvent, QDragMoveEvent, QDropEvent, QM
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton
 
-import scheduler_gui
+from scheduler import scheduler_gui
 from vial_manager_gui import VIAL_MOVE_MIME, VialManagerMainWindow
 
 

@@ -1,6 +1,18 @@
 # Status Files on the North-Cytation set-up
 _Last updated: Jun 10, 2025_
 
+## Retained inputs
+
+As of 2026-11-02 this folder retains 19 CSV/TXT inputs used by current
+experimental workflows, retained hardware/software checks, operator tools and
+calibration protocols. Historical and unreferenced inputs were deleted, not
+archived. Active schedules are retained alongside vial inventories.
+
+Archived workflows and their old saved presets may refer to deleted inputs;
+restore the matching inputs from Git before attempting to reuse those programs.
+The old `update_status_files.py` is a historical peroxide-file migration, not
+part of current startup, and its target is no longer included.
+
 Necessary files for each workflow:
 1. A vial input `.csv` file (path is inputted by the user)
 2. `robot_status.yaml` -- stores current state of the robot arm and the deck
@@ -44,4 +56,3 @@ You can use `North_Track.check_input_file()` for a display of the inputted value
 
 ### robot_status.yaml 
 This file typically does not need to be edited except for when refilling pipet tips (run `refill_tips.py`)
-

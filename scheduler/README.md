@@ -1,7 +1,10 @@
-# Scheduler Internals
+# Workflow Scheduler
 
-The user-facing window remains `scheduler_gui.py` in the repository root.
-This folder contains internal scheduler support, not another workflow entrypoint.
+This folder contains the user-facing window and its internal support.
+From the repository root, launch with `python -m scheduler.scheduler_gui` or
+`python scheduler/scheduler_gui.py`. The desktop lab launcher uses the latter.
+Repository resources and child-process working directories remain rooted at the
+repository, not this folder.
 
 ## Per-Row Configuration
 
@@ -59,7 +62,7 @@ Each selected workflow row owns a private configuration snapshot, copied once
 from `workflow_configs/<workflow>.yaml`. Repeated workflows have independent
 settings. The queue has five columns; all configuration actions are in Setup.
 Private snapshots use stable job IDs under
-`temp/scheduler_setup/<sessionUUID>/<jobUUID>.yaml`, not row numbers.
+`output/temp/scheduler_setup/<sessionUUID>/<jobUUID>.yaml`, not row numbers.
 Missing or invalid presets are reported on the affected row without importing
 the workflow. Setup retries an unavailable initial preset when opened again.
 
@@ -114,18 +117,29 @@ a real vial CSV; opting out does not make those operations valid.
 
 ### Vortex Port Example
 
-`hardware_tests/test_vortex.py` remains unchanged. Its scheduler counterpart is
-`workflows/test_vortex_scheduler.py`, with
-`workflow_configs/test_vortex_scheduler.yaml`. Both execute the same three
-robot operations: vortex the selected vial, return it home, and move home.
+Scheduler discovery includes top-level experiment entrypoints plus three
+reviewed diagnostics in `hardware_tests`: `ailsa_clamp_test`,
+`cytation_labware_test`, and `test_vortex_scheduler`. Their job names and config
+filenames are unchanged, so existing saved queues still resolve. The template,
+workflow helpers and other hardware checks are not selectable jobs. Discovery
+does not import hardware programs.
+
+GUI discovery, live execution and simulation share the same module resolver.
+Approval fingerprints cover the actual job source, workflow helpers and
+scheduler Python sources; changes require simulation/review again. Old approval
+snapshots are not reused after relocation.
+
+`hardware_tests/test_vortex_scheduler.py`, with
+`workflow_configs/test_vortex_scheduler.yaml`, is the retained vortex diagnostic.
+The redundant standalone hardware script has been retired. This version
+vortexes the selected vial, returns it home, and homes the robot components.
 
 The scheduler version adds module-level `SIMULATE`, `INPUT_VIAL_STATUS_FILE`,
 `TARGET_VIAL` and `VORTEX_TIME`, a guarded script entrypoint, and the standard
 reviewed/supplied config paths. Simulation defaults to True. Only the robot is
 initialized; unnecessary track/reader initialization is disabled. GUI-reviewed
 target/time values are read from `lash_e.workflow_config` after Lash_E returns. The scheduler calls
-`execute(config=complete_config, show_gui=False)`. The original test uses
-hardcoded call arguments and starts directly at import, with live mode by default.
+`execute(config=complete_config, show_gui=False)`.
 
 Configuration selection belongs to the existing ConfigManager, called by
 Lash_E. Workflow code passes its globals/name, optional config and show_gui;

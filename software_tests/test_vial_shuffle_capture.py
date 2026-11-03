@@ -13,7 +13,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from workflows import vial_shuffle_capture_workflow as workflow
-from workflows._vial_shuffle import (
+from workflows.helpers._vial_shuffle import (
     RACK, apply_transfers, available_slots, eligible_names, plan_shuffle, positions,
     validate_layout,
 )

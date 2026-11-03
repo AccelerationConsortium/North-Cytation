@@ -21,7 +21,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from master_usdl_coordinator import Lash_E
-from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
 
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = str(_REPO_ROOT / "status" / "alternating_vial_transfer_vials.csv")

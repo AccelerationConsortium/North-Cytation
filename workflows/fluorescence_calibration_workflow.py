@@ -612,13 +612,13 @@ def execute(config=None, show_gui=True):
     if not lash._workflow_should_continue:
         return None
 
-    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
         lash.nr_robot.home_robot_components()
         c = lash.workflow_config
         plan, recipes = build_plan(c)
-        from workflows import two_run_plate
-        from workflows._planning_markers import mark_clock_start, mark_wait_until
+        from workflows.helpers import two_run_plate
+        from workflows.helpers._planning_markers import mark_clock_start, mark_wait_until
         half = None
         if c["TWO_RUNS_PER_PLATE"] and not c["PREPARE_ONLY"]:
             capacity, columns = _PLATES[c["WELLPLATE_TYPE"]]

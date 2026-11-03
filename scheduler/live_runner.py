@@ -15,8 +15,10 @@ import traceback
 import yaml
 
 from scheduler.simulation_runner import Diagnostics
+from scheduler import simulation_state as state
 from scheduler.simulation_state import SESSION_ENV
 from scheduler.interrupt import watch_for_interrupt
+from scheduler.workflow_modules import workflow_module
 
 
 def fingerprint(paths):
@@ -58,7 +60,7 @@ def live_state_issues(job):
     position = track.get("active_wellplate_position")
     from scheduler.plate_state import operation_issues
     issues.extend(operation_issues(track))
-    from workflows.two_run_plate import ready_for_second_run, read_marker
+    from workflows.helpers.two_run_plate import ready_for_second_run, read_marker
     if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
     occupied = set()
@@ -121,8 +123,7 @@ def run_job(folder):
         if config["SIMULATE"] is not False:
             raise ValueError("Live config must explicitly select SIMULATE=False.")
         name = job["workflow"]
-        if Path(name).name != name or name.startswith("_"):
-            raise ValueError("Invalid workflow name")
+        module_name = workflow_module(name, state.REPO_ROOT)
         with scheduler_live_lock():
             changed = changed_inputs(job["input_hashes"])
             if changed:
@@ -136,7 +137,7 @@ def run_job(folder):
             issues = live_state_issues(job)
             if issues:
                 raise ValueError("Live starting state requires review: " + "; ".join(issues))
-            module = importlib.import_module(f"workflows.{name}")
+            module = importlib.import_module(module_name)
             with watch_for_interrupt(folder):
                 module.execute(config=config, show_gui=False)
             issues = live_state_issues(job)

@@ -5120,7 +5120,7 @@ def execute(config=None, show_gui=True):
     if not lash_e._workflow_should_continue:
         return None
 
-    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
 
         # Configure matplotlib globally to prevent popup windows

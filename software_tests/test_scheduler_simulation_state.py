@@ -91,7 +91,7 @@ class SimulationStateTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before)
 
     def test_retained_plate_marker_is_saved_and_loaded_in_private_state(self):
-        from workflows import two_run_plate
+        from workflows.helpers import two_run_plate
         config = state.simulated_config(self.root, {"INPUT_VIAL_STATUS_FILE": str(self.vials[0])})
         with state.workflow_state(self.root, "first_half"):
             coordinator = self.controllers(config["INPUT_VIAL_STATUS_FILE"], 3, 8)

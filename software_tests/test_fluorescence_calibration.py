@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from workflows import fluorescence_calibration_workflow as workflow
-from workflows import interrupt_cleanup
+from workflows.helpers import interrupt_cleanup
 from workflows.fluorescence_calibration_workflow import build_plan, execute, fit_calibration, summarize
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

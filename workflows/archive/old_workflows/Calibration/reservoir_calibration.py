@@ -1,6 +1,5 @@
 import sys
 
-# from tests.test_wp_stack import SIMULATE
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import numpy as np

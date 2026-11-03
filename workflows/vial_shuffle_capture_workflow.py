@@ -17,7 +17,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from tools.c110_camera import capture_photo
-from workflows._vial_shuffle import (
+from workflows.helpers._vial_shuffle import (
     RACK, apply_transfers, available_slots, plan_shuffle, positions, validate_layout,
 )
 

@@ -14,7 +14,7 @@ The physical-read diagnostic below remains available and unchanged.
 Run from the repository root:
 
 ```powershell
-python -m workflows.cytation_labware_test
+python -m hardware_tests.cytation_labware_test
 ```
 
 The normal startup configuration review defaults to simulation, a lidless

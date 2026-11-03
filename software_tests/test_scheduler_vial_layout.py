@@ -12,7 +12,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 import yaml
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
-import scheduler_gui
+from scheduler import scheduler_gui
 
 
 class SchedulerVialLayoutTests(unittest.TestCase):

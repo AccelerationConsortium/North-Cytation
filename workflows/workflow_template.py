@@ -26,7 +26,7 @@ without importing the workflow to ask requesters the right questions and to
 explain simulation-based estimates; software_tests/test_config_docs.py enforces it.
 Keep docs in this file, not in workflow_configs/*.yaml: saved YAML is rewritten
 without comments. Before any deliberate wait (timepoints, reaction or settling
-times), log workflows._planning_markers markers so duration estimates include
+times), log workflows.helpers._planning_markers markers so duration estimates include
 the wait; simulation skips real waits.
 """
 import sys
@@ -242,7 +242,7 @@ def execute(config=None, show_gui=True):
         # lash_e.nr_robot.move_vial_to_location('target_vial', 'photoreactor_array', 0)
         # lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100)
         # lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600)
-        # from workflows._planning_markers import mark_wait
+        # from workflows.helpers._planning_markers import mark_wait
         # mark_wait(logger, "reaction", c["REACTION_TIME"])  # log before any deliberate wait
         # if not lash_e.simulate:
         #     time.sleep(c["REACTION_TIME"])

@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from workflows import cytation_labware_test as diagnostic
+from hardware_tests import cytation_labware_test as diagnostic
 
 
 def procedure(name="96 WELL PLATE", wavelength="600"):

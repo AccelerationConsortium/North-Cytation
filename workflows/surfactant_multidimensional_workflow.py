@@ -60,7 +60,7 @@ from workflows.surfactant_grid_adaptive_concentrations import (
     validate_pipetting_system,
 )
 
-from workflows.vial_risk_analyzer import get_vial_risk_assessment
+from workflows.helpers.vial_risk_analyzer import get_vial_risk_assessment
 
 # ================================================================================
 # CONFIGURATION
@@ -2749,7 +2749,7 @@ def execute(config=None, show_gui=True):
     if not lash_e._workflow_should_continue:
         return None
 
-    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
 
         fill_water_vial(lash_e, "water")

@@ -667,7 +667,7 @@ def execute(config=None, show_gui=True):
     if not lash_e._workflow_should_continue:
         return None
 
-    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
         waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
 
@@ -703,4 +703,3 @@ def execute(config=None, show_gui=True):
 
 if __name__ == "__main__":
     execute()
-

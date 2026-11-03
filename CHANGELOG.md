@@ -1,5 +1,71 @@
 # Changelog
 
+## [2026-11-02] - Remove Unused Experimental Inputs
+
+- Deleted 57 historical/unreferenced CSV/TXT inputs from status, including the
+  former Not Current inputs. Kept 19 inputs referenced by current workflows,
+  retained hardware/software tests, operator tools or calibration protocols.
+- Kept active schedules, current workflow/scheduler presets and the existing
+  edited Ailsa vial inventory unchanged. No inputs were newly archived.
+- Historical workflows and their old presets no longer have bundled inputs;
+  restoring those programs requires restoring their matching inputs from Git.
+
+## [2026-11-02] - Stop Tracking Generated Scratch
+
+- Removed all 505 output/temp files from the Git index with operator approval;
+  output's existing ignore rule covers future scratch. Kept all 884 local files,
+  verifying unchanged SHA-256 hashes before and after untracking.
+- Confirmed current scheduler setup snapshots and arm-GUI exports write to
+  output/temp. No local scratch, coordinate exports or scientific backups deleted.
+
+## [2026-11-02] - Finish Workflow Folder Separation
+
+- Kept eight experiment/data-collection entrypoints and the workflow template
+  at the top level. Moved five shared support modules into workflows/helpers
+  and updated workflow, hardware-check, scheduler and software-test imports.
+- Moved clamp, Cytation labware and scheduler vortex diagnostics into
+  hardware_tests. Shared scheduler resolution preserves their existing job
+  names/configs in discovery, simulation and live execution.
+- Excluded the template from selectable jobs. Approval fingerprints now include
+  moved helpers, diagnostic sources and scheduler Python sources.
+- Removed the operator-approved older workflow booking script; the newer
+  tools/book_robot.py remains unchanged. No email or hardware action was sent.
+
+## [2026-11-02] - Retire Redundant and Obsolete Hardware Checks
+
+- Reviewed all 27 remaining hardware programs against current controller
+  interfaces and their actual diagnostic effects. Retained 19 distinct checks.
+- Removed the obsolete timing trial, misleading water/DMSO validation trial and
+  redundant vortex script. The reviewed scheduler vortex diagnostic remains.
+- Removed five operator-selected trials: off-only photoreactor check, fixed
+  photoreactor dispensing, serial wellplate dispensing, waste-stack scratch
+  check and clamp-return CSV repair. Updated vortex documentation/references.
+- Preserved controllers, firmware, vial inventories, saved presets and software
+  coverage. No hardware checks were executed.
+
+## [2026-11-02] - Retire Fixed Hardware Movement Trials
+
+- Removed four operator-approved obsolete hardware checks: rack-33 arm move,
+  initialization-only track check, fixed vial-to-heater loop, and yellow/blue
+  dispensing trial. Reusable diagnostics and software coverage remain unchanged.
+
+## [2026-11-02] - Place Powder Settings and Device Firmware
+
+- Moved powder_settings.py into robot_state and updated the powder controller
+  import without changing dispensing presets or logic.
+- Moved both photoreactor device-source files into source/firmware/photoreactor,
+  preserving device filenames and imports. No firmware was uploaded or hardware
+  operated; host controllers remain at their existing locations.
+
+## [2026-11-02] - Group Scheduler GUI with Scheduler Support
+
+- Moved scheduler_gui.py into scheduler, retaining repository-root resources and
+  child-process working directories. Updated four software-test imports, launch
+  documentation and the desktop robot-GUI launcher.
+- Left automation controllers, vial manager/CSV helper and Slack integration in
+  place. Controller moves require a separate pass: direct callers exist outside
+  the master coordinator.
+
 ## [2026-11-02] - Reduce Root Utility Clutter
 
 - Moved the booking-email utility into tools/book_robot.py, retaining its

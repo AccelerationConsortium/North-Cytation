@@ -20,6 +20,11 @@ class LiveRunnerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        (self.root / "workflows").mkdir()
+        (self.root / "workflows" / "fixture.py").touch()
+        repo = patch.object(runner.state, "REPO_ROOT", self.root)
+        repo.start()
+        self.addCleanup(repo.stop)
         self.source = self.root / "config.yaml"
         self.source.write_text("reviewed config")
         self.vials = self.root / "vials.csv"

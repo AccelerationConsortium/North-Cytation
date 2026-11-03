@@ -16,7 +16,7 @@ sys.path.insert(0, str(REPO_ROOT))
 import yaml
 from PySide6.QtCore import QEventLoop, QProcess, QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
-import scheduler_gui
+from scheduler import scheduler_gui
 from scheduler import simulation_state as state
 from scheduler import live_runner
 

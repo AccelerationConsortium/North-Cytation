@@ -10,7 +10,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtWidgets import QApplication
-import scheduler_gui
+from scheduler import scheduler_gui
 
 
 class SchedulerRuntimeTests(unittest.TestCase):

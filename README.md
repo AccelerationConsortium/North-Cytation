@@ -23,7 +23,7 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
 
 The [repository organization assessment and proposed plan](docs/repository_organization.md)
 records folder purposes and the staged, path-preserving cleanup proposal.
-Moves require approval; existing runtime paths are unchanged.
+Approved moves and their caller/path updates are recorded there.
 
 Documentation is grouped by purpose:
 - [Workflow guides](docs/workflows/): running specific experiments and diagnostics.
@@ -59,9 +59,25 @@ lab Slack agent checkout, not in this repository.
   `tools/book_robot.py` sends an actual booking email using the existing root
   secrets file; review its title/dates before explicitly running it.
   
-- <b> workflows: </b> Contains active workflows that are designed for the setup, such as the color matching workflow.
+- <b> workflows: </b> Eight active experimental/data-collection entrypoints and
+  the workflow template. Shared support code lives in `workflows/helpers`;
+  historical programs remain in `workflows/archive`. Helpers and the template
+  are not scheduler jobs.
 
-- <b> photo-reactor </b>: Contains the RPi program for the photoreactor.
+- <b> scheduler: </b> Workflow scheduling GUI and support. Launch with
+  `python -m scheduler.scheduler_gui` from the repository root or the desktop lab
+  launcher. The moved clamp, Cytation labware and vortex diagnostics remain
+  schedulable from `hardware_tests` under their original names and saved configs.
+  Other hardware programs are not automatically discovered. The vial-manager
+  GUI and controllers remain at their existing paths.
+
+- <b> source/firmware/photoreactor </b>: Source files uploaded to the photoreactor
+  Pico: `reactor_test.py` and `photo_reactor.py`. Device-side filenames/imports
+  are unchanged; the host controller uses the installed Pico modules, not this
+  local folder. Its `lib.EMC2101` dependency must also be available on the device.
+  Automation host controllers remain at root pending a separate migration.
+
+- Powder-dispensing presets live in `robot_state/powder_settings.py`.
 
 - <b> logs </b>: Contains logs from every digital and simulated run
   and retained LLM prompt/response history under `logs/LLM_prompts`.

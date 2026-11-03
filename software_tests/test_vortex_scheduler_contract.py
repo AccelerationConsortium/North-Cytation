@@ -26,7 +26,7 @@ class VortexSchedulerTests(unittest.TestCase):
 
         self.constructor = Mock(side_effect=initialize)
         with patch.dict(sys.modules, {"master_usdl_coordinator": types.SimpleNamespace(Lash_E=self.constructor)}):
-            self.namespace = runpy.run_path(str(REPO_ROOT / "workflows" / "test_vortex_scheduler.py"))
+            self.namespace = runpy.run_path(str(REPO_ROOT / "hardware_tests" / "test_vortex_scheduler.py"))
         self.config = {"SIMULATE": True, "INPUT_VIAL_STATUS_FILE": str(self.vial),
                        "TARGET_VIAL": "test_vial", "VORTEX_TIME": 4}
 

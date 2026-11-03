@@ -10,19 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from workflows._planning_markers import mark_clock_start, mark_wait, mark_wait_until
+from workflows.helpers._planning_markers import mark_clock_start, mark_wait, mark_wait_until
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 # Workflows that predate _CONFIG_DOCS (2026-10-31). Every other workflow with an
 # execute() entrypoint - including every new one - must be annotated. Remove a
 # name from this list when you annotate it; never add one.
 UNDOCUMENTED_LEGACY = {
-    "ailsa_clamp_test",
-    "cytation_labware_test",
     "Degradation_serena",
     "SQ_Peptoid_LNP_test",
     "surfactant_grid_adaptive_concentrations",
-    "test_vortex_scheduler",
     "vial_shuffle_capture_workflow",
 }
 

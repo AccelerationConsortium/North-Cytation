@@ -14,7 +14,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from master_usdl_coordinator import Lash_E
-from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
 from workflows.surfactant_grid_adaptive_concentrations import fill_water_vial
 
 

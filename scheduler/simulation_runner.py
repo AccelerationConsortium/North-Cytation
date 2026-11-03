@@ -15,6 +15,7 @@ import yaml
 
 from scheduler import simulation_state as state
 from scheduler.interrupt import watch_for_interrupt
+from scheduler.workflow_modules import workflow_module
 
 
 class Diagnostics(logging.Handler):
@@ -44,7 +45,7 @@ def handoff_issues(root):
     position = track.get("active_wellplate_position")
     from scheduler.plate_state import operation_issues
     issues.extend(operation_issues(track))
-    from workflows.two_run_plate import ready_for_second_run, read_marker
+    from workflows.helpers.two_run_plate import ready_for_second_run, read_marker
     if position is not None and position != "None" and not ready_for_second_run(track, read_marker(root)):
         issues.append(f"Wellplate remains at {position}")
     occupied = {}
@@ -63,8 +64,7 @@ def run_job(root, job_id):
     job = root / "jobs" / job_id
     specification = json.loads((job / "input.json").read_text(encoding="utf-8"))
     name = specification["workflow"]
-    if Path(name).name != name or name.startswith("_") or not (state.REPO_ROOT / "workflows" / f"{name}.py").is_file():
-        raise ValueError("Invalid selected workflow")
+    module_name = workflow_module(name, state.REPO_ROOT)
     diagnostics = Diagnostics()
     root_logger = logging.getLogger()
     root_logger.addHandler(diagnostics)
@@ -85,7 +85,7 @@ def run_job(root, job_id):
                 for issue in handoff_issues(root):
                     if issue.startswith("Current vial-position conflict"):
                         result["records"].append({"level": "WARNING", "message": f"Simulation test override: {issue}"})
-            module = importlib.import_module(f"workflows.{name}")
+            module = importlib.import_module(module_name)
             config = state.simulated_config(root, specification["config"])
             with watch_for_interrupt(job):
                 module.execute(config=config, show_gui=False)

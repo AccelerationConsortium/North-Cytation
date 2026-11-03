@@ -26,7 +26,7 @@ from numbers import Real
 import pandas as pd
 
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
-from workflows._planning_markers import mark_clock_start, mark_wait_until
+from workflows.helpers._planning_markers import mark_clock_start, mark_wait_until
 
 from workflows.surfactant_grid_adaptive_concentrations import (
     ADD_BUFFER,
@@ -2175,7 +2175,7 @@ def execute(config=None, show_gui=True):
     if not lash_e._workflow_should_continue:
         return None
 
-    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
     try:
         c = lash_e.workflow_config
         return execute_study_workflow(

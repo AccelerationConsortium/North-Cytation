@@ -513,7 +513,7 @@ def execute(config=None, show_gui=True):
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("Pipette calibration workflow failed")
         if isinstance(error, KeyboardInterrupt):
-            from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+            from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
             cleanup_after_keyboard_interrupt(lash_e)
         else:
             _cleanup(lash_e, confirmed, physical=True)
