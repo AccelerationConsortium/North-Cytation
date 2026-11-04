@@ -754,7 +754,7 @@ def execute(config=None, show_gui=True):
         if validation_enabled:
             validation_results = run_liquid_validations(
                 lash, validation_sources, Path("output") / "fluorescence_calibration",
-                replicates=3, vial_transfers=vial_transfers)
+                vial_transfers=vial_transfers)
             if c["VALIDATION_ONLY"]:
                 return {"validation_results": validation_results}
             inventory = lash.nr_robot.VIAL_DF.copy().set_index("vial_name", drop=False)

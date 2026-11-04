@@ -33,16 +33,20 @@ TEST_WATER_VOLUME_FOR_HEIGHT_ML = 2.0
 USE_SPECIFIED_PIPET_TIP = True
 PIPET_TEST_TIP_TYPE = "small_tip"
 
-# These are the safe dispensing positions used by
-# position_surfactant_vials_by_concentration in the multidimensional workflow.
+# Includes multidimensional workflow staging positions and heater positions
+# being tested for small-tip pipetting safety.
 WORKFLOW_VIAL_POSITIONS = [
-    ("main_8mL_rack", 47),
-    ("main_8mL_rack", 46),
-    ("main_8mL_rack", 45),
-    ("main_8mL_rack", 44),
-    ("clamp", 0),
-    ("main_8mL_rack", 43),
-    ("clamp_2", 0),
+#    ("main_8mL_rack", 47),
+#    ("main_8mL_rack", 46),
+#    ("main_8mL_rack", 45),
+#    ("main_8mL_rack", 44),
+#    ("clamp", 0),
+#    ("main_8mL_rack", 43),
+#    ("clamp_2", 0),
+    ("heater", 2),
+    ("heater", 5),
+    ("heater", 8),
+    ("heater", 11),
 ]
 
 

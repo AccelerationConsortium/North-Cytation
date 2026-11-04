@@ -122,18 +122,6 @@ def prior_state(liquid, tip, volume_ul, effective_ul, settings, measurements=Non
     return state
 
 
-def robust_values(values):
-    """Mask of replicates kept after the MAD outlier rule shared with the estimator."""
-    values = np.asarray(values, float)
-    if len(values) < 3:
-        return np.ones(len(values), bool)
-    median = np.median(values)
-    mad = 1.4826 * np.median(np.abs(values - median))
-    if mad == 0:
-        return np.ones(len(values), bool)
-    return np.abs(values - median) <= max(estimation.OUTLIER_MADS * mad, 1.0)
-
-
 def is_surprising(state, check_ul):
     """True when the check batch is far enough from expectation to need confirming."""
     spread = math.sqrt(state["variance"] + state["drift"] + state["noise"])

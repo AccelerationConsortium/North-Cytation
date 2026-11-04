@@ -3604,137 +3604,33 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
     # Remove duplicates and ensure we have a list
     surfactant_names = list(set(surfactant_names))
     
-    if VALIDATION_ONLY:
-        lash_e.logger.info(f"  VALIDATION-ONLY MODE: Running comprehensive pipetting validation for {len(surfactant_names)} surfactants...")
-    else:
-        lash_e.logger.info(f"  Validating pipetting capability for {len(surfactant_names)} surfactants: {', '.join(surfactant_names)}...")
+    lash_e.logger.info(f"  Validating pipetting capability for {len(surfactant_names)} surfactants: {', '.join(surfactant_names)}...")
     
     # Use the already-created experiment output folder
     lash_e.logger.info(f"  Validation data will be saved to: {experiment_output_folder}/calibration_validation/")
     
     try:
-        # Import embedded validation functions
-        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-        
-        # Define test volumes for different liquid types
-        dmso_test_volume = [0.005]  # 5 uL in mL
-        
-        validation_results = {}
-        
-        # Test 1: Water validation
-        lash_e.logger.info("    Validating water pipetting (10-900 uL)...")
-        # Split into two separate tests as requested
-        
-        # Test 1a: Small water volumes with conditioning
-        small_volumes = [0.02,0.05,0.1,0.15]
-        lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
-        
-        small_water_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='water',
-            destination_vial='water',  
-            liquid_type='water',
-            volumes_ml=small_volumes,
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=150,
-            adaptive_correction=True
-        )
-        validation_results['water_small'] = small_water_results
-        lash_e.logger.info(f"        Small water: R^2={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 1b: Large water volumes with conditioning
-        large_volumes = [0.2, 0.5, 0.8]
-        lash_e.logger.info("      Testing large water volumes (200-800 uL) with conditioning...")
-        
-        large_water_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='water',
-            destination_vial='water',
-            liquid_type='water',
-            volumes_ml=large_volumes,
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=900,
-            adaptive_correction=True
-        )
-        validation_results['water_large'] = large_water_results
-        lash_e.logger.info(f"        Large water: R^2={large_water_results['r_squared']:.3f}, Accuracy={large_water_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 2: DMSO validation  
-        lash_e.logger.info("    Validating DMSO pipetting (5 uL) with conditioning...")
-        
-        dmso_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='pyrene_DMSO',
-            destination_vial='pyrene_DMSO',
-            liquid_type='DMSO',
-            volumes_ml=dmso_test_volume,
-            replicates=5,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=25
-        )
-        validation_results['dmso'] = dmso_results
-        lash_e.logger.info(f"      DMSO validation: R^2={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 3+: Surfactant stock validation for all specified surfactants
-        for i, surfactant_name in enumerate(surfactant_names):
-            surfactant_stock = f"{surfactant_name}_stock"
-            lash_e.logger.info(f"    Validating {surfactant_stock} pipetting ({i+1}/{len(surfactant_names)})...")
-            
-            # Small volume validation (small tips)
-            lash_e.logger.info(f"      Small volumes (10-100 uL) with conditioning...")
-            surf_small_results = validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=surfactant_stock,
-                destination_vial=surfactant_stock,
-                liquid_type='SDS',  # Surfactant solution
-                volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
-                replicates=3,
-                output_folder=experiment_output_folder,
-                switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=150,
-                adaptive_correction=True
-            )
-            validation_results[f'{surfactant_name}_small'] = surf_small_results
-            lash_e.logger.info(f"        Small {surfactant_stock}: R^2={surf_small_results['r_squared']:.3f}, Accuracy={surf_small_results['mean_accuracy_pct']:.1f}%")
-            
-            # Large volume validation (large tips)
-            lash_e.logger.info(f"      Large volumes (200-900 uL) with conditioning...")
-            surf_large_results = validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=surfactant_stock,
-                destination_vial=surfactant_stock,
-                liquid_type='SDS',  # Surfactant solution
-                volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
-                replicates=1 if i > 0 else 3,  # Full validation on first surfactant, reduced on others
-                output_folder=experiment_output_folder,
-                switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=800,
-                adaptive_correction=True
-            )
-            validation_results[f'{surfactant_name}_large'] = surf_large_results
-            lash_e.logger.info(f"        Large {surfactant_stock}: R^2={surf_large_results['r_squared']:.3f}, Accuracy={surf_large_results['mean_accuracy_pct']:.1f}%")
-            lash_e.logger.info(f"      {surfactant_name} validation complete")
-        
-        # Overall validation summary
-        all_r_squared = [r['r_squared'] for r in validation_results.values()]
-        all_accuracy = [r['mean_accuracy_pct'] for r in validation_results.values()]
-        avg_r_squared = sum(all_r_squared) / len(all_r_squared)
-        avg_accuracy = sum(all_accuracy) / len(all_accuracy)
+        # Same validation every workflow uses: tips chosen as the workflow chooses them,
+        # volumes snapped to calibrated rows, check/confirm into overaspirate_corrections.csv.
+        from pipetting_data.embedded_liquid_validations import run_liquid_validations
+
+        water_volumes_ul = [20, 50, 100, 150, 200, 500, 800]
+        sources = [("water", "water", water_volumes_ul),
+                   ("pyrene_DMSO", "DMSO", [5])]
+        # Surfactant stocks are dispensed with the SDS calibration throughout this workflow.
+        sources.extend((f"{name}_stock", "SDS", water_volumes_ul) for name in surfactant_names)
+
+        output_folder = experiment_output_folder or os.path.join("output", "surfactant_grid", "validation")
+        session_results = run_liquid_validations(lash_e, sources, output_folder)
+        validation_results = {f"{vial}_{liquid}_{tip}": result
+                              for (vial, liquid, tip), result in session_results.items()}
+        measured = [r for r in validation_results.values() if not r.get('skipped')]
+        for key, result in validation_results.items():
+            if not result.get('skipped'):
+                lash_e.logger.info(f"        {key}: R^2={result['r_squared']:.3f}, "
+                                   f"Accuracy={result['mean_accuracy_pct']:.1f}%")
+        avg_r_squared = (sum(r['r_squared'] for r in measured) / len(measured)) if measured else float('nan')
+        avg_accuracy = (sum(r['mean_accuracy_pct'] for r in measured) / len(measured)) if measured else float('nan')
         
         lash_e.logger.info(f"    All pipetting validations COMPLETE:")
         lash_e.logger.info(f"      Average R^2: {avg_r_squared:.3f}")
@@ -3745,18 +3641,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
         lash_e.logger.info("PIPETTING VALIDATION COMPLETE - REVIEW RESULTS")
         lash_e.logger.info("="*60)
         lash_e.logger.info("")
-        
-        # Early exit for validation-only mode
-        if VALIDATION_ONLY:
-            lash_e.logger.info("="*60)
-            lash_e.logger.info("VALIDATION-ONLY MODE: Exiting after validation completion")
-            lash_e.logger.info("="*60)
-            return {
-                'validation_only': True,
-                'validation_results': validation_results,
-                'workflow_complete': True
-            }
-        
+        # Validation-only runs are decided by the caller, not by this module's globals.
         return validation_results
         
     except ImportError as e:

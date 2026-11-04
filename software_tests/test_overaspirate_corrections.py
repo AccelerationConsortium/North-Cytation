@@ -58,10 +58,6 @@ def test_update_respects_tip_bounds():
     assert updated["estimate_ul"] == 8.0
 
 
-def test_outlier_replicate_is_not_used():
-    assert corrections.robust_values([5, 5.1, 4.9, 5.0, 25]).tolist() == [True, True, True, True, False]
-
-
 def test_lookup_uses_tracked_value_and_skips_old_compensation(tmp_path, monkeypatch):
     pd.DataFrame([
         dict(volume_target=100, tip_type='small_tip', overaspirate_vol=.004, volume_measured=95),

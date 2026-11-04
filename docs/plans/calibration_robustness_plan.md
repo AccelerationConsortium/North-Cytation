@@ -37,7 +37,7 @@ and runs a simulation. Files to copy (everything else in the copy came *from* ma
    if surprising; Kalman-damped update into `pipetting_data/overaspirate_corrections.csv`
    (base CSVs untouched); every used replicate accepted; one Slack summary per session;
    updates logged to `parameter_corrections.csv`. Validation never adds calibration rows.
-   Undo: set `VALIDATION_PROTOCOL = "stages"`, or delete the corrections file.
+   Undo: delete the corrections file (rows return to their base calibration values).
    Recalibration guard: each tracked row stores the base value it started from; if a
    deliberate recalibration changes that base row, the correction is ignored (warning)
    and tracking restarts from the new base.
@@ -56,11 +56,14 @@ updates, all verdict types exercised, exit 0.
   warning, replicate left out of corrections, workflow continues (`_notify`). The
   near-zero check (all measurements <10% of target) still pauses with Slack: that means
   a real hardware problem (no tip, empty vial).
-- Legacy stage code kept for now: `surfactant_grid_adaptive_concentrations.py`'s
-  `validate_pipetting_system` calls it directly, and `surfactant_multidimensional_workflow.py`
-  imports that when its `VALIDATE_LIQUIDS` is on (default off). User says those surfactant
-  validations are out of date: next step is to switch them to `run_liquid_validations`
-  (or drop them) and then delete the stage code.
+- DONE 2026-11-04: legacy 3-stage code removed. It had been kept behind
+  `protocol="stages"` (the function default) and `surfactant_grid_adaptive_concentrations.py`'s
+  `validate_pipetting_system` still called it; a live multidimensional run with
+  `VALIDATE_LIQUIDS` on rewrote water small-tip base rows (20/100/150 uL; restored from git).
+  Now `validate_pipetting_accuracy` has no protocol/adaptive_correction/compensate_overvolume
+  options, `validate_pipetting_system` goes through `run_liquid_validations`, and no
+  validation code can write `optimal_conditions_*.csv`. Guarded by
+  `test_there_is_only_one_validation_protocol`.
 - Rows with no history start with cautious default uncertainty (2% of volume), so their
   first update can move about halfway; fine, but watch the first real Slack summaries.
 - Default `workflow_configs/surfactant_grid_ailsa.yaml` lists backup dye vial

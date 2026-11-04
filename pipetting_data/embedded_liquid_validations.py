@@ -7,11 +7,9 @@ import pandas as pd
 
 from pipetting_data.liquid_registry import get_liquid
 
-# "stages": legacy 3-stage optimisation that rewrites the base calibration row.
-# "check_confirm": check batch, confirm only if surprising, damped update into the
-# separate overaspirate_corrections.csv. Set to "stages" to go back; deleting
-# overaspirate_corrections.csv returns every row to its base calibration value.
-VALIDATION_PROTOCOL = "check_confirm"
+# Validation (see validate_pipetting_accuracy): check batch, confirm only if surprising,
+# damped update into overaspirate_corrections.csv. Base calibration CSVs are never
+# written; deleting overaspirate_corrections.csv returns every row to its base value.
 CHECK_CONFIRM_REPLICATES = 4
 
 
@@ -48,8 +46,7 @@ def calibrated_volumes_ul(liquid_name, tip):
     return sorted(volumes)
 
 
-def run_liquid_validations(lash, sources, output_folder, replicates=None, *, vial_transfers=(),
-                           protocol=None):
+def run_liquid_validations(lash, sources, output_folder, replicates=None, *, vial_transfers=()):
     """Run one session per source liquid and occupied tip range.
 
     ``sources`` contains (source vial, exact liquid registry name, expected uL).
@@ -97,15 +94,13 @@ def run_liquid_validations(lash, sources, output_folder, replicates=None, *, via
             nearest = {min(rows, key=lambda row: abs(row - volume)) for volume in requested}
             planned.setdefault((source_vial, liquid_name, tip), set()).update(nearest)
 
-    protocol = protocol or VALIDATION_PROTOCOL
-    check_confirm = protocol == "check_confirm"
     if replicates is None:
-        replicates = CHECK_CONFIRM_REPLICATES if check_confirm else 3
+        replicates = CHECK_CONFIRM_REPLICATES
     results = {}
     for (source_vial, liquid_name, tip), selected in planned.items():
         selected = sorted(selected)
         volumes = sorted({selected[0], selected[len(selected) // 2], selected[-1]})
-        lash.logger.info("Validating %s from %s (%s, %s): %s uL", liquid_name, source_vial, tip, protocol, volumes)
+        lash.logger.info("Validating %s from %s (%s): %s uL", liquid_name, source_vial, tip, volumes)
         results[(source_vial, liquid_name, tip)] = validate_pipetting_accuracy(
             lash_e=lash,
             source_vial=source_vial,
@@ -118,10 +113,6 @@ def run_liquid_validations(lash, sources, output_folder, replicates=None, *, via
             save_raw_data=not lash.simulate,
             condition_tip_enabled=True,
             conditioning_volume_ul=min(150 if tip == "small_tip" else 800, max(volumes)),
-            # The check batch must dispense exactly what the workflow dispenses.
-            adaptive_correction=not check_confirm,
-            compensate_overvolume=check_confirm,
             tip_type=tip,
-            protocol=protocol,
         )
     return results

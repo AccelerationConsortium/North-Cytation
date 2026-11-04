@@ -37,20 +37,7 @@ def test_validations_use_exact_liquid_names_and_separate_sessions(tmp_path):
     assert [call.kwargs["liquid_type"] for call in validate.call_args_list] == ["water", "water", "DMSO"]
     assert [call.kwargs["volumes_ml"] for call in validate.call_args_list] == [
         [0.005, 0.18], [0.2, 0.5], [0.005]]
-    # Default check/confirm: dispense exactly what the workflow dispenses.
-    assert all(call.kwargs["protocol"] == "check_confirm" and call.kwargs["compensate_overvolume"]
-               and not call.kwargs["adaptive_correction"] and call.kwargs["replicates"] == 4
-               for call in validate.call_args_list)
-
-
-def test_legacy_stage_protocol_is_still_available(tmp_path):
-    lash = Mock(simulate=True)
-    lash.nr_robot.resolve_pipetting_setup.return_value = (None, 'small_tip')
-    with patch("pipetting_data.embedded_calibration_validation.validate_pipetting_accuracy",
-               return_value={"success": True}) as validate:
-        run_liquid_validations(lash, [("water", "water", [20])], tmp_path, protocol="stages")
-    kwargs = validate.call_args.kwargs
-    assert kwargs["adaptive_correction"] and not kwargs["compensate_overvolume"] and kwargs["replicates"] == 3
+    assert all(call.kwargs["replicates"] == 4 for call in validate.call_args_list)
 
 
 def test_requested_volumes_round_to_nearest_calibrated_rows(tmp_path):

@@ -138,7 +138,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             rows.loc[rows.vial_name == source, "vial_volume"] -= amount
             rows.loc[rows.vial_name == destination, "vial_volume"] += amount
 
-        def validate(controller, sources, output, *, replicates, vial_transfers):
+        def validate(controller, sources, output, replicates=None, *, vial_transfers):
+            self.assertIsNone(replicates)  # shared default, no per-workflow override
             self.assertAlmostEqual(controller.nr_robot.get_vial_info(
                 "DMSO_working", "vial_volume"), 6.0)
             controller.nr_robot.dispense_from_vials_into_wellplate.assert_not_called()

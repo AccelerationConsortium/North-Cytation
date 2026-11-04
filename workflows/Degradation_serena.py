@@ -101,25 +101,19 @@ _PRODUCT_VIALS = ["sample_*"]
 def validate_key_liquids(lash_e, output_dir):
     """Compact validation of key liquids used in degradation workflow."""    
     try:
-        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-        
-        validation_tests = [
-            # {'vial': '6M_H3PO4', 'liquid': '6M_H3PO4', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
-            {'vial': 'polymer_stock', 'liquid': 'toluene', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
-            # {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
-            {'vial': 'toluene', 'liquid': 'toluene', 'volumes': [0.600], 'reps': 3, 'params': None},
+        from pipetting_data.embedded_liquid_validations import run_liquid_validations
+
+        # (source vial, exact liquid registry name, volumes in uL)
+        sources = [
+            ("polymer_stock", "toluene", [100, 150]),
+            ("toluene", "toluene", [600]),
         ]
         lash_e.logger.info("Running compact liquid validation...")
-        for test in validation_tests:
-            result = validate_pipetting_accuracy(
-                lash_e=lash_e, source_vial=test['vial'], destination_vial=test['vial'],
-                liquid_type=test['liquid'], volumes_ml=test['volumes'], replicates=test['reps'],
-                parameters=test['params'], output_folder=output_dir, switch_pipet=False, save_raw_data=not lash_e.simulate,
-                condition_tip_enabled=True, conditioning_volume_ul=max(test['volumes'])*1000
-            )
-            param_info = "custom params" if test['params'] else "default params"
-            lash_e.logger.info(f"  {test['vial']} ({param_info}): R^2={result['r_squared']:.3f}, Accuracy={result['mean_accuracy_pct']:.1f}%")
-        
+        results = run_liquid_validations(lash_e, sources, output_dir or Path("output") / "Degradation_serena")
+        for (vial, liquid, tip), result in results.items():
+            if not result.get('skipped'):
+                lash_e.logger.info(f"  {vial} ({liquid}, {tip}): R^2={result['r_squared']:.3f}, "
+                                   f"Accuracy={result['mean_accuracy_pct']:.1f}%")
     except ImportError:
         lash_e.logger.info("Validation system not available, skipping...")
 

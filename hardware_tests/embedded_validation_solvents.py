@@ -88,8 +88,6 @@ def execute(config=None, show_gui=True):
                         save_raw_data=not lash_e.simulate,
                         condition_tip_enabled=True,
                         conditioning_volume_ul=conditioning_ul,
-                        adaptive_correction=True,
-                        compensate_overvolume=False,
                         tip_type=f"{size}_tip",
                     )
                 finally:
