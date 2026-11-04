@@ -39,6 +39,38 @@ _CONFIG_KEYS = [
     "ALIQUOT_VOLUME_UL", "WELL_INDICES", "WELLPLATE_TYPE", "MEASUREMENT_PROTOCOL_FILE",
 ]
 
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run the robot sequence in simulation mode without physical hardware.",
+                 "unit": None, "affects": []},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial inventory CSV containing the two phase sources and sample destination.",
+                                "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "ORGANIC_VIAL": {"description": "Name of the vial supplying the organic phase.",
+                      "unit": None, "affects": ["vials", "liquids"]},
+    "AQUEOUS_VIAL": {"description": "Name of the vial supplying the aqueous phase.",
+                      "unit": None, "affects": ["vials", "liquids"]},
+    "SAMPLE_VIAL": {"description": "Name of the vial where both phases are mixed and aliquots are drawn.",
+                     "unit": None, "affects": ["vials", "liquids"]},
+    "PHASE_VOLUME_UL": {"description": "Volume transferred from each phase source into the sample vial.",
+                         "unit": "uL", "affects": ["tips", "vials", "liquids"],
+                         "effect": "the sample receives twice PHASE_VOLUME_UL"},
+    "MIX_VOLUME_UL": {"description": "Volume aspirated and dispensed during each sample mixing cycle.",
+                       "unit": "uL", "affects": ["duration", "liquids"]},
+    "MIX_CYCLES": {"description": "Number of aspiration-dispense cycles used to mix the sample.",
+                    "unit": None, "affects": ["duration", "liquids"]},
+    "ALIQUOT_VOLUME_UL": {"description": "Sample volume dispensed into each requested well.",
+                           "unit": "uL", "affects": ["duration", "tips", "plates", "liquids"]},
+    "WELL_INDICES": {"description": "Well indices that receive one sample aliquot each.",
+                      "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                      "effect": "one aliquot is dispensed per listed well"},
+    "WELLPLATE_TYPE": {"description": "Plate format used for sample aliquots and Cytation measurement.",
+                        "unit": None, "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
+                        "affects": ["plates"], "shares": "plate_type"},
+    "MEASUREMENT_PROTOCOL_FILE": {"description": "Cytation protocol file used to measure the selected wells.",
+                                   "unit": None, "affects": ["duration"]},
+}
+
+_PRODUCT_VIALS = ["sample"]
+
 
 def validate_experiment(c, lash_e):
     """Check the reviewed experiment before dispensing either phase."""
@@ -103,7 +135,6 @@ def execute(config=None, show_gui=True):
     # aspiration. The following dispense completes cycle N at the same height.
     mix_parameters = PipettingParameters(asp_disp_cycles=c["MIX_CYCLES"] - 1)
 
-    _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} started")
     try:
         robot.home_robot_components()
         robot.dispense_from_vial_into_vial(c["ORGANIC_VIAL"], c["SAMPLE_VIAL"], phase_ml,
@@ -143,10 +174,9 @@ def execute(config=None, show_gui=True):
         if isinstance(error, KeyboardInterrupt):
             from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
             cleanup_after_keyboard_interrupt(lash_e)
-        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted" if isinstance(error, KeyboardInterrupt)
-            else f"{_WORKFLOW_NAME} failed: {error}")
+            # The scheduler live runner reports failures; it does not report interrupts.
+            _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted")
         raise
-    _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} completed")
     return data
 
 

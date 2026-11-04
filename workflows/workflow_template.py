@@ -17,11 +17,16 @@ or VALIDATION_ONLY=True to run just those checks.
 Simulation runs every automation step, but may return no instrument data.
 Tasks without vial operations may set INPUT_VIAL_STATUS_FILE=None explicitly;
 this disables vial tracking, not shared robot/track state or config review.
-Live runs send best-effort Slack lifecycle updates; simulation never sends Slack.
+Live runs send best-effort Slack updates that add information (start parameters,
+progress, results, operator interrupts); the scheduler live runner already sends
+barebones started/finished/failed messages, so do not duplicate those.
+Simulation never sends Slack.
 Run outputs belong in output/<workflow_name>/<timestamp>_<mode>_wells-<PARAM2>.
 Create the run folder in both modes using confirmed configuration, not globals.
 Planning: document every _CONFIG_KEYS entry in _CONFIG_DOCS (description,
-unit, which resources it changes and how). The lab Slack agent reads this block
+unit, which resources it changes and how). Always declare _CONFIG_KEYS: without
+it, every public UPPERCASE global - including names imported from other
+workflows - becomes a required config key. The lab Slack agent reads this block
 without importing the workflow to ask requesters the right questions and to
 explain simulation-based estimates; software_tests/test_config_docs.py enforces it.
 Keep docs in this file, not in workflow_configs/*.yaml: saved YAML is rewritten
@@ -296,7 +301,7 @@ def execute(config=None, show_gui=True):
         lash_e.discard_used_wellplate()
 
         logger.info("Workflow completed successfully")
-        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} completed successfully")
+        # Add a completion Slack message only if it reports results beyond "finished".
         return data
 
     except (Exception, KeyboardInterrupt) as e:
@@ -310,8 +315,9 @@ def execute(config=None, show_gui=True):
                 action()
             except Exception:
                 logger.exception(f"Cleanup failed: {label}")
-        outcome = "interrupted by operator" if isinstance(e, KeyboardInterrupt) else f"failed: {e}"
-        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} {outcome}; cleanup attempted, review experiment log")
+        # The scheduler live runner reports failures; it does not report interrupts.
+        if isinstance(e, KeyboardInterrupt):
+            _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted by operator; cleanup attempted, review experiment log")
         raise
 
 

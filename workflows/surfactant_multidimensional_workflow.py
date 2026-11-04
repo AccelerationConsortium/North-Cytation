@@ -89,14 +89,14 @@ RECOMMENDER_TYPE = "bayesian"  # 'triangle' | 'bayesian' | 'gradient' | 'levelse
 #   output_columns so the recommender only sees ratio.
 # - TURBIDITY_PLOT_THRESHOLD: threshold used only for the final 3D turbidity
 #   cloud visualization (does not affect active-learning decisions).
-# - OUTPUT_COLUMNS_OVERRIDE: when set to a list (e.g. ['turbidity_600'] or ['ratio']),
-#   bypasses all automatic output selection logic and forces these columns.
-#   Set to None to use the automatic turbidity/ratio logic.
+# - _OUTPUT_COLUMNS_OVERRIDE: testing switch, not a config setting. When set to a
+#   list (e.g. ['turbidity_600'] or ['ratio']), bypasses all automatic output
+#   selection logic and forces these columns. None uses the automatic logic.
 FILTER_UNRELIABLE_RATIOS = True
 TURBIDITY_FILTER_THRESHOLD = 0.2   # Wells above this turbidity have unreliable ratio
 FLAT_TURBIDITY_MAX = 0.08          # Whole-dataset gate: drop turbidity if max <= this
 TURBIDITY_PLOT_THRESHOLD = 0.08    # 3D cloud threshold for post-run visualization only
-OUTPUT_COLUMNS_OVERRIDE = None     # e.g. ['turbidity_600'] to test turbidity-only
+_OUTPUT_COLUMNS_OVERRIDE = None    # e.g. ['turbidity_600'] to test turbidity-only
 # Turbidity acquisition penalty — discourages recommenders from picking deep inside
 # the turbid (precipitated) zone where the boundary is already clear.
 # Penalty = exp(-(turbidity - threshold) / decay) for turbidity > threshold, else 1.0.
@@ -109,8 +109,7 @@ TURBIDITY_PENALTY_ENABLED = False  # Set False to disable penalty for all recomm
 # Buffer addition settings
 ADD_BUFFER = True  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
-SELECTED_BUFFER = 'NaCl'  # Buffer vial name (must exist in input CSV)
-BUFFER_FAILOVER_THRESHOLD_ML = 3.0  # Switch to backup vial (SELECTED_BUFFER + "_1") below this volume
+SELECTED_BUFFER = 'NaCl'  # Buffer vial name (must exist in input CSV); optional backup is SELECTED_BUFFER + "_1"
 MIN_WATER_DISPENSE_UL = 1.0  # Ignore water dispenses smaller than this threshold
 
 # Use a tiny epsilon only for floating-point comparisons. Do not allow
@@ -197,9 +196,8 @@ _CONFIG_DOCS = {
                    "effect": "adds one buffer dispense step per plate batch; needs SELECTED_BUFFER vial"},
     "BUFFER_VOLUME_UL": {"description": "Buffer volume added per well.", "unit": "uL", "affects": ["liquids"],
                          "effect": "buffer use = wells x BUFFER_VOLUME_UL; reduces water makeup by the same amount"},
-    "SELECTED_BUFFER": {"description": "Buffer vial name in the vial CSV (backup vial is <name>_1).", "unit": None,
+    "SELECTED_BUFFER": {"description": "Buffer vial name in the vial CSV. Optional backup vial <name>_1; each plate uses whichever of the two holds more volume.", "unit": None,
                         "affects": ["vials", "liquids"], "shares": "vial_layout"},
-    "BUFFER_FAILOVER_THRESHOLD_ML": {"description": "Switch to the backup buffer vial when the primary falls below this volume.", "unit": "mL", "affects": ["vials"]},
     "MIN_WATER_DISPENSE_UL": {"description": "Water dispenses smaller than this are skipped (moved into buffer if used).", "unit": "uL", "affects": []},
     "VOLUME_COMPARE_EPS_UL": {"description": "Floating-point tolerance for volume-budget checks.", "unit": "uL", "affects": []},
     "BAYESIAN_ALPHA_SPACING": {"description": "Spacing strength between Bayesian recommender picks (lower allows clustering).", "unit": None, "affects": []},
@@ -247,6 +245,14 @@ _CONFIG_DOCS = {
                            "affects": ["duration", "tips", "plates", "liquids"], "effect": "up to N x this control wells"},
     "STOCK_CONTROL_VOL_UL": {"description": "Undiluted stock volume in each stock-reference control well.", "unit": "uL", "affects": ["liquids"]},
     "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV for this run.", "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    # Imported from surfactant_grid_adaptive_concentrations; module globals, so
+    # ConfigManager treats them as config keys.
+    "SURFACTANT_LIBRARY": {"description": "Reference data per surfactant (stock concentration and CMC in mM, category); stock_conc must match the loaded stock vials.",
+                           "unit": None, "affects": ["liquids"]},
+    "NUM_SUBSTOCKS": {"description": "Log-spaced dilution substocks planned per surfactant when no existing stocks are reused (rounding may merge some).",
+                      "unit": None, "affects": ["duration", "tips", "vials", "liquids"], "effect": "up to this many substock vials per surfactant"},
+    "MIN_WELL_PIPETTE_VOLUME_UL": {"description": "Smallest surfactant volume dispensed into a well; a target needing less from every substock is unreachable.",
+                                   "unit": "uL", "affects": ["liquids"]},
 }
 
 # Solutions this workflow makes (planning estimates start them empty):
@@ -1188,22 +1194,18 @@ def _shim_df_for_surfactant(df, surf_name):
 
 
 def _get_active_buffer_vial(lash_e):
-    """Return the buffer vial name to use for this dispensing round.
-
-    Checks the primary buffer vial (SELECTED_BUFFER) volume. If it has fallen
-    below BUFFER_FAILOVER_THRESHOLD_ML, switches to the backup vial
-    (SELECTED_BUFFER + "_1"). Raises if neither vial is found.
-    """
-    primary = SELECTED_BUFFER
-    failover = f"{SELECTED_BUFFER}_1"
-    vol_ml = lash_e.nr_robot.get_vial_info(primary, 'vial_volume')
-    if vol_ml < BUFFER_FAILOVER_THRESHOLD_ML:
-        lash_e.logger.info(
-            f"Buffer vial '{primary}' volume {vol_ml:.2f}mL below "
-            f"{BUFFER_FAILOVER_THRESHOLD_ML:.1f}mL threshold - switching to '{failover}'"
-        )
-        return failover
-    return primary
+    """Return the fullest of SELECTED_BUFFER and its optional backup <name>_1."""
+    vial_names = set(lash_e.nr_robot.VIAL_DF["vial_name"])
+    if SELECTED_BUFFER not in vial_names:
+        raise ValueError(f"Buffer vial '{SELECTED_BUFFER}' not found in vial file")
+    candidates = [v for v in (SELECTED_BUFFER, f"{SELECTED_BUFFER}_1") if v in vial_names]
+    volumes = {v: float(lash_e.nr_robot.get_vial_info(v, "vial_volume")) for v in candidates}
+    active = max(candidates, key=volumes.get)
+    lash_e.logger.info(
+        f"Buffer vial: using '{active}' ("
+        + ", ".join(f"{v}={vol:.2f}mL" for v, vol in volumes.items()) + ")"
+    )
+    return active
 
 
 def execute_dispensing_nd(lash_e, well_recipes_df):
@@ -1248,6 +1250,16 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         if vials_for_s:
             surfactant_shims.append((s, vials_for_s, shim))
 
+    # Buffer is chosen up front so it gets the same risk report as surfactants.
+    active_buffer = None
+    if ADD_BUFFER and (well_recipes_df["buffer_volume_ul"] > 0).any():
+        active_buffer = _get_active_buffer_vial(lash_e)
+        buffer_shim = pd.DataFrame({
+            "substock_A_name": active_buffer,
+            "surf_A_volume_ul": well_recipes_df["buffer_volume_ul"],
+        })
+        surfactant_shims.append(("Buffer", [active_buffer], buffer_shim))
+
     get_vial_risk_assessment(lash_e, surfactant_shims)
 
     # PAUSE FOR REVIEW
@@ -1284,20 +1296,19 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         w2 = water_wells.iloc[mid:]
         lash_e.nr_robot.move_vial_to_location("water", "main_8mL_rack", 44)
         lash_e.nr_robot.move_vial_to_location("water_2", "main_8mL_rack", 45)
-        if ADD_BUFFER:
-            active_buffer = _get_active_buffer_vial(lash_e)
+        if active_buffer is not None:
             lash_e.nr_robot.move_vial_to_location(active_buffer, "main_8mL_rack", 47)
         if len(w1) > 0:
             dispense_component_to_wellplate(lash_e, w1, "water", "water", "water_volume_ul")
         if len(w2) > 0:
             dispense_component_to_wellplate(lash_e, w2, "water_2", "water", "water_volume_ul")
-        if ADD_BUFFER:
+        if active_buffer is not None:
             dispense_component_to_wellplate(lash_e, well_recipes_df, active_buffer, "water", "buffer_volume_ul")
         lash_e.nr_robot.remove_pipet()
        #lash_e.nr_robot.home_robot_components()
         return_water_vial_home(lash_e, "water")
         return_water_vial_home(lash_e, "water_2")
-        if ADD_BUFFER:
+        if active_buffer is not None:
             lash_e.nr_robot.return_vial_home(active_buffer)
 
     return well_recipes_df
@@ -1995,12 +2006,12 @@ def get_next_batch(experiment_data_df, n_points=GRADIENT_SUGGESTIONS_PER_ITERATI
 
     output_columns = ["ratio", "turbidity_600"]
 
-    if OUTPUT_COLUMNS_OVERRIDE is not None:
+    if _OUTPUT_COLUMNS_OVERRIDE is not None:
         # Manual override — skip all automatic turbidity/ratio logic.
-        output_columns = list(OUTPUT_COLUMNS_OVERRIDE)
+        output_columns = list(_OUTPUT_COLUMNS_OVERRIDE)
         import logging as _logging
         _logging.getLogger(__name__).info(
-            f"OUTPUT_COLUMNS_OVERRIDE active: using {output_columns}"
+            f"_OUTPUT_COLUMNS_OVERRIDE active: using {output_columns}"
         )
     elif "turbidity_600" in rec_data.columns and rec_data["turbidity_600"].notna().any():
         max_turb = rec_data["turbidity_600"].max()

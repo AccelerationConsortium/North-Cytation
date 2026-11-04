@@ -14,6 +14,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scheduler import live_runner as runner
 
+REAL_NOTIFY = runner.notify
+
 
 class LiveRunnerTests(unittest.TestCase):
     def setUp(self):
@@ -33,13 +35,16 @@ class LiveRunnerTests(unittest.TestCase):
                       "held_pipet_type": None, "pipet_fluid_vial_index": None, "pipet_fluid_volume": 0}
         (self.root / "robot_status.yaml").write_text(yaml.safe_dump(self.robot))
         (self.root / "track_status.yaml").write_text(yaml.safe_dump({"active_wellplate_position": None}))
-        self.job = {"workflow": "fixture", "config": {"SIMULATE": False},
+        self.job = {"experiment_id": "exp-fixture", "workflow": "fixture", "config": {"SIMULATE": False},
                     "input_hashes": runner.fingerprint([self.source, self.vials]),
                     "state_root": str(self.root), "vial_files": [str(self.vials)]}
         self.save_job()
         lock = patch.object(runner, "scheduler_live_lock", return_value=nullcontext())
         lock.start()
         self.addCleanup(lock.stop)
+        notify = patch.object(runner, "notify")
+        self.notify = notify.start()
+        self.addCleanup(notify.stop)
 
     def save_job(self):
         (self.root / "input.json").write_text(json.dumps(self.job))
@@ -221,6 +226,61 @@ class LiveRunnerTests(unittest.TestCase):
         self.assertIsNone(result["exception"])
         warnings = [record["message"] for record in result["records"] if record["level"] == "WARNING"]
         self.assertTrue(any("Files edited during this run" in message for message in warnings))
+
+    def test_reviewed_file_deleted_during_job_warns_instead_of_failing(self):
+        def execute(config, show_gui):
+            self.source.unlink()
+
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            result = runner.run_job(self.root)
+        self.assertTrue(result["completed"], result["exception"])
+        warnings = [record["message"] for record in result["records"] if record["level"] == "WARNING"]
+        self.assertTrue(any("config.yaml" in message for message in warnings))
+        self.assertEqual(runner.changed_inputs(self.job["input_hashes"]), ["config.yaml"])
+
+    def run_with(self, execute):
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            return runner.run_job(self.root)
+
+    def test_slack_reports_start_and_finish_with_experiment_id(self):
+        seen = []
+        result = self.run_with(lambda config, show_gui: seen.append(os.environ.get(runner.EXPERIMENT_ID_ENV)))
+        self.assertEqual(seen, ["exp-fixture"])
+        self.assertNotIn(runner.EXPERIMENT_ID_ENV, os.environ)
+        self.assertEqual(result["experiment_id"], "exp-fixture")
+        self.assertEqual([call.args[0] for call in self.notify.call_args_list], [
+            "North experiment exp-fixture started | workflow=fixture",
+            "North experiment exp-fixture finished | workflow=fixture",
+        ])
+
+    def test_slack_reports_failure_with_last_error_line(self):
+        self.run_with(Mock(side_effect=RuntimeError("IO: MOTOR FAULT")))
+        self.assertEqual([call.args[0] for call in self.notify.call_args_list], [
+            "North experiment exp-fixture started | workflow=fixture",
+            "North experiment exp-fixture failed | workflow=fixture | error=RuntimeError: IO: MOTOR FAULT",
+        ])
+
+    def test_slack_reports_blocked_start_as_failure(self):
+        self.source.write_text("changed")
+        self.run_with(Mock())
+        messages = [call.args[0] for call in self.notify.call_args_list]
+        self.assertEqual(len(messages), 1)
+        self.assertTrue(messages[0].startswith("North experiment exp-fixture failed | workflow=fixture | error=ValueError: Reviewed inputs changed"))
+
+    def test_slack_skips_interrupt_and_finishes_blocked_handoff(self):
+        self.run_with(Mock(side_effect=KeyboardInterrupt()))
+        self.assertEqual([call.args[0] for call in self.notify.call_args_list],
+                         ["North experiment exp-fixture started | workflow=fixture"])
+        self.notify.reset_mock()
+        result = self.run_with(lambda config, show_gui: logging.getLogger().error("workflow error"))
+        self.assertFalse(result["handoff_ok"])
+        self.assertEqual(self.notify.call_args_list[-1].args[0], "North experiment exp-fixture finished | workflow=fixture")
+
+    def test_notify_failure_is_only_a_warning(self):
+        with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(safe_send_slack_message=Mock(return_value=False))}), \
+                self.assertLogs("my_logger", level="WARNING") as logs:
+            REAL_NOTIFY("North experiment x started | workflow=fixture")
+        self.assertIn("Slack update not sent", logs.output[0])
 
     def test_logged_error_does_not_publish_inventory_handoff(self):
         next_folder = self.prepare_live_chain()

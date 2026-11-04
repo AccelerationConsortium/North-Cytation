@@ -22,6 +22,15 @@ VORTEX_TIME = 3
 _WORKFLOW_NAME = Path(__file__).stem
 _CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE", "TARGET_VIAL", "VORTEX_TIME"]
 
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run without controlling the robot hardware.", "unit": None, "affects": []},
+    "INPUT_VIAL_STATUS_FILE": {"description": "CSV defining the vial locations used by the robot.", "unit": None, "affects": ["vials"], "shares": "vial_layout"},
+    "TARGET_VIAL": {"description": "Name of the vial to vortex and return home.", "unit": None, "affects": ["vials"]},
+    "VORTEX_TIME": {"description": "Duration to vortex the target vial.", "unit": "s", "affects": ["duration"]},
+}
+
+_PRODUCT_VIALS = []
+
 
 def validate_experiment(config):
     if config["INPUT_VIAL_STATUS_FILE"] is None:

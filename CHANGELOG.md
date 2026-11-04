@@ -1,5 +1,57 @@
 # Changelog
 
+## [2026-11-04] - Config Documentation for Every Scheduler Job
+
+- Every scheduler job (workflows plus the ailsa_clamp_test, cytation_labware_test
+  and test_vortex_scheduler diagnostics) and the template now has _CONFIG_DOCS and
+  _PRODUCT_VIALS; the legacy exemption list in software_tests/test_config_docs.py
+  is gone.
+- The docs test now counts constants imported from repository modules as config
+  keys, as ConfigManager and the Slack agent do. surfactant_multidimensional_workflow
+  documents its imported SURFACTANT_LIBRARY, NUM_SUBSTOCKS and MIN_WELL_PIPETTE_VOLUME_UL.
+- workflow_configs: added missing VIAL_NAME_OVERRIDES (fluorescence calibration) and
+  TIP_TYPE (pipette calibration), which scheduler runs require; removed settings
+  the code no longer uses from clamp_vial_roundtrip and cytation_labware_test.
+- Non-config module constants are private, so GUI launches stop writing them to
+  YAML: vial_shuffle imports RACK as _RACK, and multidim's testing switch is now
+  _OUTPUT_COLUMNS_OVERRIDE. Both keys removed from their YAML files.
+
+## [2026-11-04] - Scheduler Experiment IDs and Slack Status Messages
+
+- Each live scheduler job now gets an experiment_id (generated when the live
+  queue is prepared, until an external planner supplies them). It is stored in
+  the job's input.json and result.json and in a new experiment_id column of
+  experiment_tracking/experiment_runs.csv (empty for runs outside the scheduler).
+- The live runner posts barebones Slack messages keyed by experiment_id:
+  started, finished and failed (operator interrupts are not reported).
+- Removed workflow Slack messages that only duplicated the runner's messages:
+  bare started/completed/failed messages in workflow_template, SQ_Peptoid_LNP_test,
+  pipette_calibration_workflow and Degradation_serena. Messages with parameters,
+  progress, results or operator interrupts are kept; the template and Copilot
+  instructions now describe this rule.
+- A reviewed input file deleted during a live job is now reported as changed
+  (warning) instead of failing the finished job with FileNotFoundError.
+- Corrected six mislabeled rows in experiment_runs.csv: two Ctrl+C runs from
+  2026-10-09 to interrupted_by_user and four runs that finished but failed the
+  post-run input check to completed.
+
+## [2026-11-04] - Use Fuller Buffer Vial in Multidimensional Workflow
+
+- Each plate now dispenses buffer from whichever of SELECTED_BUFFER and its
+  optional backup (<name>_1) holds more volume, instead of draining the primary
+  until it falls below a threshold. Removed BUFFER_FAILOVER_THRESHOLD_ML from
+  the workflow, its config annotation and the workflow config YAML; older
+  saved scheduler configs that still contain the key are ignored for it.
+- The selected buffer vial is now included in the pre-dispense vial risk
+  assessment, so it gets the same CAUTION/RISKY/CRITICAL reporting as
+  surfactant vials.
+
+## [2026-11-03] - Stop Substock Preparation on Hardware Failure
+
+- Propagate the original exception after logging a failed substock operation,
+  stopping subsequent dilutions and plate handling instead of continuing after
+  a motor fault or other preparation failure.
+
 ## [2026-11-02] - Remove Unused Experimental Inputs
 
 - Deleted 57 historical/unreferenced CSV/TXT inputs from status, including the

@@ -18,7 +18,7 @@ if str(_ROOT) not in sys.path:
 
 from tools.c110_camera import capture_photo
 from workflows.helpers._vial_shuffle import (
-    RACK, apply_transfers, available_slots, plan_shuffle, positions, validate_layout,
+    RACK as _RACK, apply_transfers, available_slots, plan_shuffle, positions, validate_layout,
 )
 
 SIMULATE = True
@@ -45,6 +45,24 @@ _CONFIG_KEYS = [
     "CAPTURE_TIMEOUT_S", "CAPTURE_ATTEMPTS", "SETTLE_SECONDS", "RANDOM_SEED",
 ]
 
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run the shuffle sequence without controlling hardware or saving capture outputs.", "unit": None, "affects": []},
+    "INPUT_VIAL_STATUS_FILE": {"description": "CSV describing the vial positions to shuffle.", "unit": None, "affects": ["vials"], "shares": "vial_layout"},
+    "ITERATIONS": {"description": "Number of shuffle-and-capture cycles to run.", "unit": None, "affects": ["duration"]},
+    "TARGET_EXPERIMENT_TIME_HOURS": {"description": "Target spacing for the complete sequence of shuffle cycles.", "unit": "h", "affects": ["duration"]},
+    "MIN_VIALS_MOVED": {"description": "Minimum number of vials moved during each shuffle.", "unit": None, "affects": ["duration", "vials"]},
+    "MAX_VIALS_MOVED": {"description": "Maximum number of vials moved during each shuffle.", "unit": None, "affects": ["duration", "vials"]},
+    "MIN_OFF_RACK": {"description": "Minimum number of shuffled vials placed outside the rack.", "unit": None, "affects": ["duration", "vials"]},
+    "MAX_OFF_RACK": {"description": "Maximum number of shuffled vials placed outside the rack.", "unit": None, "affects": ["duration", "vials"]},
+    "CAMERA_FOLDER": {"description": "Folder path passed to the camera capture tool.", "unit": None, "affects": []},
+    "CAPTURE_TIMEOUT_S": {"description": "Maximum time allowed for one camera capture attempt.", "unit": "s", "affects": ["duration"]},
+    "CAPTURE_ATTEMPTS": {"description": "Maximum number of attempts for each camera capture.", "unit": None, "affects": ["duration"]},
+    "SETTLE_SECONDS": {"description": "Live-run delay after the robot moves home and before capture.", "unit": "s", "affects": ["duration"]},
+    "RANDOM_SEED": {"description": "Seed used to select shuffle destinations reproducibly.", "unit": None, "affects": ["vials"]},
+}
+
+_PRODUCT_VIALS = []
+
 
 def _validate(config, robot):
     for key in ("ITERATIONS", "MIN_VIALS_MOVED", "MAX_VIALS_MOVED", "CAPTURE_ATTEMPTS"):
@@ -70,7 +88,7 @@ def _validate(config, robot):
     names = validate_layout(robot.VIAL_DF, slots)
     current = positions(robot.VIAL_DF)
     fixed = {slot for name, slot in current.items() if name not in names}
-    off_capacity = sum(slot[0] != RACK and slot not in fixed for slot in slots)
+    off_capacity = sum(slot[0] != _RACK and slot not in fixed for slot in slots)
     if config["MIN_OFF_RACK"] > min(len(names), off_capacity):
         raise ValueError("MIN_OFF_RACK exceeds available vials or off-rack capacity")
     return slots, names
@@ -210,7 +228,7 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                 photo = csv = None
             pair = dict(index=index, photo=photo and photo.name, vial_csv=csv and csv.name,
                         vials_moved=len(targets), transfers=transfers,
-                        off_rack=sum(positions(robot.VIAL_DF)[name][0] != RACK for name in names))
+                        off_rack=sum(positions(robot.VIAL_DF)[name][0] != _RACK for name in names))
             summary["pairs"].append(pair)
             if verifier is not None and save:
                 try:

@@ -517,8 +517,9 @@ def execute(config=None, show_gui=True):
             cleanup_after_keyboard_interrupt(lash_e)
         else:
             _cleanup(lash_e, confirmed, physical=True)
-        outcome = "interrupted" if isinstance(error, KeyboardInterrupt) else f"failed: {error}"
-        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} {outcome}; cleanup attempted")
+        # The scheduler live runner reports failures; it does not report interrupts.
+        if isinstance(error, KeyboardInterrupt):
+            _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted; cleanup attempted")
         raise
     finally:
         if not failed:

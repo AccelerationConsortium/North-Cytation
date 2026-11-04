@@ -200,11 +200,37 @@ class SimulationGuiTests(unittest.TestCase):
             inventory.write_text("vial_name,location,location_index,vial_volume\nfirst,main_8mL_rack,0,1.5\n")
 
         with patch.object(live_runner, "scheduler_live_lock", return_value=nullcontext()), \
+             patch.object(live_runner, "notify"), \
              patch.object(live_runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
             first = live_runner.run_job(root / "jobs/000")
             second_result = live_runner.run_job(root / "jobs/001")
         self.assertTrue(first["handoff_ok"], first["exception"])
         self.assertTrue(second_result["handoff_ok"], second_result["exception"])
+        ids = [json.loads((root / f"jobs/{job}/input.json").read_text())["experiment_id"] for job in ("000", "001")]
+        self.assertEqual([first["experiment_id"], second_result["experiment_id"]], ids)
+        self.assertNotEqual(ids[0], ids[1])
+
+    def test_failed_simulation_setup_after_live_run_does_not_reuse_live_folder(self):
+        self.window.start_simulation()
+        self.wait_for_queue()
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+                patch.object(self.window, "launch_next_simulation"):
+            self.window.start_live_run()
+        self.window.finish_simulation_queue()
+        live_session = self.window.simulation_session
+
+        with patch.object(self.window, "queue_input_fingerprint",
+                          side_effect=ValueError("Inputs changed during preparation")), \
+                patch.object(QMessageBox, "warning"):
+            self.window.start_simulation()
+
+        with patch.object(QMessageBox, "warning") as warning:
+            self.window.start_simulation()
+        self.wait_for_queue()
+
+        warning.assert_not_called()
+        self.assertNotEqual(self.window.simulation_session, live_session)
+        self.assertEqual(self.window.execution_mode, "simulation")
 
     def test_children_run_in_order_with_state_and_notes(self):
         original = (self.root / "robot_state" / "robot_status.yaml").read_bytes()

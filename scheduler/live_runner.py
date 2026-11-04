@@ -19,6 +19,7 @@ from scheduler import simulation_state as state
 from scheduler.simulation_state import SESSION_ENV
 from scheduler.interrupt import watch_for_interrupt
 from scheduler.workflow_modules import workflow_module
+from experiment_tracking.experiment_run_logger import EXPERIMENT_ID_ENV
 
 
 def fingerprint(paths):
@@ -26,8 +27,8 @@ def fingerprint(paths):
 
 
 def changed_inputs(hashes):
-    current = fingerprint(hashes)
-    return [Path(path).name for path in hashes if current[path] != hashes[path]]
+    current = fingerprint([path for path in hashes if Path(path).is_file()])
+    return [Path(path).name for path in hashes if current.get(path) != hashes[path]]
 
 
 def reviewed_live_state(job):
@@ -106,6 +107,19 @@ class Capture(logging.Filter):
         return True
 
 
+def notify(message):
+    """Best-effort Slack update for the external experiment planner; never fails the job."""
+    logger = logging.getLogger("my_logger")
+    try:
+        from slack_agent import safe_send_slack_message
+        sent = safe_send_slack_message(message)
+    except Exception as error:
+        logger.warning(f"Slack update not sent ({error}): {message}")
+        return
+    if not sent:
+        logger.warning(f"Slack update not sent: {message}")
+
+
 def run_job(folder):
     folder = Path(folder)
     result = {"completed": False, "handoff_ok": False, "records": [], "exception": None, "interrupted": False}
@@ -115,6 +129,7 @@ def run_job(folder):
     root_logger = logging.getLogger()
     logger.addFilter(capture)
     root_logger.addHandler(diagnostics)
+    experiment_id = None
     try:
         if os.environ.get(SESSION_ENV):
             raise RuntimeError("Live execution cannot use simulation state.")
@@ -123,6 +138,8 @@ def run_job(folder):
         if config["SIMULATE"] is not False:
             raise ValueError("Live config must explicitly select SIMULATE=False.")
         name = job["workflow"]
+        experiment_id = result["experiment_id"] = job["experiment_id"]
+        os.environ[EXPERIMENT_ID_ENV] = experiment_id
         module_name = workflow_module(name, state.REPO_ROOT)
         with scheduler_live_lock():
             changed = changed_inputs(job["input_hashes"])
@@ -138,6 +155,7 @@ def run_job(folder):
             if issues:
                 raise ValueError("Live starting state requires review: " + "; ".join(issues))
             module = importlib.import_module(module_name)
+            notify(f"North experiment {experiment_id} started | workflow={name}")
             with watch_for_interrupt(folder):
                 module.execute(config=config, show_gui=False)
             issues = live_state_issues(job)
@@ -159,13 +177,22 @@ def run_job(folder):
         result["interrupted"] = isinstance(error, KeyboardInterrupt)
         result["exception"] = traceback.format_exc()
         result["records"].append({"level": "ERROR", "message": result["exception"]})
+        error_line = traceback.format_exception_only(type(error), error)[-1].strip()
     finally:
+        os.environ.pop(EXPERIMENT_ID_ENV, None)
         result["records"] = diagnostics.records + result["records"]
         logger.removeFilter(capture)
         root_logger.removeHandler(diagnostics)
         temp = folder / "result.tmp"
         temp.write_text(json.dumps(result, indent=2), encoding="utf-8")
         temp.replace(folder / "result.json")
+    # Sent after result.json exists so the planner can read the outcome; jobs whose
+    # input.json could not be read have no experiment_id and are not reported.
+    if experiment_id is not None:
+        if result["completed"]:
+            notify(f"North experiment {experiment_id} finished | workflow={name}")
+        elif not result["interrupted"]:
+            notify(f"North experiment {experiment_id} failed | workflow={name} | error={error_line}")
     return result
 
 

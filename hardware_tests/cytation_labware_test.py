@@ -27,6 +27,17 @@ _WORKFLOW_NAME = Path(__file__).stem
 _CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE", "WELLPLATE_TYPE",
                 "PROTOCOL_FILE", "TEST_MODE", "OUTPUT_ROOT"]
 
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run the diagnostic without controlling the instruments.", "unit": None, "affects": []},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial tracking is disabled for this plate-only diagnostic.", "unit": None, "affects": []},
+    "WELLPLATE_TYPE": {"description": "Inventory plate type for the plate in the pipetting area.", "unit": None, "affects": ["plates"], "shares": "plate_type"},
+    "PROTOCOL_FILE": {"description": "Gen5 protocol file used for the single-well read.", "unit": None, "affects": ["duration"]},
+    "TEST_MODE": {"description": "Select whether and how to round-trip or replace procedure labware.", "unit": None, "choices": ["baseline", "roundtrip", "replace_labware", "modifiable_labware"], "affects": ["duration"]},
+    "OUTPUT_ROOT": {"description": "Root folder for diagnostic logs and result artifacts.", "unit": None, "affects": []},
+}
+
+_PRODUCT_VIALS = []
+
 
 def _save_json(path, value):
     path.write_text(json.dumps(value, indent=2, default=str), encoding="utf-8")

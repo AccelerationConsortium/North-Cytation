@@ -300,6 +300,102 @@ SURFACTANT_LIBRARY = {
     }
 }
 
+# Planning annotations for the public configuration constants above.
+_CONFIG_DOCS = {
+    "SURFACTANT_A": {"description": "Default first surfactant used outside the pairing queue.", "unit": None,
+                     "choices": ["SDS", "NaC", "CTAB", "DTAB", "TTAB", "DSS", "SDBS", "NaLS", "BDDAC", "BZT", "CHAPS"],
+                     "affects": ["vials", "liquids"], "ask": True},
+    "SURFACTANT_B": {"description": "Default second surfactant used outside the pairing queue.", "unit": None,
+                     "choices": ["SDS", "NaC", "CTAB", "DTAB", "TTAB", "DSS", "SDBS", "NaLS", "BDDAC", "BZT", "CHAPS"],
+                     "affects": ["vials", "liquids"], "ask": True},
+    "EXPERIMENT_TAG": {"description": "Label appended to the experiment output folder name.", "unit": None, "affects": []},
+    "SIMULATE": {"description": "Run the workflow in simulation mode without operating hardware.", "unit": None, "affects": []},
+    "VALIDATE_LIQUIDS": {"description": "Run gravimetric pipetting checks before the experiment.", "unit": None,
+                          "affects": ["duration", "tips", "liquids"]},
+    "CREATE_WELLPLATE": {"description": "Create a wellplate before measurement rather than measuring an existing plate.",
+                          "unit": None, "affects": ["duration", "plates", "tips", "liquids"]},
+    "VALIDATION_ONLY": {"description": "Run liquid validation and stop before the experiment body.", "unit": None,
+                        "affects": ["duration", "tips", "plates", "liquids"]},
+    "WORKFLOW_TYPE": {"description": "Select the screening or kinetics workflow to execute.", "unit": None,
+                       "choices": ["single", "2_stage", "iterative", "double_iterative", "kinetics", "kinetics_all"],
+                       "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "KINETICS_SEQUENCE": {"description": "Order of preparation, turbidity reading, and DMSO fluorescence reading in kinetics runs.",
+                          "unit": None,
+                          "choices": ["prep_turbidity", "prep_dmso_turbidity_ratio", "prep_turbidity_dmso_ratio"],
+                          "affects": ["duration", "tips", "liquids"]},
+    "ADD_CMC_CONTROLS": {"description": "Include CMC transition control wells and their analysis.", "unit": None,
+                          "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "CMC_CONTROL_POINTS": {"description": "Number of concentration points in each CMC transition control series.",
+                            "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "MIN_CONC": {"description": "Lowest concentration allowed in the surfactant concentration range.",
+                 "unit": "mM", "affects": ["vials", "liquids"]},
+    "NUMBER_CONCENTRATIONS": {"description": "Number of concentration steps in single-stage and two-stage screening.",
+                               "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "NUM_SUBSTOCKS": {"description": "Number of dilution substocks prepared for each surfactant.", "unit": None,
+                       "affects": ["duration", "tips", "vials", "liquids"]},
+    "ITERATIVE_CONCENTRATIONS": {"description": "Number of concentration steps per surfactant in iterative screening.",
+                                  "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "GRADIENT_SUGGESTIONS_PER_ITERATION": {"description": "Maximum number of new wells suggested in each gradient iteration.",
+                                            "unit": None, "affects": ["duration", "tips", "plates", "liquids"]},
+    "OPTIMIZE_METRIC": {"description": "Measurement objective used to select the next experimental points.", "unit": None,
+                         "choices": ["turbidity", "ratio", "both"], "affects": ["duration"]},
+    "RECOMMENDER_TYPE": {"description": "Algorithm used to recommend points during adaptive exploration.", "unit": None,
+                         "choices": ["delaunay", "bayesian"], "affects": ["duration"]},
+    "TURBIDITY_FILTER_THRESHOLD": {"description": "Turbidity above which fluorescence ratio data is considered unreliable.",
+                                   "unit": "OD600", "affects": []},
+    "HIGH_RATIO_THRESHOLD": {"description": "Fluorescence ratio above which a measurement is treated as invalid.",
+                             "unit": None, "affects": []},
+    "FILTER_UNRELIABLE_RATIOS": {"description": "Exclude unreliable ratio measurements from adaptive recommendations.",
+                                  "unit": None, "affects": []},
+    "N_REPLICATES": {"description": "Number of replicate wells for each concentration combination in single-stage screening.",
+                     "unit": None, "affects": ["duration", "tips", "plates", "liquids"]},
+    "WELL_VOLUME_UL": {"description": "Base liquid volume assigned to each well before pyrene is added.",
+                        "unit": "uL", "affects": ["liquids"]},
+    "PYRENE_VOLUME_UL": {"description": "Pyrene in DMSO added to each well.", "unit": "uL", "affects": ["vials", "liquids"]},
+    "ITERATIVE_MEASUREMENT_TOTAL": {"description": "Target number of measurements in iterative screening.",
+                                    "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "ADD_BUFFER": {"description": "Add the selected buffer to wells and reduce the water makeup volume accordingly.",
+                    "unit": None, "affects": ["duration", "tips", "vials", "liquids"]},
+    "BUFFER_VOLUME_UL": {"description": "Buffer volume added to each well when buffer addition is enabled.",
+                          "unit": "uL", "affects": ["vials", "liquids"]},
+    "BUFFER_OPTIONS": {"description": "Intended list of supported buffer names; the workflow uses SELECTED_BUFFER for the selection.",
+                        "unit": None, "choices": ["MES", "HEPES", "CAPS", "NaCl"], "affects": []},
+    "SELECTED_BUFFER": {"description": "Vial name of the buffer used when buffer addition is enabled.",
+                         "unit": None, "choices": ["MES", "HEPES", "CAPS", "NaCl"],
+                         "affects": ["vials", "liquids"], "ask": True},
+    "PAIRING_QUEUE": {"description": "Ordered surfactant A and B pairs to run, with an optional buffer name for each pair.",
+                      "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"], "ask": True},
+    "MAX_WELLS": {"description": "Nominal wellplate capacity setting that is not currently referenced by the workflow.",
+                  "unit": None, "affects": []},
+    "FINAL_SUBSTOCK_VOLUME_ML": {"description": "Final volume prepared for each surfactant dilution substock.",
+                                  "unit": "mL", "affects": ["tips", "vials", "liquids"]},
+    "MINIMUM_PIPETTE_VOLUME": {"description": "Legacy minimum pipetting volume setting that is not currently referenced by the workflow.",
+                               "unit": "mL", "affects": []},
+    "MIN_SUBSTOCK_VOLUME_UL": {"description": "Minimum source volume used when planning a substock dilution.",
+                                "unit": "uL", "affects": ["vials", "liquids"]},
+    "MEASUREMENT_INTERVAL": {"description": "Number of wells processed between measurement batches to limit evaporation.",
+                             "unit": None, "affects": ["duration", "tips"]},
+    "MIN_WELL_PIPETTE_VOLUME_UL": {"description": "Minimum liquid volume dispensed into an individual well.",
+                                   "unit": "uL", "affects": ["tips", "liquids"]},
+    "MAX_SURFACTANT_VOLUME_UL": {"description": "Maximum combined surfactant volume allowed per well.",
+                                  "unit": "uL", "affects": ["tips", "liquids"]},
+    "SHAKE_WAIT_PROTOCOL": {"description": "Cytation protocol used to shake and wait before turbidity measurements.",
+                             "unit": None, "affects": ["duration"]},
+    "TURBIDITY_PROTOCOL_FILE": {"description": "Cytation protocol used to measure turbidity.", "unit": None, "affects": ["duration"]},
+    "FLUORESCENCE_PROTOCOL_FILE": {"description": "Cytation protocol used to measure fluorescence after DMSO addition.",
+                                   "unit": None, "affects": ["duration"]},
+    "SHAKE_PROTOCOL": {"description": "Cytation protocol used for the kinetics shake step.", "unit": None, "affects": ["duration"]},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV used to identify stock, substock, water, and buffer vials.",
+                               "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "SURFACTANT_LIBRARY": {"description": "Stock concentration and CMC values used for supported surfactants.",
+                           "unit": "mM", "affects": ["vials", "liquids"]},
+    "REFILL_THRESHOLD_ML": {"description": "Refill substocks that contain less liquid than this threshold volume.",
+                            "unit": "mL", "affects": ["vials", "liquids"],
+                            "effect": "empty substocks are remade and partially filled substocks are topped up to FINAL_SUBSTOCK_VOLUME_ML"},
+}
+
+_PRODUCT_VIALS = ["*_dilution_*"]
+
 # Volume calculation functions (computed from config values)
 def get_effective_surfactant_volume():
     """Calculate effective surfactant volume per well, accounting for buffer and pyrene."""
@@ -1628,10 +1724,7 @@ def create_substocks_from_recipes(lash_e, recipes, ensure_source=None, refill_th
 
         except Exception as e:
             logger.error(f"  - Failed {action_label} {vial_name}: {e}")
-            created_substocks.append({
-                'vial_name': vial_name, 'concentration_mm': target_conc,
-                'volume_ml': 0, 'created': False, 'existed': False, 'error': str(e)
-            })
+            raise
 
     newly_created = len([s for s in created_substocks if s.get('action') == 'created'])
     total_available = len([s for s in created_substocks if s['created'] or s.get('existed', False)])

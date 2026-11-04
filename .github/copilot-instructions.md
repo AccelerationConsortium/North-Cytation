@@ -119,13 +119,22 @@ self.pause_after_error("Error description", send_slack=True)
 # Automatically logs, sends Slack notification, pauses for human intervention
 ```
 
-Include workflow-level Slack start, completion and failure/interruption updates
-as demonstrated by `_send_workflow_slack` in `workflows/workflow_template.py`.
+Workflow Slack messages must add information beyond the scheduler's barebones
+started/finished/failed messages (below): start parameters, progress, result
+summaries, or operator interrupts. Do not send messages that only say a workflow
+started, completed or failed. Follow `_send_workflow_slack` in
+`workflows/workflow_template.py`.
 Use the confirmed controller's `lash_e.simulate` to suppress all notifications
 and Slack imports during simulation. Use `slack_agent.safe_send_slack_message`
 for best-effort updates; log failed delivery/import as a non-fatal warning.
-Attempt hardware cleanup before failure notification and preserve the original
+Attempt hardware cleanup before an interrupt notification and preserve the original
 exception. Do not label an interrupted or failed workflow completed.
+
+`scheduler/live_runner.py` separately posts barebones started/finished/failed
+messages keyed by the job's `experiment_id` for every live scheduler job, so an
+external planner can track outcomes. Keep that exact format stable
+(`North experiment <id> <status> | workflow=<name>[ | error=<line>]`); put
+details in the workflow's own Slack messages instead.
 
 ### 6. Logging Standards
 **CRITICAL**: Never use Unicode characters in logging messages (μ, →, ±, etc.)

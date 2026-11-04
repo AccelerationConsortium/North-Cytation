@@ -954,6 +954,8 @@ class SchedulerWindow(QMainWindow):
                 folder = root / "jobs" / f"{row:03d}"
                 folder.mkdir(parents=True)
                 (folder / "input.json").write_text(json.dumps({
+                    # Generated here until an external experiment planner supplies queue IDs.
+                    "experiment_id": uuid4().hex,
                     "workflow": name, "config_file": str(config_path.resolve()), "config": config,
                     "input_hashes": {path: digest for path, digest in approved_files.items() if path not in state_paths},
                     "state_hashes": {path: approved_files[path] for path in state_paths},
@@ -1007,7 +1009,6 @@ class SchedulerWindow(QMainWindow):
         jobs = []
         previous_session = self.simulation_session if self.execution_mode == "simulation" else None
         previous_signatures = self.simulation_signatures
-        self.execution_mode = "simulation"
         self.approved_simulation_inputs = None
         allow_conflicts = False
         try:
@@ -1088,6 +1089,7 @@ class SchedulerWindow(QMainWindow):
         except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
             QMessageBox.warning(self, "Cannot Simulate Queue", str(error))
             return
+        self.execution_mode = "simulation"
         self.simulation_session = root
         self.simulation_signatures = signatures
         self.simulation_rows = [job[0] for job in jobs]

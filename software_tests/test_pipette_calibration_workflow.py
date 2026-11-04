@@ -643,8 +643,9 @@ class WorkflowExecutionTests(unittest.TestCase):
                     self.robot.c9.network.disconnect.assert_called_once()
                 self.assertTrue(self.controllers[0].logger.exception.called)
                 messages = [call.args[1] for call in slack.call_args_list]
-                self.assertFalse(any('completed' in message for message in messages))
-                self.assertIn('cleanup attempted', messages[-1])
+                self.assertFalse(any('completed' in message or 'failed' in message for message in messages))
+                if isinstance(failure, KeyboardInterrupt):
+                    self.assertIn('interrupted; cleanup attempted', messages[-1])
                 protocol = importlib.import_module('calibration_protocol_northrobot').protocol_instance
                 self.assertIsNone(protocol._workflow_binding)
 

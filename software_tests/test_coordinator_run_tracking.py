@@ -115,6 +115,23 @@ class CoordinatorRunTrackingTests(unittest.TestCase):
     def test_initialization_failure_occurs_after_tracking_starts(self):
         self.exercise_startup(True, False, hardware_error=True)
 
+    def test_experiment_id_from_scheduler_reaches_csv(self):
+        import csv
+        from experiment_tracking import experiment_run_logger as run_logger
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(os.environ, {run_logger.EXPERIMENT_ID_ENV: "exp-123"}), \
+                patch.object(run_logger, "_MODULE_DIR", directory), \
+                patch.object(run_logger.atexit, "register"):
+            tracker = run_logger.start_run("fixture", False, "fixture.log", Mock(), directory)
+            run_logger.finalize_run(tracker)
+            orphan = run_logger.start_run("orphan", False, "orphan.log", Mock(), directory)
+            with patch.object(run_logger, "_pid_is_running", return_value=False):
+                run_logger._heal_orphaned_runs(orphan.csv_path, os.path.dirname(orphan.marker_path))
+            with open(tracker.csv_path, newline="", encoding="utf-8") as stream:
+                rows = list(csv.DictReader(stream))
+        self.assertEqual([(row["workflow_name"], row["status"], row["experiment_id"]) for row in rows],
+                         [("fixture", "completed", "exp-123"), ("orphan", "interrupted_unknown_crash", "exp-123")])
+
 
 if __name__ == "__main__":
     unittest.main()

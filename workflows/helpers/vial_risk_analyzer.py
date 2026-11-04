@@ -233,11 +233,11 @@ class VialRiskAnalyzer:
 
 def get_vial_risk_assessment(lash_e, surfactant_shims):
     """
-    Assess risk for all surfactant vials before dispense.
+    Assess risk for source vials (surfactant substocks, buffer) before dispense.
 
     Args:
         lash_e: Robot coordinator
-        surfactant_shims: List of (surfactant_name, vial_list, shim_df) tuples.
+        surfactant_shims: List of (group_name, vial_list, shim_df) tuples.
             shim_df has columns 'substock_A_name' and 'surf_A_volume_ul' already
             mapped from the surfactant-specific column names.
     """

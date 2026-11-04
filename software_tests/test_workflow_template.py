@@ -159,16 +159,15 @@ class WorkflowTemplateTests(unittest.TestCase):
         self.lash.logger.warning.assert_not_called()
         self.lash.discard_used_wellplate.assert_called_once()
 
-    def test_live_run_sends_start_and_completion(self):
+    def test_live_run_sends_only_informative_start(self):
         config = self.live_config()
         sender = Mock(return_value=True)
         with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(safe_send_slack_message=sender)}):
             self.assertEqual(self.execute(config, show_gui=False), [1.0])
-        self.assertEqual(sender.call_count, 2)
-        self.assertIn("workflow_template started", sender.call_args_list[0].args[0])
-        self.assertIn("workflow_template completed successfully", sender.call_args_list[1].args[0])
+        self.assertEqual(sender.call_count, 1)
+        self.assertIn("workflow_template started | wells=", sender.call_args.args[0])
 
-    def test_live_failure_notifies_after_cleanup_and_preserves_error(self):
+    def test_live_failure_leaves_slack_to_scheduler_and_preserves_error(self):
         config = self.live_config()
         self.lash.measure_wellplate.side_effect = RuntimeError("reader failed")
         events = []
@@ -181,17 +180,30 @@ class WorkflowTemplateTests(unittest.TestCase):
         with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(safe_send_slack_message=send)}):
             with self.assertRaisesRegex(RuntimeError, "reader failed"):
                 self.execute(config, show_gui=False)
+        self.assertEqual(events[1:], ["cleanup"])
+
+    def test_live_interrupt_notifies_after_cleanup(self):
+        config = self.live_config()
+        self.lash.measure_wellplate.side_effect = KeyboardInterrupt()
+        events = []
+        self.robot.move_home.side_effect = lambda: events.append("cleanup")
+        with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(
+                safe_send_slack_message=lambda message: events.append(message) or True)}):
+            with self.assertRaises(KeyboardInterrupt):
+                self.execute(config, show_gui=False)
         self.assertEqual(events[1], "cleanup")
-        self.assertIn("failed: reader failed", events[2])
-        self.assertFalse(any("completed successfully" in event for event in events))
+        self.assertIn("interrupted by operator", events[2])
 
     def test_slack_failures_are_logged_without_failing_experiment(self):
-        config = self.live_config()
-        sender = Mock(side_effect=[False, RuntimeError("Slack unavailable")])
-        with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(safe_send_slack_message=sender)}):
-            self.assertEqual(self.execute(config, show_gui=False), [1.0])
-        self.assertEqual(self.lash.logger.warning.call_count, 2)
-        self.lash.discard_used_wellplate.assert_called_once()
+        for side_effect in (False, RuntimeError("Slack unavailable")):
+            with self.subTest(side_effect=side_effect):
+                self.lash.logger.warning.reset_mock()
+                self.lash.discard_used_wellplate.reset_mock()
+                sender = Mock(side_effect=[side_effect])
+                with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(safe_send_slack_message=sender)}):
+                    self.assertEqual(self.execute(self.live_config(), show_gui=False), [1.0])
+                self.assertEqual(self.lash.logger.warning.call_count, 1)
+                self.lash.discard_used_wellplate.assert_called_once()
 
     def test_controller_method_names_exist_in_real_source(self):
         controller_files = {

@@ -1,7 +1,7 @@
-"""Every documented workflow config key has a planning annotation.
+"""Every scheduler job's config keys have a planning annotation.
 
 The lab Slack agent reads _CONFIG_DOCS with ast (no import), so entries must be
-plain literals and cover _CONFIG_KEYS exactly.
+plain literals and cover the workflow's config keys exactly.
 """
 
 import ast
@@ -10,38 +10,44 @@ from pathlib import Path
 
 import pytest
 
+from scheduler.workflow_modules import workflow_paths
 from workflows.helpers._planning_markers import mark_clock_start, mark_wait, mark_wait_until
 
-WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
-# Workflows that predate _CONFIG_DOCS (2026-10-31). Every other workflow with an
-# execute() entrypoint - including every new one - must be annotated. Remove a
-# name from this list when you annotate it; never add one.
-UNDOCUMENTED_LEGACY = {
-    "Degradation_serena",
-    "SQ_Peptoid_LNP_test",
-    "surfactant_grid_adaptive_concentrations",
-    "vial_shuffle_capture_workflow",
-}
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _entrypoints():
-    for path in sorted(WORKFLOWS.glob("*.py")):
-        if path.name.startswith("_"):
-            continue
+    """Scheduler jobs (workflows plus selectable diagnostics) and the template."""
+    paths = {**workflow_paths(ROOT), "workflow_template": ROOT / "workflows" / "workflow_template.py"}
+    for name, path in sorted(paths.items()):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         if any(isinstance(node, ast.FunctionDef) and node.name == "execute" for node in tree.body):
-            yield path.stem
+            yield name, path
 
 
-DOCUMENTED = [name for name in _entrypoints() if name not in UNDOCUMENTED_LEGACY]
+ENTRYPOINTS = dict(_entrypoints())
+ENTRYPOINTS = dict(_entrypoints())
 RESOURCES = {"duration", "tips", "plates", "vials", "liquids"}
 SHARES = {"vial_layout", "input_file", "dye", "plate_type"}
 FIELDS = {"description", "unit", "choices", "affects", "effect", "shares", "ask"}
 
 
 def _assignments(path):
+    """Module-level assignments, plus constants imported from repository modules.
+
+    `from workflows.x import NAME` puts NAME in the workflow's globals, so
+    ConfigManager's fallback treats it as a config key (as the Slack agent does).
+    """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in tree.body:
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            source = ROOT.joinpath(*node.module.split(".")).with_suffix(".py")
+            if source.is_file():
+                imported = dict(_assignments(source))
+                for alias in node.names:
+                    if alias.name in imported:
+                        yield alias.asname or alias.name, imported[alias.name]
+            continue
         targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
         for target in targets:
             if isinstance(target, ast.Name) and node.value is not None:
@@ -68,9 +74,9 @@ def config_keys(path):
     return [name for name, included in keys.items() if included]
 
 
-@pytest.mark.parametrize("workflow", DOCUMENTED)
+@pytest.mark.parametrize("workflow", sorted(ENTRYPOINTS))
 def test_config_docs_cover_config_keys(workflow):
-    path = WORKFLOWS / f"{workflow}.py"
+    path = ENTRYPOINTS[workflow]
     keys = config_keys(path)
     docs = _assigned("_CONFIG_DOCS", path)
     assert keys, f"{workflow} has no detectable config keys"
@@ -91,14 +97,6 @@ def test_config_docs_cover_config_keys(workflow):
     products = _assigned("_PRODUCT_VIALS", path)
     assert isinstance(products, list) and all(isinstance(p, str) and p for p in products), \
         f"{workflow} must declare _PRODUCT_VIALS as a literal list of vial-name patterns"
-
-
-def test_legacy_list_only_shrinks():
-    entrypoints = set(_entrypoints())
-    stale = sorted(UNDOCUMENTED_LEGACY - entrypoints)
-    assert not stale, f"Remove deleted or renamed workflows from UNDOCUMENTED_LEGACY: {stale}"
-    annotated = sorted(name for name in UNDOCUMENTED_LEGACY if _assigned("_CONFIG_DOCS", WORKFLOWS / f"{name}.py"))
-    assert not annotated, f"These now have _CONFIG_DOCS; remove them from UNDOCUMENTED_LEGACY: {annotated}"
 
 
 def test_planning_markers_log_parseable_lines(caplog):

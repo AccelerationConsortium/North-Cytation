@@ -32,16 +32,20 @@ _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 CSV_FIELDS = [
     "run_id", "workflow_name", "simulate", "datetime_started", "datetime_stopped",
-    "status", "duration_sec", "log_filename", "pid", "user",
+    "status", "duration_sec", "log_filename", "pid", "user", "experiment_id",
 ]
+
+# Set by scheduler/live_runner.py for queued live jobs; empty for runs launched outside the scheduler.
+EXPERIMENT_ID_ENV = "NORTH_EXPERIMENT_ID"
 
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class RunTracker:
     def __init__(self, run_id, workflow_name, simulate, log_filename, datetime_started, marker_path,
-                 csv_path, error_dir, logger):
+                 csv_path, error_dir, logger, experiment_id):
         self.run_id = run_id
+        self.experiment_id = experiment_id
         self.workflow_name = workflow_name
         self.simulate = simulate
         self.log_filename = log_filename
@@ -140,6 +144,7 @@ def _heal_orphaned_runs(csv_path, marker_dir):
             "log_filename": fields.get("log_filename", ""),
             "pid": pid or "",
             "user": fields.get("user", ""),
+            "experiment_id": fields.get("experiment_id", ""),
         }
         _write_csv_row(csv_path, row)
         try:
@@ -179,7 +184,7 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
     os.makedirs(marker_dir, exist_ok=True)
     marker_path = os.path.join(marker_dir, f"{run_id}.txt")
     tracker = RunTracker(run_id, workflow_name, simulate, log_filename, datetime_started, marker_path,
-                         csv_path, error_dir, logger)
+                         csv_path, error_dir, logger, os.environ.get(EXPERIMENT_ID_ENV, ""))
 
     with open(marker_path, "w", encoding="utf-8") as f:
         f.write(f"run_id={run_id}\n")
@@ -189,6 +194,7 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
         f.write(f"pid={tracker.pid}\n")
         f.write(f"user={tracker.user}\n")
         f.write(f"log_filename={log_filename}\n")
+        f.write(f"experiment_id={tracker.experiment_id}\n")
         f.flush()
         os.fsync(f.fileno())
 
@@ -243,6 +249,7 @@ def finalize_run(tracker):
             "log_filename": tracker.log_filename,
             "pid": tracker.pid,
             "user": tracker.user,
+            "experiment_id": tracker.experiment_id,
         }
         # Remove the marker before writing so a concurrent/duplicate finalize call sees it gone.
         try:

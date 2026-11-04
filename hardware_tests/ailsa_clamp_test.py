@@ -13,6 +13,14 @@ SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/surfactant_grid_ailsa_vials.csv"
 VIAL_NAME = "BDDAC_dilution_1"
 
+_CONFIG_DOCS = {
+    "SIMULATE": {"description": "Run without controlling the robot hardware.", "unit": None, "affects": []},
+    "INPUT_VIAL_STATUS_FILE": {"description": "CSV defining the vial locations used by the robot.", "unit": None, "affects": ["vials"], "shares": "vial_layout"},
+    "VIAL_NAME": {"description": "Name of the vial to return to its configured home location.", "unit": None, "affects": ["vials"]},
+}
+
+_PRODUCT_VIALS = []
+
 _WORKFLOW_NAME = Path(__file__).stem
 
 

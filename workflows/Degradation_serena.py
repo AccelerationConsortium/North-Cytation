@@ -47,6 +47,36 @@ ACID_LIBRARY = {
 # Global well tracking
 CURRENT_WELL_COUNT = 0
 
+_CONFIG_DOCS = {
+    "EXPERIMENT_REPEATS": {"description": "Number of sample iterations to run using successive sample vials.",
+                           "unit": None, "affects": ["duration", "tips", "plates", "vials", "liquids"]},
+    "INPUT_VIAL_STATUS_FILE": {"description": "Vial inventory CSV defining the stock, samples, solvents, acids, and waste.",
+                                "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "CYTATION_PROTOCOL_FILE": {"description": "Cytation protocol file used for scheduled UV-Vis measurements.",
+                               "unit": None, "affects": ["duration"]},
+    "SCHEDULE_FILE": {"description": "CSV schedule of sample actions and their elapsed start times.",
+                       "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                       "shares": "input_file"},
+    "SIMULATE": {"description": "Run in simulation mode without physical hardware or saved measurements.",
+                 "unit": None, "affects": []},
+    "VALIDATE_LIQUIDS": {"description": "Run pipetting accuracy checks for the polymer stock and toluene before the experiment.",
+                          "unit": None, "affects": ["duration", "tips", "liquids"]},
+    "PREP_SOLUTIONS": {"description": "Add calculated solvent volume to each sample before adding polymer stock.",
+                       "unit": None, "affects": ["duration", "tips", "liquids"]},
+    "EXPERIMENT_NAME": {"description": "Name appended to the output folder for a hardware run.",
+                         "unit": None, "affects": []},
+    "REPLICATES": {"description": "Number of replicate wells used for each sample measurement.",
+                   "unit": None, "affects": ["duration", "tips", "plates", "liquids"],
+                   "effect": "each measurement uses REPLICATES consecutive wells"},
+    "ACID_LIBRARY": {"description": "Acid property table supplying the molarity used to calculate acid addition.",
+                     "unit": None, "affects": ["liquids"]},
+    "CURRENT_WELL_COUNT": {"description": "Index of the next well used by the measurement sequence.",
+                            "unit": None, "affects": ["plates"],
+                            "effect": "each measurement uses REPLICATES consecutive wells starting at this index"},
+}
+
+_PRODUCT_VIALS = ["sample_*"]
+
 
 
 # # Create custom pipetting parameters <--- Work for acetone/toluene/2MeTHF (but we might replace with liquid=solvent later once calib done)
@@ -679,7 +709,6 @@ def execute(config=None, show_gui=True):
             )
             output_dir.mkdir(parents=True, exist_ok=True)
             lash_e.logger.info("Output directory created at: %s", output_dir)
-            slack_agent.send_slack_message("Degradation workflow started!")
             if VALIDATE_LIQUIDS:
                 validate_key_liquids(lash_e, output_dir)
         else:
