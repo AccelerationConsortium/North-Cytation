@@ -476,6 +476,38 @@ def _notify(lash_e, message):
         lash_e.logger.warning(f"Could not send Slack message: {error}")
 
 
+SCALE_CHECK_SECONDS = 2.0  # quiet scale reading before a tip is picked up
+
+
+def _scale_ready(lash_e, liquid_type, tip_type, threshold):
+    """True if the scale is stable before any tip is used; otherwise warn on Slack.
+
+    Uses the same rule as each measurement (``_evaluate_measurement``). Simulation always
+    passes. If the check itself cannot run, the session goes ahead and the per-measurement
+    check still applies.
+    """
+    if lash_e.simulate:
+        return True
+    try:
+        readings = lash_e.nr_robot.monitor_weight_over_time(SCALE_CHECK_SECONDS)
+    except Exception as error:
+        lash_e.logger.warning(f"Scale pre-check could not run ({error}); measurements are still checked")
+        return True
+    masses = [r['mass_g'] for r in readings if r.get('mass_g') is not None]
+    steady = sum(bool(r.get('steady_status')) for r in readings)
+    spread = float(np.std(masses, ddof=1)) if len(masses) > 1 else float('nan')
+    info = dict(pre_stable_count=steady, pre_total_count=len(readings), pre_baseline_std=spread,
+                post_stable_count=steady, post_total_count=len(readings), post_baseline_std=spread)
+    if len(masses) > 1 and _evaluate_measurement(info, threshold):
+        return True
+    detail = (f"spread {spread * 1000:.1f} mg, limit {threshold * 1000:.1f} mg, "
+              f"{steady}/{len(readings)} steady readings" if masses else "no readings")
+    _notify(lash_e, f"Scale unstable before {liquid_type} ({tip_type or 'auto tip'}) validation: {detail}. "
+                    f"Validation skipped (no tip used); no calibration changes. "
+                    f"Workflow continues - check the balance.")
+    return False
+
+
 def _skipped_validation_result(liquid_type, source_vial, tip_type):
     """Result for a session whose every volume was skipped (no measurements taken)."""
     return {'success': False, 'skipped': True, 'liquid_type': liquid_type,
@@ -835,6 +867,26 @@ def validate_pipetting_accuracy(
     else:
         print("Output: Simulation mode - no files saved")
     
+    # === SCALE CHECK (before any tip is used) ===
+    # The weighed vial goes into the clamp (on the scale) first. When source and destination
+    # are the same vial - every embedded validation - conditioning then happens in place.
+    scale_threshold = (quality_std_threshold if quality_std_threshold is not None
+                       else calculate_quality_threshold(min(volumes_ml)))
+
+    def place_and_check_scale():
+        lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
+        if _scale_ready(lash_e, liquid_type, tip_type, scale_threshold):
+            return True
+        try:
+            lash_e.nr_robot.return_vial_home(destination_vial)
+        except Exception as e:
+            print(f"Warning: Could not return vial to home: {e}")
+        return False
+
+    same_vial = source_vial == destination_vial
+    if same_vial and not place_and_check_scale():
+        return _skipped_validation_result(liquid_type, source_vial, tip_type)
+
     # === TIP CONDITIONING (OPTIONAL) ===
     if condition_tip_enabled:
         print(f"\n--- Tip Conditioning ---")
@@ -858,8 +910,13 @@ def validate_pipetting_accuracy(
     skipped_volumes = set()
     check_confirm_outcomes = {}
 
-    # Pre-position destination vial in clamp before starting pipetting
-    lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
+    # Different source and destination: the destination goes onto the scale only now.
+    if not same_vial and not place_and_check_scale():
+        try:
+            lash_e.nr_robot.remove_pipet()
+        except Exception as e:
+            print(f"Warning: Could not remove pipet: {e}")
+        return _skipped_validation_result(liquid_type, source_vial, tip_type)
 
     for volume_idx, volume_ml in enumerate(volumes_ml):
         print(f"\\nTesting volume: {volume_ml:.3f} mL ({replicates} replicates)")

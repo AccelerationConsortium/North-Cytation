@@ -24,6 +24,9 @@ class RecordingRobot:
     def move_vial_to_location(self, vial, location, index):
         pass
 
+    def monitor_weight_over_time(self, time_s):
+        return [dict(mass_g=10.0, steady_status=True) for _ in range(10)]
+
     def remove_pipet(self):
         pass
 
@@ -396,6 +399,35 @@ def test_broken_scale_readings_never_trigger_the_near_zero_pause(check_confirm, 
     robot, result, sent = _run_scale(check_confirm, tmp_path, monkeypatch, [-.09],
                                      unstable={0}, volumes=[.1])
     assert result['success'] and len(robot.transfers) == 1
+
+
+class ShakyScaleRobot(CheckConfirmRobot):
+    """Balance is unstable before anything starts; records any tip use."""
+
+    def __init__(self):
+        super().__init__([])
+        self.aspirations = []
+
+    def monitor_weight_over_time(self, time_s):
+        return [dict(mass_g=10.0 + (.05 if i % 2 else -.05), steady_status=False) for i in range(10)]
+
+    def aspirate_from_vial(self, *args, **kwargs):
+        self.aspirations.append(args)
+
+
+def test_unstable_scale_before_start_skips_without_using_a_tip(check_confirm, tmp_path, monkeypatch):
+    import sys
+    sent = []
+    monkeypatch.setitem(sys.modules, 'slack_agent', SimpleNamespace(send_slack_message=sent.append))
+    robot = ShakyScaleRobot()
+    lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
+    result = check_confirm.validate_pipetting_accuracy(
+        lash, 'water', 'water', 'water', [.1], replicates=4, output_folder=str(tmp_path / 'raw'),
+        tip_type='small_tip', condition_tip_enabled=True)
+    assert result['skipped']
+    assert robot.aspirations == [] and robot.transfers == []
+    assert len(sent) == 1 and 'Scale unstable before water' in sent[0]
+    assert not (tmp_path / 'tracked.csv').exists()
 
 
 def test_there_is_only_one_validation_protocol():
