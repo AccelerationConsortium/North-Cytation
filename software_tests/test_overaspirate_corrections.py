@@ -121,3 +121,49 @@ def test_recalibrated_base_row_wins_over_old_correction(tmp_path, monkeypatch):
     assert wizard.get_pipetting_parameters('testliquid', .1, True, tip_type='small_tip')['overaspirate_vol'] == pytest.approx(.006)
     state = corrections.prior_state('testliquid', 'small_tip', 100, 6.0, {}, base_ul=6.0)
     assert state['source'] != 'tracked' and state['estimate_ul'] == 6.0
+
+
+def _sessions(values, start='2026-01-01', every_days=3):
+    return pd.DataFrame(dict(session_id=[f's{i}' for i in range(len(values))], oa_ul=values, replicates=4,
+                             replicate_sd_ul=.5, when=pd.date_range(start, periods=len(values),
+                                                                    freq=f'{every_days}D')))
+
+
+def test_one_failed_session_cannot_inflate_noise():
+    values = 5 + np.random.default_rng(1).normal(0, 1, 30)
+    clean = estimation.estimate_row(_sessions(values))
+    values[15] = 170.0  # a whole session that under-delivered badly
+    result = estimation.estimate_row(_sessions(values))
+    assert [s['session_id'] for s in result['excluded']] == ['s15']
+    assert result['noise_sd_ul'] == pytest.approx(clean['noise_sd_ul'], rel=.3)
+
+
+def test_a_real_shift_is_kept():
+    values = np.r_[np.zeros(15), np.full(15, 10.0)] + np.random.default_rng(2).normal(0, .5, 30)
+    assert estimation.estimate_row(_sessions(values))['excluded'] == []
+
+
+def test_older_sessions_count_less():
+    rng = np.random.default_rng(3)
+    old = _sessions(rng.normal(0, 5, 30), start='2024-01-01')
+    recent = _sessions(rng.normal(0, .5, 30), start='2026-06-01')
+    sessions = pd.concat([old, recent], ignore_index=True)
+    weighted, _ = estimation.noise_and_drift(sessions)
+    unweighted, _ = estimation.noise_and_drift(sessions, half_life_days=1e9)
+    assert weighted < unweighted / 4
+
+
+def test_tracked_row_relearns_noise_and_drift_but_keeps_its_value(tmp_path):
+    path = tmp_path / 'overaspirate_corrections.csv'
+    stored = dict(STATE, noise=23.0 ** 2, drift=2.0 ** 2, verdict='consistent')
+    corrections.save_state('water', 'large_tip', 500, stored, base_ul=5.0, session_id='s0', path=path)
+    rng = np.random.default_rng(4)
+    rows = [dict(liquid_type='water', tip_type='large_tip', target_volume_ml=.5, overaspirate_vol=.005,
+                 measured_volume_ml=.5 + offset + rng.normal(0, .0003), session_id=f's{i}',
+                 timestamp=f'202610{i + 1:02d}_120000')
+            for i, offset in enumerate(rng.normal(0, .001, 12)) for _ in range(3)]
+    state = corrections.prior_state('water', 'large_tip', 500, 5.0, {}, pd.DataFrame(rows),
+                                    path=path, base_ul=5.0)
+    assert state['source'] == 'tracked' and state['estimate_ul'] == STATE['estimate_ul']
+    assert state['variance'] == pytest.approx(STATE['variance'])
+    assert np.sqrt(state['noise']) < 3

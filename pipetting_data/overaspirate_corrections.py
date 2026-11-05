@@ -9,7 +9,8 @@ Deleting a row here, or the whole file, returns to the base calibration.
 Updates follow the local-level model in ``overaspirate_estimation``: the true best value
 drifts slowly (Q per session) and each session observes it with noise (R). A session
 moves the estimate by the Kalman gain P / (P + R): small for noisy volumes, larger for
-volumes that drift. A surprising session is confirmed before it can move the estimate
+volumes that drift. R and Q are re-learned from screened history every session (see
+``prior_state``). A surprising session is confirmed before it can move the estimate
 far (see ``decide``). Nothing here raises into a workflow: callers get None or a
 warning and keep the last good value.
 """
@@ -93,33 +94,48 @@ def prior_state(liquid, tip, volume_ul, effective_ul, settings, measurements=Non
 
     ``base_ul`` is the base row's current value; if it differs from the base the tracked
     state started from, the row was recalibrated and tracking restarts from ``base_ul``.
+    Noise and drift are re-learned from history every session (screened, recent sessions
+    weighted more), also for tracked rows, so one bad day cannot fix them for good. The
+    tracked value and its uncertainty are kept. ``excluded`` lists sessions left out.
     """
     corrections = load_corrections(path)
     match = corrections[_key(corrections, liquid, tip, volume_ul)]
     stale = (not match.empty and base_ul is not None and pd.notna(match.base_overaspirate_ul.iloc[-1])
              and abs(float(match.base_overaspirate_ul.iloc[-1]) - base_ul) > 0.05)
+    spread = history_spread(liquid, tip, volume_ul, settings, measurements)
     if stale:
         effective_ul = base_ul
     elif not match.empty and np.isfinite(match.overaspirate_ul.iloc[-1]):
         row = match.iloc[-1]
-        return dict(estimate_ul=float(row.overaspirate_ul), variance=float(row.sd_ul) ** 2,
-                    noise=float(row.noise_sd_ul) ** 2, drift=float(row.drift_sd_ul) ** 2,
-                    sessions=int(row.sessions), source="tracked")
+        state = dict(estimate_ul=float(row.overaspirate_ul), variance=float(row.sd_ul) ** 2,
+                     noise=float(row.noise_sd_ul) ** 2, drift=float(row.drift_sd_ul) ** 2,
+                     sessions=int(row.sessions), source="tracked", excluded=[])
+        if spread is not None:
+            state.update(noise=spread["noise"], drift=spread["drift"], excluded=spread["excluded"])
+        return state
     noise = (DEFAULT_NOISE_FRACTION * volume_ul) ** 2
     state = dict(estimate_ul=float(effective_ul), variance=noise, noise=noise,
-                 drift=MIN_DRIFT_FRACTION * noise, sessions=0, source="default")
-    if measurements is not None:
-        history = estimation.session_estimates(estimation.matching_history(
-            estimation.usable_measurements(measurements, liquid, tip), volume_ul, settings))
-        if len(history) >= estimation.MIN_SESSIONS_FOR_MODEL:
-            # Model spread from history, but start from the value in use: the base value
-            # was already set from this history, so re-estimating here would double count.
-            result = estimation.estimate_row(history)
-            noise_h = max(result["noise_sd_ul"] ** 2, 1e-6)
-            state.update(variance=result["sd_ul"] ** 2, noise=noise_h,
-                         drift=max(result["drift_sd_ul"] ** 2, MIN_DRIFT_FRACTION * noise_h),
-                         sessions=len(history), source="history")
+                 drift=MIN_DRIFT_FRACTION * noise, sessions=0, source="default", excluded=[])
+    if spread is not None:
+        # Model spread from history, but start from the value in use: the base value
+        # was already set from this history, so re-estimating here would double count.
+        state.update(variance=spread["variance"], noise=spread["noise"], drift=spread["drift"],
+                     sessions=spread["sessions"], source="history", excluded=spread["excluded"])
     return state
+
+
+def history_spread(liquid, tip, volume_ul, settings, measurements):
+    """Noise and drift (uL^2) learned from matching history; None with too few sessions."""
+    if measurements is None:
+        return None
+    history = estimation.session_estimates(estimation.matching_history(
+        estimation.usable_measurements(measurements, liquid, tip), volume_ul, settings))
+    if len(history) < estimation.MIN_SESSIONS_FOR_MODEL:
+        return None
+    result = estimation.estimate_row(history)
+    noise = max(result["noise_sd_ul"] ** 2, 1e-6)
+    return dict(noise=noise, drift=max(result["drift_sd_ul"] ** 2, MIN_DRIFT_FRACTION * noise),
+                variance=result["sd_ul"] ** 2, sessions=len(history), excluded=result["excluded"])
 
 
 def is_surprising(state, check_ul):

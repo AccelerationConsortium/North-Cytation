@@ -64,7 +64,7 @@ from math import cos, sin
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ROBOT_STATE_DIR = PROJECT_ROOT / "robot_state"
 TEMP_DIR = PROJECT_ROOT / "output" / "temp"
-DEFAULT_VIAL_FILE = PROJECT_ROOT / "status" / "surfactant_grid_vials_expanded.csv"
+DEFAULT_VIAL_FILE = PROJECT_ROOT / "status" / "surfactant_multidim_vials.csv"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

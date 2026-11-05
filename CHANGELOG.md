@@ -1,5 +1,57 @@
 # Changelog
 
+## [2026-11-04] - Clamp Hold During Vial Release
+
+- Clamp drop-offs now close the clamp after releasing the gripper and its
+  existing settle delay, lift the arm 10 mm at precise-movement speed, then
+  reopen the clamp. Other drop-off locations are unchanged.
+
+## [2026-11-04] - Direct Home Return After Substock Vortexing
+
+- Substock preparation used by the multidimensional workflow now sends vials
+  directly to their recorded home after vortexing, avoiding clamp release and
+  a separate return pickup. Water delivery and vortex settings are unchanged.
+
+## [2026-11-04] - Tighter Already-at-Position Check
+
+- Reduced goto_location_if_not_there's summed elbow/shoulder/Z tolerance from
+  550 to 50 counts for vial pickup and cap/decap positioning. Differences above
+  50 still use the existing full safe approach; no direct-Z path was introduced.
+  Cap torque, movement speeds, and gripper timing are unchanged.
+
+## [2026-11-04] - Vortex Destination Accepts Recorded Vial Indices
+
+- Fixed vortex return-location validation rejecting NumPy integer indices
+  returned by get_vial_info from the vial CSV. Integral indices are normalized
+  to Python int; booleans, fractional values, and negative indices remain invalid.
+
+## [2026-11-04] - Selectable Direct Home Return in Vortex Replay
+
+- Vortex replay exposes RETURN_HOME (default False) in startup review. True
+  passes the vial's recorded home to vortex_vial and skips the separate pickup;
+  False retains clamp release followed by return_vial_home.
+
+## [2026-11-04] - Clamp Release Height and Optional Vortex Destination
+
+- Lowered clamp release_height_offset_mm from +2.0 to +1.0 mm; pickup height
+  and other locations are unchanged.
+- North_Robot.vortex_vial accepts return_location=(location_name, location_index).
+  None preserves the original return location. Explicit destinations use normal
+  safe transport directly after vortexing, without intermediate release/regrip.
+  No callers opt in yet; the shared 550-count approach threshold is unchanged.
+
+## [2026-11-04] - Supervised Vortex Return Replay
+
+- Added hardware_tests/vortex_return_replay.py for the TTAB_dilution_1 clamp,
+  vortex (8 seconds, speed 80), and immediate return sequence. Defaults to
+  simulation; adds no liquids, changes no production motion settings, and
+  attempts no recovery motion after failure.
+
+## [2026-11-04] - Robot Arm GUI Multidimensional Vial File
+
+- The robot arm control GUI now defaults to status/surfactant_multidim_vials.csv,
+  matching the current multidimensional workflow's vial names and recorded state.
+
 ## [2026-11-04] - Config Documentation for Every Scheduler Job
 
 - Every scheduler job (workflows plus the ailsa_clamp_test, cytation_labware_test

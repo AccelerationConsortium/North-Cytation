@@ -4,6 +4,7 @@ import numpy as np
 import os
 import time
 import math
+from numbers import Integral
 import pandas as pd
 import yaml
 from unittest.mock import MagicMock
@@ -3752,6 +3753,11 @@ class North_Robot(North_Base):
         if not self.simulate:
             time.sleep(release_settle_time_s)
 
+        if location == 'clamp':
+            self.c9.close_clamp()
+            self.move_rel_xyz(z_distance=10, vel=release_speed)
+            self.c9.open_clamp()
+
         self.VIAL_DF.at[vial_index, 'location']=location
         self.VIAL_DF.at[vial_index, 'location_index']=location_index
         self.GRIPPER_STATUS = None #We no longer have the vial
@@ -3904,7 +3910,7 @@ class North_Robot(North_Base):
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location, move_speed=None):
-        difference_threshold = 550
+        difference_threshold = 50
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
             self.c9.goto_safe(location, vel=move_speed if move_speed is not None else self.get_speed('fast_approach'))
 
@@ -3915,17 +3921,41 @@ class North_Robot(North_Base):
         difference = np.sum(np.absolute(np.array(loc_2)[1:4] - np.array(loc_1)[1:4]))
         return difference
     
-    #Removes the target vial, vortexes it, then puts it back
-    def vortex_vial(self, vial_name, vortex_time, vortex_speed=70):
+    #Removes the target vial, vortexes it, then drops it off
+    def vortex_vial(self, vial_name, vortex_time, vortex_speed=70,
+                    return_location: tuple[str, int] | None = None):
         """
-        Moves target vial up, vortexes for a specified time and speed and returns it to its original location.
+        Lift and vortex a vial, then safely transport and release it.
         Args:
             `vial_name` (str): Name of the vial to vortex
             `vortex_time` (float): Time (in seconds) to vortex
             `vortex_speed` (float): Speed of vortexing (default is 70)
+            `return_location` (tuple[str, int] | None): Destination name and
+                index, e.g. ("main_8mL_rack", 25). None returns to the original
+                location. An explicit destination avoids intermediate release
+                and regripping; it does not change the safe transport approach.
         """
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
+
+        if return_location is not None:
+            if (not isinstance(return_location, tuple) or len(return_location) != 2
+                    or not isinstance(return_location[0], str) or not return_location[0].strip()
+                    or not isinstance(return_location[1], Integral)
+                    or isinstance(return_location[1], bool) or return_location[1] < 0):
+                message = "return_location must be a (location_name, nonnegative integer index) tuple."
+                self.logger.error(message)
+                raise ValueError(message)
+            destination_name, destination_index = return_location
+            destination_index = int(destination_index)
+            return_location = (destination_name, destination_index)
+            if self.get_location(False, destination_name, destination_index) is None:
+                raise ValueError(f"Invalid vortex return location: {return_location!r}")
+            occupying_vial = self.get_vial_in_location(destination_name, destination_index)
+            if occupying_vial is not None and occupying_vial != vial_index:
+                message = f"Cannot vortex to occupied return location: {return_location!r}"
+                self.logger.error(message)
+                raise ValueError(message)
 
         self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')}")
         
@@ -3940,10 +3970,12 @@ class North_Robot(North_Base):
         self.c9.move_axis(gripper_axis, 1000*vortex_time*vortex_speed, vel=vortex_speed,accel=10000)
         self.c9.reduce_axis_position(axis=gripper_axis)
 
-        location = self.get_vial_info(vial_index,'location')
-        location_index = self.get_vial_info(vial_index,'location_index')
+        if return_location is None:
+            location = self.get_vial_info(vial_index,'location')
+            location_index = self.get_vial_info(vial_index,'location_index')
+        else:
+            location, location_index = return_location
 
-        #Move the vial back to its original location
         self.drop_off_vial(vial_index, location, location_index)
         
     #This is just to formalize the process of error checking so its more extensible

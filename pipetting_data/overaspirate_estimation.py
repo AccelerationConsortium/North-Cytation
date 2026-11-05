@@ -11,6 +11,13 @@ Sessions are combined with a local-level (Kalman) model: the true best value dri
 slowly (variance Q per session) and each session observes it with noise (variance R).
 Q and R are estimated from each volume's own session series, so a noisy volume moves
 slowly and a drifting volume follows its drift.
+
+Two safeguards keep a few bad days from distorting Q and R:
+- A whole session is left out when it is far from both the sessions just before it and
+  the sessions just after it (``screen_sessions``). A real shift persists, so it agrees
+  with one side and is kept; a one-off failure agrees with neither. The data stays in the
+  file; excluded sessions are reported.
+- Older sessions count less: weight halves every ``HALF_LIFE_DAYS``.
 """
 
 import math
@@ -26,6 +33,9 @@ MIN_SESSIONS_FOR_MODEL = 6
 OUTLIER_MADS = 4.0
 INNOVATION_LIMIT_SD = 3.0
 FAILED_DISPENSE_FRACTION = 0.10  # below 10% of target is no dispense (no tip, empty vial), not calibration data
+SESSION_NEIGHBOURS = 3       # sessions compared on each side when screening a session
+SESSION_OUTLIER_MADS = 6.0   # left out only when this far (robust SDs) from both sides
+HALF_LIFE_DAYS = 180.0       # a session this old counts half as much as today's
 
 
 def implied_overaspirate_ul(frame):
@@ -103,19 +113,61 @@ def session_estimates(history):
     return pd.DataFrame(rows, columns=columns).sort_values("when", na_position="first").reset_index(drop=True)
 
 
-def noise_and_drift(sessions):
-    """Per-session noise R and drift Q (uL^2) from the session series.
+def screen_sessions(sessions):
+    """Split sessions into (kept, excluded); excluded ones are far from both neighbours.
+
+    The gap is measured to the median of up to SESSION_NEIGHBOURS sessions before and,
+    separately, after; a session is excluded when the smaller gap exceeds
+    SESSION_OUTLIER_MADS robust SDs of the usual session-to-neighbours scatter. The first
+    and last sessions have only one side and are never excluded (the newest is screened
+    once later sessions exist).
+    """
+    y = sessions.oa_ul.to_numpy(dtype=float)
+    n = len(y)
+    if n < MIN_SESSIONS_FOR_MODEL:
+        return sessions, sessions.iloc[:0].assign(gap_ul=[], limit_ul=[])
+    scatter, gap = np.zeros(n), np.zeros(n)
+    for i in range(n):
+        before = y[max(0, i - SESSION_NEIGHBOURS):i]
+        after = y[i + 1:i + 1 + SESSION_NEIGHBOURS]
+        scatter[i] = abs(y[i] - np.median(np.concatenate([before, after])))
+        if len(before) and len(after):
+            gap[i] = min(abs(y[i] - np.median(before)), abs(y[i] - np.median(after)))
+    replicate = sessions.replicate_sd_ul.to_numpy(dtype=float)
+    floor = float(np.nanmedian(replicate)) if np.isfinite(replicate).any() else 0.0
+    limit = SESSION_OUTLIER_MADS * max(1.4826 * float(np.median(scatter)), floor, 0.1)
+    bad = gap > limit
+    excluded = sessions[bad].assign(gap_ul=gap[bad], limit_ul=limit)
+    return sessions[~bad].reset_index(drop=True), excluded.reset_index(drop=True)
+
+
+def session_weights(sessions, half_life_days=HALF_LIFE_DAYS):
+    """Weight per session: 1 for the newest, halving every ``half_life_days`` before it."""
+    when = pd.to_datetime(sessions["when"]) if "when" in sessions else pd.Series(pd.NaT, index=sessions.index)
+    age_days = ((when.max() - when).dt.total_seconds() / 86400).to_numpy(dtype=float)
+    age_days = np.nan_to_num(age_days, nan=0.0)
+    return 0.5 ** (age_days / half_life_days)
+
+
+def noise_and_drift(sessions, half_life_days=HALF_LIFE_DAYS):
+    """Per-session noise R and drift Q (uL^2) from the session series, recent sessions weighted more.
 
     With y_t = x_t + v_t and x_t = x_(t-1) + w_t, first differences d_t satisfy
     var(d) = Q + 2R and cov(d_t, d_(t-1)) = -R. R is floored at the replicate noise of
     a session median, so a volume is never treated as noise-free (which would chase noise).
+    Each difference takes the weight of its later session (see ``session_weights``).
     """
-    y = sessions.oa_ul.to_numpy()
-    d = np.diff(y)
-    floor = np.nanmean((sessions.replicate_sd_ul ** 2 / sessions.replicates).to_numpy())
-    floor = floor if np.isfinite(floor) else 0.0
-    var_d = float(np.var(d, ddof=1))
-    lag1 = float(np.mean((d[1:] - d.mean()) * (d[:-1] - d.mean()))) if len(d) > 2 else 0.0
+    y = sessions.oa_ul.to_numpy(dtype=float)
+    weights = session_weights(sessions, half_life_days)
+    d, w = np.diff(y), weights[1:]
+    mean = np.sum(w * d) / np.sum(w)
+    effective_n = np.sum(w) ** 2 / np.sum(w ** 2)
+    var_d = float(np.sum(w * (d - mean) ** 2) / np.sum(w) * effective_n / max(effective_n - 1, 1.0))
+    lag1 = (float(np.sum(w[1:] * (d[1:] - mean) * (d[:-1] - mean)) / np.sum(w[1:]))
+            if len(d) > 2 else 0.0)
+    per_session = (sessions.replicate_sd_ul ** 2 / sessions.replicates).to_numpy(dtype=float)
+    known = np.isfinite(per_session)
+    floor = float(np.sum(weights[known] * per_session[known]) / np.sum(weights[known])) if known.any() else 0.0
     noise = max(-lag1, floor, 1e-6)
     drift = max(var_d - 2 * noise, 0.0)
     return noise, drift
@@ -125,7 +177,8 @@ def estimate_row(sessions):
     """Best overaspirate for one calibrated volume from its session series.
 
     Returns estimate_ul, sd_ul, gain (steady-state weight given to a new session),
-    noise_sd_ul and drift_sd_ul; None when there is no history.
+    noise_sd_ul, drift_sd_ul and excluded (sessions left out by ``screen_sessions``, as
+    dicts with session_id, when, oa_ul); None when there is no history.
     """
     if sessions.empty:
         return None
@@ -133,7 +186,12 @@ def estimate_row(sessions):
     if len(y) < MIN_SESSIONS_FOR_MODEL:
         sd = float(np.std(y, ddof=1)) if len(y) > 1 else float("nan")
         return dict(estimate_ul=float(np.median(y)), sd_ul=sd / math.sqrt(len(y)) if len(y) > 1 else sd,
-                    gain=float("nan"), noise_sd_ul=sd, drift_sd_ul=float("nan"), method="median (few sessions)")
+                    gain=float("nan"), noise_sd_ul=sd, drift_sd_ul=float("nan"), method="median (few sessions)",
+                    excluded=[])
+    sessions, excluded = screen_sessions(sessions)
+    excluded = [dict(session_id=row.session_id, when=row.when, oa_ul=float(row.oa_ul))
+                for row in excluded.itertuples()]
+    y = sessions.oa_ul.to_numpy()
     noise, drift = noise_and_drift(sessions)
     x, p = y[0], noise
     for value in y[1:]:
@@ -148,7 +206,8 @@ def estimate_row(sessions):
     steady_prior = (drift + math.sqrt(drift ** 2 + 4 * drift * noise)) / 2
     steady_gain = steady_prior / (steady_prior + noise)
     return dict(estimate_ul=float(x), sd_ul=math.sqrt(p), gain=steady_gain,
-                noise_sd_ul=math.sqrt(noise), drift_sd_ul=math.sqrt(drift), method="local level")
+                noise_sd_ul=math.sqrt(noise), drift_sd_ul=math.sqrt(drift), method="local level",
+                excluded=excluded)
 
 
 def backtest(sessions):

@@ -694,6 +694,11 @@ def _check_confirm_message(liquid_type, tip_type, session_id, outcomes, stats_df
         lines.append(f"  {volume_ml * 1000:g} uL: {error}; {outcome['verdict'].replace('_', ' ')}; "
                      f"overaspirate {outcome['previous_ul']:+.2f} -> {outcome['estimate_ul']:+.2f} uL "
                      f"(+/- {math.sqrt(outcome['variance']):.2f})")
+        excluded = outcome.get('excluded') or []
+        if excluded:
+            past = ", ".join(f"{pd.Timestamp(s['when']):%d %b %Y} ({s['oa_ul']:+.1f} uL)" if pd.notna(s['when'])
+                             else f"{s['session_id']} ({s['oa_ul']:+.1f} uL)" for s in excluded)
+            lines.append(f"    noise/drift learned without {len(excluded)} outlier session(s): {past}")
     env = _get_latest_environmental_data()
     if env and (env.get("temp_c") is not None or env.get("humidity_pct") is not None):
         parts = [f"{env['temp_c']:.1f} C" if env.get("temp_c") is not None else None,

@@ -1707,8 +1707,12 @@ def create_substocks_from_recipes(lash_e, recipes, ensure_source=None, refill_th
                     reservoir_index=1, vial_index=vial_name,
                     volume=water_to_add, return_home=False
                 )
-            lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
-            lash_e.nr_robot.return_vial_home(vial_name=vial_name)
+            home_location = lash_e.nr_robot.get_vial_info(vial_name, "home_location")
+            home_location_index = lash_e.nr_robot.get_vial_info(vial_name, "home_location_index")
+            lash_e.nr_robot.vortex_vial(
+                vial_name=vial_name, vortex_time=8, vortex_speed=80,
+                return_location=(home_location, home_location_index),
+            )
 
             new_vol = current_vol + source_to_add + water_to_add
             logger.info(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
