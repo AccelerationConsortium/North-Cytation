@@ -476,6 +476,7 @@ def _notify(lash_e, message):
         lash_e.logger.warning(f"Could not send Slack message: {error}")
 
 
+SCALE_SETTLE_SECONDS = 5.0
 SCALE_CHECK_SECONDS = 2.0  # quiet scale reading before a tip is picked up
 
 
@@ -875,6 +876,8 @@ def validate_pipetting_accuracy(
 
     def place_and_check_scale():
         lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
+        if not lash_e.simulate:
+            time.sleep(SCALE_SETTLE_SECONDS)
         if _scale_ready(lash_e, liquid_type, tip_type, scale_threshold):
             return True
         try:

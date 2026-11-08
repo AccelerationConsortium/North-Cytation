@@ -228,10 +228,6 @@ _CONFIG_DOCS = {
 # surfactant dilution substocks named <surfactant>_dilution_<n>.
 _PRODUCT_VIALS = ["*_dilution_*"]
 
-# Safe rack positions assigned by position_surfactant_vials_by_concentration,
-# in the same order that function uses (concentrated -> dilute).
-_SURF_SAFE_POSITIONS = [47, 46, 45, 44, "clamp", 43, 36]
-
 # Cytation protocols are plate-specific: the BioTek API cannot change a protocol's
 # plate type, so each protocol exists as _24/_48/_96 copies in C:\Protocols and
 # {plate} is filled from WELLPLATE_TYPE at run time.
@@ -1736,10 +1732,14 @@ def dispense_surfactant_component(lash_e, plate_df, dilution_recipes, component)
     sorted_vials = position_surfactant_vials_by_concentration(
         lash_e, surfactant_vials, plate_df, surfactant_label
     )
-    n_vials = len(sorted_vials)
+    # Staged locations, so a vial refilled mid-dispense goes back to its safe position.
+    staged = {
+        vial: (lash_e.nr_robot.get_vial_info(vial, "location"),
+               int(lash_e.nr_robot.get_vial_info(vial, "location_index")))
+        for vial in sorted_vials
+    }
     for i, vial in enumerate(sorted_vials):
-        raw_pos = _SURF_SAFE_POSITIONS[n_vials - 1 - i]
-        reposition = ("clamp", 0) if raw_pos == "clamp" else ("main_8mL_rack", raw_pos)
+        reposition = staged[vial]
         _dispense_vial_in_chunks(
             lash_e,
             plate_df,
@@ -1803,7 +1803,7 @@ def dispense_buffer_component(lash_e, plate_df, dilution_recipes):
     if not ADD_BUFFER:
         return
 
-    lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, "main_8mL_rack", 47)
+    lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, "clamp", 0)
     _dispense_vial_in_chunks(
         lash_e,
         plate_df,
@@ -1812,7 +1812,7 @@ def dispense_buffer_component(lash_e, plate_df, dilution_recipes):
         "buffer_volume_ul",
         dilution_recipes,
         should_condition_first=False,
-        reposition_after_refill=("main_8mL_rack", 47),
+        reposition_after_refill=("clamp", 0),
     )
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)

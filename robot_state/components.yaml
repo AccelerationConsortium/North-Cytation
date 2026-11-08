@@ -1,0 +1,59 @@
+# DRAFT component registry -- not loaded by any code yet.
+#
+# One entry per chemical identity (what can be IN a sample), not per solution.
+# Concentrations and units belong to the sample, not here.
+# Separate from liquids.yaml, which holds pipetting calibration classes.
+#
+# Every entry has exactly the same four fields:
+#   full_name   human-readable name
+#   kind        solvent | buffer | surfactant | dye | salt | acid | polymer
+#   mw_g_mol    molecular weight, or null when the component is not tracked in mM
+#               (solvents and buffers are tracked by volume, polymers by mass)
+#   aliases     other spellings used in vial names / configs; unique across entries
+
+components:
+  # solvents
+  water:         {full_name: Water,                                  kind: solvent,    mw_g_mol: null,   aliases: [H2O]}
+  DMSO:          {full_name: Dimethyl sulfoxide,                     kind: solvent,    mw_g_mol: null,   aliases: []}
+  ethyl_acetate: {full_name: Ethyl acetate,                          kind: solvent,    mw_g_mol: null,   aliases: [ethylacetate, EtOAc]}
+  acetone:       {full_name: Acetone,                                kind: solvent,    mw_g_mol: null,   aliases: []}
+  toluene:       {full_name: Toluene,                                kind: solvent,    mw_g_mol: null,   aliases: []}
+  heptane:       {full_name: n-Heptane,                              kind: solvent,    mw_g_mol: null,   aliases: []}
+  2MeTHF:        {full_name: 2-Methyltetrahydrofuran,                kind: solvent,    mw_g_mol: null,   aliases: [2-MeTHF]}
+
+  # buffers (opaque aqueous solutions)
+  MES:           {full_name: MES buffer,                             kind: buffer,     mw_g_mol: null,   aliases: []}
+  HEPES:         {full_name: HEPES buffer,                           kind: buffer,     mw_g_mol: null,   aliases: []}
+  CAPS:          {full_name: CAPS buffer,                            kind: buffer,     mw_g_mol: null,   aliases: []}
+
+  # surfactants
+  SDS:           {full_name: Sodium dodecyl sulfate,                 kind: surfactant, mw_g_mol: 288.38, aliases: []}
+  NaC:           {full_name: Sodium cholate,                         kind: surfactant, mw_g_mol: 430.55, aliases: []}
+  CTAB:          {full_name: Hexadecyltrimethylammonium bromide,     kind: surfactant, mw_g_mol: 364.45, aliases: []}
+  DTAB:          {full_name: Dodecyltrimethylammonium bromide,       kind: surfactant, mw_g_mol: 308.34, aliases: []}
+  TTAB:          {full_name: Tetradecyltrimethylammonium bromide,    kind: surfactant, mw_g_mol: 336.39, aliases: []}
+  DSS:           {full_name: Docusate sodium,                        kind: surfactant, mw_g_mol: 444.56, aliases: []}
+  SDBS:          {full_name: Sodium dodecylbenzenesulfonate,         kind: surfactant, mw_g_mol: 348.48, aliases: []}
+  NaLS:          {full_name: N-Lauroylsarcosine sodium salt,         kind: surfactant, mw_g_mol: 293.38, aliases: []}
+  BDDAC:         {full_name: Benzyldimethyldodecylammonium chloride, kind: surfactant, mw_g_mol: 339.99, aliases: []}
+  BZT:           {full_name: Benzethonium chloride,                  kind: surfactant, mw_g_mol: 448.08, aliases: []}
+  CHAPS:         {full_name: CHAPS,                                  kind: surfactant, mw_g_mol: 614.88, aliases: []}
+
+  # dyes
+  pyrene:        {full_name: Pyrene,                                 kind: dye,        mw_g_mol: 202.25, aliases: []}
+  nile_red:      {full_name: Nile red,                               kind: dye,        mw_g_mol: 318.37, aliases: [nile-red, nilered]}
+  coumarin_6:    {full_name: Coumarin 6,                             kind: dye,        mw_g_mol: 350.43, aliases: [coumarin-6, coumarin6, coumarin]}
+
+  # salts
+  NaCl:          {full_name: Sodium chloride,                        kind: salt,       mw_g_mol: 58.44,  aliases: []}
+
+  # acids
+  HCl:           {full_name: Hydrochloric acid,                      kind: acid,       mw_g_mol: 36.46,  aliases: []}
+  TFA:           {full_name: Trifluoroacetic acid,                   kind: acid,       mw_g_mol: 114.02, aliases: []}
+  p_TSA:         {full_name: p-Toluenesulfonic acid monohydrate,     kind: acid,       mw_g_mol: 190.22, aliases: [pTSA, p-TSA]}
+  citric_acid:   {full_name: Citric acid,                            kind: acid,       mw_g_mol: 192.12, aliases: []}
+  H2SO4:         {full_name: Sulfuric acid,                          kind: acid,       mw_g_mol: 98.079, aliases: []}
+  H3PO4:         {full_name: Phosphoric acid,                        kind: acid,       mw_g_mol: 97.994, aliases: []}
+
+  # polymers
+  degradation_polymer: {full_name: Degradation_serena polymer,       kind: polymer,    mw_g_mol: null,   aliases: []}

@@ -1,5 +1,22 @@
 # Changelog
 
+## [2026-11-07] - Embedded Validation Scale Settling
+
+- Wait five seconds after positioning the vial before the live scale precheck.
+  An unstable precheck still skips validation.
+
+## [2026-11-07] - Risk-Based Surfactant Vial Staging
+
+- position_surfactant_vials_by_concentration now places vials by the existing
+  VialRiskAnalyzer score: the highest-risk vial (low volume, high usage) gets
+  the safest position. Safe positions, safest first: clamp, 47, 46, 45,
+  clamp_2, 44, 43. Dispense order is unchanged (dilute -> concentrated).
+- Applies to the multidimensional and Ailsa surfactant workflows. Ailsa's
+  after-refill reposition now uses the vial's staged location instead of a
+  hard-coded copy of the old position order.
+- The buffer vial (HEPES; one vial per dispense) is now staged in the clamp
+  instead of rack 47 in both workflows. Water staging is unchanged.
+
 ## [2026-11-04] - Clamp Hold During Vial Release
 
 - Clamp drop-offs now close the clamp after releasing the gripper and its

@@ -1297,7 +1297,7 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         lash_e.nr_robot.move_vial_to_location("water", "main_8mL_rack", 44)
         lash_e.nr_robot.move_vial_to_location("water_2", "main_8mL_rack", 45)
         if active_buffer is not None:
-            lash_e.nr_robot.move_vial_to_location(active_buffer, "main_8mL_rack", 47)
+            lash_e.nr_robot.move_vial_to_location(active_buffer, "clamp", 0)
         if len(w1) > 0:
             dispense_component_to_wellplate(lash_e, w1, "water", "water", "water_volume_ul")
         if len(w2) > 0:

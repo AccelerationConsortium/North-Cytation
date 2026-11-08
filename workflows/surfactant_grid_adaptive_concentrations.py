@@ -38,6 +38,7 @@ import os
 import json
 from datetime import datetime
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
+from workflows.helpers.vial_risk_analyzer import VialRiskAnalyzer
 
 # ================================================================================
 # MEASUREMENT DATA HANDLING HELPERS
@@ -2342,29 +2343,33 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
 
 def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, vial_type):
     """
-    Cute little method to sort surfactant vials by concentration and move to safe positions.
-    Prevents contamination by going concentrated -> dilute, starting at clamp.
-    
+    Move surfactant vials to safe positions by pull-out risk and return the
+    dispense order (dilute -> concentrated, to limit carry-over).
+
+    The highest-risk vial (VialRiskAnalyzer score: low volume, high usage) gets
+    the safest position; ties keep concentrated-first order.
+
     Args:
         lash_e: Robot coordinator
         vial_names: List of vial names (e.g., ['SDS_1.0mM', 'SDS_5.0mM'])
-        batch_df: DataFrame with concentration info
+        batch_df: DataFrame with concentration and volume info
         vial_type: 'A' or 'B' for logging and column selection
-        
+
     Returns:
-        list: Vial names sorted by concentration (concentrated first)
+        list: Vial names in dispense order (dilute first)
     """
     if len(vial_names) == 0:
         return []
-        
+
     logger = lash_e.logger
-    safe_positions = [47, 46, 45, 44, 'clamp', 43, 'clamp_2']
-    
+    # Safest first: the clamps grip the vial; rack 44 and 43 have had pull-outs.
+    safe_positions = ['clamp', 47, 46, 45, 'clamp_2', 44, 43]
+
     # Get concentration for each vial from the DataFrame
     vial_concentrations = []
     conc_column = f'substock_{vial_type}_conc_mm'
     name_column = f'substock_{vial_type}_name'
-    
+
     for vial_name in vial_names:
         # Find the concentration for this vial
         vial_rows = batch_df[batch_df[name_column] == vial_name]
@@ -2383,30 +2388,40 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
                     vial_concentrations.append((vial_name, float('inf')))
             except:
                 vial_concentrations.append((vial_name, float('inf')))
-    
+
     # Sort by concentration (concentrated first)
     vial_concentrations.sort(key=lambda x: x[1], reverse=True)
     sorted_vials = [vial for vial, conc in vial_concentrations]
-    
-    logger.info(f"  Positioning surfactant {vial_type} vials by concentration (concentrated -> dilute):")
-    
-    # Move vials to safe positions in concentration order (concentrated -> dilute for positioning)
-    for i, vial_name in enumerate(sorted_vials):
+    concentrations = dict(vial_concentrations)
+
+    analyzer = VialRiskAnalyzer(logger)
+    usage = analyzer.analyze_vial_usage(sorted_vials, batch_df, lash_e, vial_type)
+    risk = {
+        vial: analyzer.compute_risk_score(
+            info['current_volume_ml'], info['remaining_after_all_ml'], info['utilization_pct']
+        )[0]
+        for vial, info in usage.items()
+    }
+    by_risk = sorted(sorted_vials, key=lambda vial: risk[vial], reverse=True)
+
+    logger.info(f"  Positioning surfactant {vial_type} vials by risk (highest risk -> safest position):")
+
+    for i, vial_name in enumerate(by_risk):
         if i < len(safe_positions):
             position = safe_positions[i]
-            concentration = vial_concentrations[i][1]
+            label = f"    {vial_name} ({concentrations[vial_name]:.2f}mM, risk {risk[vial_name]:.2f})"
             if position in ('clamp', 'clamp_2'):
-                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> {position}")
+                logger.info(f"{label} -> {position}")
                 lash_e.nr_robot.move_vial_to_location(vial_name, position, 0)
             else:
-                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> main_8mL_rack[{position}]")
+                logger.info(f"{label} -> main_8mL_rack[{position}]")
                 lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', position)
         else:
             logger.warning(f"    {vial_name}: No safe position available (too many vials)")
-    
+
     # Return in reverse order for pipetting (dilute -> concentrated to prevent contamination)
     logger.info(f"  Dispensing order will be: dilute -> concentrated")
-    return sorted_vials[::-1]  # Reverse the list for dispensing
+    return sorted_vials[::-1]
 
 def return_surfactant_vials_home(lash_e, vial_names, vial_type):
     """Return surfactant vials to home positions after dispensing."""
