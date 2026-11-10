@@ -32,7 +32,7 @@ class NorthProtocolSessionTests(unittest.TestCase):
                                   '_ensure_vial_accessible_for_pipetting', 'aspirate_from_vial',
                                   'dispense_into_vial', 'get_location', 'c9', 'remove_pipet',
                                   'return_vial_home', 'move_home', 'get_vial_info',
-                                  'PIPET_TIPS'])
+                                  'PIPET_TIPS', 'monitor_weight_over_time'])
         self.robot.c9 = Mock(spec_set=['goto', 'network'])
         self.robot.c9.network = Mock(spec_set=['disconnect'])
         self.robot.is_vial_pipetable.return_value = True
@@ -57,6 +57,51 @@ class NorthProtocolSessionTests(unittest.TestCase):
             self.robot.c9.network.disconnect.assert_not_called()
         self.assertIsNone(self.protocol._workflow_binding)
         self.assertEqual(original, self.config)
+
+    def test_workflow_initialization_waits_until_scale_stabilizes_after_conditioning(self):
+        self.lash.simulate = False
+        self.config['experiment']['simulate'] = False
+        self.config['experiment']['quality_std_threshold_g'] = 0.001
+        self.lash.logger = Mock(spec_set=logging.Logger)
+        self.robot.monitor_weight_over_time.side_effect = [
+            [dict(mass_g=10.0 + (.05 if i % 2 else -.05), steady_status=False)
+             for i in range(10)],
+            [dict(mass_g=10.0, steady_status=True) for _ in range(10)],
+        ]
+        with self.protocol.workflow_session(self.lash, self.config, 'water'):
+            state = self.protocol.initialize({'experiment': {'liquid': 'water'}})
+
+        self.assertFalse(state['simulate'])
+        self.assertEqual(self.robot.monitor_weight_over_time.call_count, 2)
+        calls = self.robot.mock_calls
+        last_conditioning_dispense = max(
+            i for i, call in enumerate(calls)
+            if call[0] == 'dispense_into_vial'
+        )
+        scale_check = next(i for i, call in enumerate(calls)
+                           if call[0] == 'monitor_weight_over_time')
+        self.assertGreater(scale_check, last_conditioning_dispense)
+
+    def test_workflow_initialization_continues_after_scale_wait_timeout(self):
+        self.lash.simulate = False
+        self.config['experiment']['simulate'] = False
+        self.config['experiment']['quality_std_threshold_g'] = 0.001
+        self.lash.logger = Mock(spec_set=logging.Logger)
+        self.robot.monitor_weight_over_time.return_value = [
+            dict(mass_g=10.0 + (.05 if i % 2 else -.05), steady_status=False)
+            for i in range(10)
+        ]
+        with patch.object(self.module, 'SCALE_SETTLE_MAX_SECONDS', 0.001), \
+                patch.object(self.module, 'SCALE_SETTLE_CHECK_SECONDS', 0.001), \
+                self.protocol.workflow_session(self.lash, self.config, 'water'):
+            state = self.protocol.initialize({'experiment': {'liquid': 'water'}})
+
+        self.assertFalse(state['simulate'])
+        self.assertTrue(self.robot.monitor_weight_over_time.called)
+        self.assertTrue(any(
+            call.args and call.args[0].startswith('Scale did not stabilize within')
+            for call in self.lash.logger.info.call_args_list
+        ))
 
     def test_binding_cleared_on_interrupt_and_nested_binding_rejected(self):
         with self.assertRaises(KeyboardInterrupt):

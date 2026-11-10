@@ -21,11 +21,14 @@ from scheduler.console_output import ConsoleLogMirror
 from scheduler.config_lists import (live_experiment_id, read_config_entries, read_planned_consumables,
                                     read_planned_queues, write_config_list)
 from scheduler.workflow_modules import workflow_paths
-from PySide6.QtCore import Qt, QProcess, QProcessEnvironment
-from PySide6.QtGui import QColor, QBrush
+from scheduler import deck_check
+from PySide6.QtCore import Qt, QProcess, QProcessEnvironment, QThread, Signal
+from PySide6.QtGui import QColor, QBrush, QPixmap, QTransform
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
+    QDialogButtonBox,
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
@@ -151,16 +154,153 @@ def read_vial_occupancy(workflow_names, areas):
     return occupancy, errors
 
 
+class DeckCheckWorker(QThread):
+    """Runs one deck check (camera + server) off the GUI thread."""
+    done = Signal(object)
+
+    def __init__(self, occupancy, records_root, parent=None):
+        super().__init__(parent)
+        self.occupancy, self.records_root = occupancy, records_root
+
+    def run(self):
+        try:
+            check = deck_check.run_check(self.occupancy, self.records_root,
+                                         deck_check.load_settings(REPO_ROOT / "robot_state" / "deck_monitoring.yaml"))
+        except Exception as error:  # never let a check crash the scheduler
+            check = deck_check.DeckCheck(outcome="comms_failure", timestamp="", error=f"deck check failed: {error}")
+        self.done.emit(check)
+
+
+class DeckCheckDialog(QDialog):
+    """Shows a deck check result and returns the operator's decision."""
+
+    def __init__(self, check, parent=None):
+        super().__init__(parent)
+        self.check = check
+        self.decision = "cancel"
+        titles = {"match": "Deck Check Passed", "mismatch": "Deck Check: Mismatch Found",
+                  "comms_failure": "Deck Check Could Not Run"}
+        self.setWindowTitle(titles[check.outcome])
+        self.resize(1200, 650)
+        layout = QVBoxLayout(self)
+        summary = QLabel(check.summary())
+        summary.setWordWrap(True)
+        summary.setStyleSheet("font-weight: 600;")
+        layout.addWidget(summary)
+        body = QHBoxLayout()
+        layout.addLayout(body, 1)
+        self.issue_table = None
+        if check.issues:
+            table = QTableWidget(len(check.issues), 4)
+            table.setHorizontalHeaderLabels(["Position", "Issue", "Suggested fix", "Camera wrong"])
+            table.horizontalHeaderItem(3).setToolTip(
+                "Tick if the deck is actually fine here and the camera misread it.\n"
+                "Saved as a training example. Ticking every row lets you continue.")
+            table.verticalHeader().setVisible(False)  # row numbers look like slot numbers
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+            table.setWordWrap(True)
+            for row, issue in enumerate(check.issues):
+                for column, text in enumerate((issue.position, issue.kind.replace("_", " "), issue.message)):
+                    table.setItem(row, column, QTableWidgetItem(text))
+                flag = QTableWidgetItem()
+                flag.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                flag.setCheckState(Qt.Unchecked)
+                table.setItem(row, 3, flag)
+            table.resizeRowsToContents()
+            table.itemChanged.connect(lambda _item: self._update_continue())
+            self.issue_table = table
+            body.addWidget(table, 3)
+        image = check.annotated if check.annotated and Path(check.annotated).is_file() else check.frame
+        if image and Path(image).is_file():
+            pixmap = QPixmap(image)
+            if not pixmap.isNull():
+                if image == check.frame and check.rotate_display:
+                    pixmap = pixmap.transformed(QTransform().rotate(180))
+                self.photo = QLabel()
+                self.photo.setPixmap(pixmap.scaledToWidth(560, Qt.SmoothTransformation))
+                self.photo.setAlignment(Qt.AlignTop)
+                self.photo.setToolTip("Orange = issue (labelled with location_index), green = vial OK, grey = empty.\n"
+                                      "Rotated to match the view from the front of the deck.")
+                column = QVBoxLayout()
+                column.addWidget(self.photo)
+                legend = QLabel("Orange: issue · Green: vial OK · Grey: empty")
+                legend.setStyleSheet("color: #555;")
+                column.addWidget(legend)
+                column.addStretch()
+                body.addLayout(column, 2)
+        extra = list(check.notes) + [f"Not checked: {item}" for item in check.unchecked]
+        if extra:
+            notes = QLabel("\n".join(extra))
+            notes.setWordWrap(True)
+            notes.setTextFormat(Qt.PlainText)
+            layout.addWidget(notes)
+        details = f"Saved to: {check.folder}" if check.folder else ""
+        if check.history_id is not None:
+            details += f" | Labaware history id: {check.history_id}"
+        if details:
+            info = QLabel(details)
+            info.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            layout.addWidget(info)
+        self.note = QLineEdit()
+        self.note.setPlaceholderText("Optional note (saved with this check)")
+        layout.addWidget(self.note)
+        self.acknowledge = None
+        buttons = QDialogButtonBox()
+        if check.outcome == "match":
+            self._add(buttons, "OK", "continue", QDialogButtonBox.AcceptRole)
+        else:
+            if check.outcome == "mismatch":
+                self.acknowledge = QCheckBox("I have checked these positions on the deck")
+                layout.addWidget(self.acknowledge)
+                self._add(buttons, "Recheck", "recheck", QDialogButtonBox.ActionRole)
+            else:
+                self._add(buttons, "Retry", "recheck", QDialogButtonBox.ActionRole)
+            label = "Continue anyway" if check.outcome == "mismatch" else "Continue without deck check"
+            self.continue_button = self._add(buttons, label, "continue", QDialogButtonBox.AcceptRole)
+            if self.acknowledge is not None:
+                self.acknowledge.toggled.connect(lambda _on: self._update_continue())
+                self._update_continue()
+            self._add(buttons, "Cancel", "cancel", QDialogButtonBox.RejectRole)
+        layout.addWidget(buttons)
+
+    def camera_wrong(self):
+        """Row numbers of issues the operator marked as camera errors."""
+        if self.issue_table is None:
+            return []
+        return [row for row in range(self.issue_table.rowCount())
+                if self.issue_table.item(row, 3).checkState() == Qt.Checked]
+
+    def _update_continue(self):
+        """Continue needs the deck-checked tick, or every issue marked as a camera error."""
+        if self.acknowledge is None:
+            return
+        all_flagged = bool(self.check.issues) and len(self.camera_wrong()) == len(self.check.issues)
+        self.continue_button.setEnabled(self.acknowledge.isChecked() or all_flagged)
+        self.continue_button.setText("Continue (camera errors)" if all_flagged else "Continue anyway")
+
+    def _add(self, buttons, label, decision, role):
+        button = buttons.addButton(label, role)
+        button.clicked.connect(lambda: self._choose(decision))
+        return button
+
+    def _choose(self, decision):
+        self.decision = decision
+        self.accept()
+
+
 class VialLayout(QWidget):
     def __init__(self):
         super().__init__()
         self.slots = {}
         self.areas = {}
         self.occupancy = {}
+        self.deck_issues = {}
         self.load_error = None
         layout = QVBoxLayout(self)
         toolbar = QHBoxLayout()
-        for text, color in (("Empty", "#e4e7eb"), ("Occupied", "#23854a"), ("Conflict", "#c63636")):
+        for text, color in (("Empty", "#e4e7eb"), ("Occupied", "#23854a"), ("Conflict", "#c63636"),
+                            ("Deck mismatch", "#d9822b")):
             swatch = QLabel()
             swatch.setFixedSize(14, 14)
             swatch.setStyleSheet(f"background: {color}; border: 1px solid #aaa;")
@@ -258,11 +398,15 @@ class VialLayout(QWidget):
             conflicts += int(conflict)
             state = "conflict" if conflict else "occupied" if claims else "empty"
             slot.setProperty("occupancy", state)
-            color = "#c63636" if conflict else "#23854a" if claims else "#e4e7eb"
-            foreground = "white" if claims else "#50555b"
+            mismatch = self.deck_issues.get(key)
+            slot.setProperty("deck_mismatch", mismatch is not None)
+            color = "#c63636" if conflict else "#d9822b" if mismatch else "#23854a" if claims else "#e4e7eb"
+            foreground = "white" if claims or mismatch else "#50555b"
             slot.setStyleSheet(f"background: {color}; color: {foreground}; border: 1px solid #b7bbc0; border-radius: 4px;")
             slot.setText(f"{key[1]}\n{len(claims)} vials" if conflict else str(key[1]))
             details = [f"{key[0]} [{key[1]}]"]
+            if mismatch:
+                details.append(f"DECK CHECK: {mismatch}")
             for claim in claims:
                 details.append(
                     f"{claim['vial_name']} | {claim['vial_volume']} mL\n"
@@ -294,6 +438,11 @@ class SchedulerWindow(QMainWindow):
         self.simulation_job_start_time = None
         self.stop_simulation_requested = False
         self.simulation_signatures = []
+        # Deck check: last check (for display) and the resolved one Run relies on, each with
+        # the vial-input fingerprint it was made against. Any vial/queue change invalidates both.
+        self.last_deck_check = None          # (fingerprint, DeckCheck)
+        self.resolved_deck_check = None      # (fingerprint, DeckCheck) once passed or acknowledged
+        self.deck_check_worker = None
         self._execution_busy = False
         self._loading_shared_state = False
         self.shared_state_baselines = {}
@@ -391,6 +540,13 @@ class SchedulerWindow(QMainWindow):
         self.interrupt_button.setEnabled(False)
         self.interrupt_button.clicked.connect(self.interrupt_current)
         footer.addWidget(self.interrupt_button)
+        self.deck_check_button = QPushButton("Check Deck")
+        self.deck_check_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogContentsView))
+        self.deck_check_button.setToolTip("Photograph the deck and compare it with the queue's vial files (required before Run)")
+        self.deck_check_button.setMinimumSize(110, 36)
+        self.deck_check_button.setEnabled(False)
+        self.deck_check_button.clicked.connect(self.start_deck_check)
+        footer.addWidget(self.deck_check_button)
         for label, icon in (
             ("Simulate", QStyle.SP_MediaPlay),
             ("Run", QStyle.SP_DialogApplyButton),
@@ -572,6 +728,8 @@ class SchedulerWindow(QMainWindow):
         # happen to equal the old ones. Never reuse a pre-reset simulated prefix.
         self.simulation_session = None
         self.simulation_signatures = []
+        # The robot may move vials during recovery; check the deck again afterwards.
+        self.clear_deck_check()
         self.reset_folder = folder
         process = QProcess(self)
         process.setWorkingDirectory(str(REPO_ROOT))
@@ -919,10 +1077,18 @@ class SchedulerWindow(QMainWindow):
             name = selector.currentData()
             if name in self.workflow_names and selector.currentText() == name:
                 names.append((name, self.row_config_path(selector)))
+        complete = bool(names) and len(names) == self.table.rowCount()
+        current = self.deck_inputs_fingerprint(names) if complete else None
+        last = self.last_deck_check
+        self.vial_layout.deck_issues = {}
+        if last is not None and current is not None and last[0] == current:
+            self.vial_layout.deck_issues = {(issue.location, issue.location_index): issue.message
+                                            for issue in last[1].issues if issue.location_index is not None}
         self.vial_layout.refresh(names)
         if not self._execution_busy:
-            self.simulate_button.setEnabled(self.setup_window is None and self.shared_state_ready()
-                                            and bool(names) and len(names) == self.table.rowCount())
+            self.simulate_button.setEnabled(self.setup_window is None and self.shared_state_ready() and complete)
+            self.deck_check_button.setEnabled(self.setup_window is None and self.deck_check_worker is None
+                                              and complete and self.vial_layout.load_error is None)
             self.update_live_run_enabled()
         if not all(widget.state_loaded for widget in self.shared_state_widgets):
             self.statusBar().showMessage("Cannot load shared robot/track state; check the YAML files and Reload")
@@ -937,6 +1103,7 @@ class SchedulerWindow(QMainWindow):
             if isinstance(widget, QPushButton):
                 widget.setEnabled(not busy)
         self.simulate_button.setEnabled(not busy and self.shared_state_ready() and bool(self.simulation_rows))
+        self.deck_check_button.setEnabled(not busy and self.deck_check_worker is None)
         self.stop_button.setEnabled(self._execution_busy)
         self.interrupt_button.setEnabled(self._execution_busy)
         self.run_button.setEnabled(False)
@@ -1001,17 +1168,129 @@ class SchedulerWindow(QMainWindow):
         allowed = allowed and not self.vial_layout.errors.text() and not any(
             len(claims) > 1 for claims in self.vial_layout.occupancy.values()
         )
+        allowed = allowed and self.deck_check_resolved()
         self.run_button.setEnabled(bool(allowed))
+        if self.approved_simulation_inputs is not None and not self.deck_check_resolved():
+            self.run_button.setToolTip("Check Deck is required before Run")
+        else:
+            self.run_button.setToolTip("")
+
+    # ---- Deck check -------------------------------------------------------------------------
+
+    def queue_vial_jobs(self):
+        names = []
+        for row in range(self.table.rowCount()):
+            selector = self.table.cellWidget(row, 0)
+            name = selector.currentData()
+            if name not in self.workflow_names or selector.currentText() != name:
+                return None
+            names.append((name, self.row_config_path(selector)))
+        return names or None
+
+    def deck_inputs_fingerprint(self, names=None):
+        """Fingerprint of everything the expected deck depends on; ``None`` if unreadable."""
+        from scheduler.live_runner import fingerprint
+        names = names if names is not None else self.queue_vial_jobs()
+        if not names:
+            return None
+        try:
+            paths = {REPO_ROOT / "robot_state" / "vial_positions.yaml"}
+            for name, config_file in names:
+                _, vial_path = read_workflow_vial_path(name, config_file)
+                if vial_path is not None:
+                    paths.add(vial_path)
+            return tuple(sorted(fingerprint(paths).items()))
+        except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError):
+            return None
+
+    def deck_check_resolved(self):
+        if self.resolved_deck_check is None:
+            return False
+        current = self.deck_inputs_fingerprint()
+        return current is not None and current == self.resolved_deck_check[0]
+
+    def clear_deck_check(self):
+        self.last_deck_check = None
+        self.resolved_deck_check = None
+        self.vial_layout.deck_issues = {}
+
+    def start_deck_check(self):
+        if (self._execution_busy or self.setup_window is not None or self.deck_check_worker is not None
+                or self.simulation_process is not None or self.reset_process is not None):
+            return
+        self.refresh_vial_layout()
+        expected_fingerprint = self.deck_inputs_fingerprint()
+        if expected_fingerprint is None or self.vial_layout.load_error is not None:
+            QMessageBox.warning(self, "Deck Check", "Select a workflow for every row with readable vial files first.")
+            return
+        occupancy = dict(self.vial_layout.occupancy)
+        worker = DeckCheckWorker(occupancy, REPO_ROOT / "scheduler" / "state" / "deck_checks", self)
+        worker.done.connect(lambda check: self.deck_check_finished(check, expected_fingerprint))
+        self.deck_check_worker = worker
+        self.deck_check_button.setEnabled(False)
+        self.deck_check_button.setText("Checking...")
+        self.statusBar().showMessage("Deck check: capturing photo and contacting Labaware...")
+        worker.start()
+
+    def deck_check_finished(self, check, expected_fingerprint):
+        worker, self.deck_check_worker = self.deck_check_worker, None
+        if worker is not None:
+            worker.wait()
+            worker.deleteLater()
+        self.deck_check_button.setText("Check Deck")
+        changed = self.deck_inputs_fingerprint() != expected_fingerprint
+        self.last_deck_check = (expected_fingerprint, check)
+        self.refresh_vial_layout()
+        decision, note, camera_wrong = self.ask_deck_check_decision(check)
+        if changed and decision == "continue":
+            decision = "recheck_required"
+            QMessageBox.warning(self, "Deck Check", "Vial files changed during the check; check the deck again.")
+        if check.folder:
+            try:
+                deck_check.finalize(check, decision, note, camera_wrong)
+            except OSError as error:
+                QMessageBox.warning(self, "Deck Check", f"Could not save the deck check record: {error}")
+        if decision == "continue":
+            self.resolved_deck_check = (expected_fingerprint, check)
+            labels = {"match": "passed", "mismatch": "mismatch acknowledged",
+                      "comms_failure": "skipped (could not run)"}
+            label = ("passed; camera errors saved for training" if deck_check.all_camera_wrong(check)
+                     else labels[check.outcome])
+            self.statusBar().showMessage(f"Deck check {label} | {check.folder or ''}")
+        else:
+            self.resolved_deck_check = None
+            self.statusBar().showMessage(f"Deck check not accepted ({check.outcome}) | {check.folder or ''}")
+        self.refresh_vial_layout()
+        if decision == "recheck":
+            self.start_deck_check()
+
+    def ask_deck_check_decision(self, check):
+        """Show the result; return ``(decision, note, camera_wrong_rows)``. decision: continue | recheck | cancel."""
+        dialog = DeckCheckDialog(check, self)
+        dialog.exec()
+        return dialog.decision, dialog.note.text(), dialog.camera_wrong()
+
+    def deck_check_run_label(self):
+        check = self.resolved_deck_check[1] if self.resolved_deck_check else None
+        if check is None:
+            return "Deck check: not done"
+        if check.outcome == "mismatch" and deck_check.all_camera_wrong(check):
+            return f"Deck check: passed ({len(check.issues)} camera error(s) flagged)"
+        return {"match": "Deck check: passed",
+                "mismatch": f"Deck check: {len(check.issues)} MISMATCH(ES) ACKNOWLEDGED",
+                "comms_failure": "Deck check: COULD NOT RUN (continued without it)"}[check.outcome]
 
     def start_live_run(self):
-        if self._execution_busy or self.setup_window is not None:
+        if self._execution_busy or self.setup_window is not None or self.deck_check_worker is not None:
             return
         self.refresh_vial_layout()
         if not self.run_button.isEnabled():
-            QMessageBox.warning(self, "Run Blocked", "Simulate this unchanged queue successfully with zero errors and no vial conflicts first.")
+            QMessageBox.warning(self, "Run Blocked", "Simulate this unchanged queue successfully with zero errors and no vial conflicts, "
+                                "and complete Check Deck, first.")
             return
         response = QMessageBox.question(
             self, "Start Real Hardware?", "Run the approved queue on REAL hardware?\n"
+            f"{self.deck_check_run_label()}\n"
             "Confirm the physical inventory matches the saved state and no other hardware workflow is running.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
@@ -1066,6 +1345,9 @@ class SchedulerWindow(QMainWindow):
             return
         self.execution_mode = "live"
         self.approved_simulation_inputs = None
+        if self.resolved_deck_check is not None and self.resolved_deck_check[1].folder:
+            deck_check.mark_used(self.resolved_deck_check[1].folder, root)
+        self.clear_deck_check()  # consumed, like simulation approval
         self.simulation_session = root
         self.simulation_rows = list(range(self.table.rowCount()))
         self.simulation_index = 0
@@ -1385,6 +1667,10 @@ class SchedulerWindow(QMainWindow):
     def closeEvent(self, event):
         if self.simulation_process is not None or self.reset_process is not None:
             QMessageBox.warning(self, "Hardware Process Running", "Wait for the current workflow or robot reset to finish before closing.")
+            event.ignore()
+            return
+        if self.deck_check_worker is not None:
+            QMessageBox.warning(self, "Deck Check Running", "Wait for the deck check to finish before closing.")
             event.ignore()
             return
         super().closeEvent(event)

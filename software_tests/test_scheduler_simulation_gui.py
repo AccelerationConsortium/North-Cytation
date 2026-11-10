@@ -143,7 +143,9 @@ class SimulationGuiTests(unittest.TestCase):
         for item in (patch.object(scheduler_gui, "REPO_ROOT", self.root),
                      patch.object(state, "REPO_ROOT", self.root),
                      patch.object(state, "STATE_ROOT", self.root / "private"),
-                     patch.object(scheduler_gui, "QProcess", HarmlessProcess)):
+                     patch.object(scheduler_gui, "QProcess", HarmlessProcess),
+                     # Deck-check gating is covered in test_scheduler_deck_check_gui.py.
+                     patch.object(scheduler_gui.SchedulerWindow, "deck_check_resolved", return_value=True)):
             item.start()
             self.addCleanup(item.stop)
         self.window = scheduler_gui.SchedulerWindow()

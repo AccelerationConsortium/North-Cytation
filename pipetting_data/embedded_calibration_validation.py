@@ -404,7 +404,8 @@ def _append_to_master_sessions(session_data, validation_type="pipetting", *, sim
     db_file = MASTER_PIPETTING_SESSIONS_DB if validation_type == "pipetting" else MASTER_RESERVOIR_SESSIONS_DB
     append_csv(df_new, db_file)
 
-def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:
+def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001,
+                          log_result: bool = True) -> bool:
     """Evaluate if a measurement is acceptable based on stability criteria.
     
     A baseline is considered stable if:
@@ -431,10 +432,10 @@ def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) ->
     # Both baselines must be stable
     is_acceptable = pre_stable and post_stable
     
-    print(f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
-          f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)")
-    print(f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)")
-    
+    if log_result:
+        print(f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
+              f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)")
+        print(f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)")
     
     return is_acceptable
 
@@ -476,31 +477,42 @@ def _notify(lash_e, message):
         lash_e.logger.warning(f"Could not send Slack message: {error}")
 
 
-SCALE_SETTLE_SECONDS = 5.0
+SCALE_MAX_WAIT_SECONDS = 15.0
 SCALE_CHECK_SECONDS = 2.0  # quiet scale reading before a tip is picked up
 
 
 def _scale_ready(lash_e, liquid_type, tip_type, threshold):
-    """True if the scale is stable before any tip is used; otherwise warn on Slack.
+    """Wait for a stable scale, up to the configured maximum, before using a tip.
 
     Uses the same rule as each measurement (``_evaluate_measurement``). Simulation always
-    passes. If the check itself cannot run, the session goes ahead and the per-measurement
-    check still applies.
+    passes. If a check cannot run, the per-measurement check still applies.
     """
     if lash_e.simulate:
         return True
-    try:
-        readings = lash_e.nr_robot.monitor_weight_over_time(SCALE_CHECK_SECONDS)
-    except Exception as error:
-        lash_e.logger.warning(f"Scale pre-check could not run ({error}); measurements are still checked")
-        return True
+    deadline = time.monotonic() + SCALE_MAX_WAIT_SECONDS
+    readings = []
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            readings = lash_e.nr_robot.monitor_weight_over_time(
+                min(SCALE_CHECK_SECONDS, remaining))
+        except Exception as error:
+            lash_e.logger.warning(
+                f"Scale pre-check could not run ({error}); measurements are still checked")
+            return True
+        masses = [r['mass_g'] for r in readings if r.get('mass_g') is not None]
+        steady = sum(bool(r.get('steady_status')) for r in readings)
+        spread = float(np.std(masses, ddof=1)) if len(masses) > 1 else float('nan')
+        info = dict(pre_stable_count=steady, pre_total_count=len(readings), pre_baseline_std=spread,
+                    post_stable_count=steady, post_total_count=len(readings), post_baseline_std=spread)
+        if len(masses) > 1 and _evaluate_measurement(info, threshold, log_result=False):
+            return True
+
     masses = [r['mass_g'] for r in readings if r.get('mass_g') is not None]
     steady = sum(bool(r.get('steady_status')) for r in readings)
     spread = float(np.std(masses, ddof=1)) if len(masses) > 1 else float('nan')
-    info = dict(pre_stable_count=steady, pre_total_count=len(readings), pre_baseline_std=spread,
-                post_stable_count=steady, post_total_count=len(readings), post_baseline_std=spread)
-    if len(masses) > 1 and _evaluate_measurement(info, threshold):
-        return True
     detail = (f"spread {spread * 1000:.1f} mg, limit {threshold * 1000:.1f} mg, "
               f"{steady}/{len(readings)} steady readings" if masses else "no readings")
     _notify(lash_e, f"Scale unstable before {liquid_type} ({tip_type or 'auto tip'}) validation: {detail}. "
@@ -876,8 +888,6 @@ def validate_pipetting_accuracy(
 
     def place_and_check_scale():
         lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
-        if not lash_e.simulate:
-            time.sleep(SCALE_SETTLE_SECONDS)
         if _scale_ready(lash_e, liquid_type, tip_type, scale_threshold):
             return True
         try:

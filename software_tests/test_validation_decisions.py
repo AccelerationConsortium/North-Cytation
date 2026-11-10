@@ -415,8 +415,61 @@ class ShakyScaleRobot(CheckConfirmRobot):
         self.aspirations.append(args)
 
 
+def test_scale_precheck_returns_as_soon_as_stable(monkeypatch):
+    from pipetting_data import embedded_calibration_validation as validation
+
+    class SettlingRobot:
+        def __init__(self):
+            self.check_durations = []
+
+        def monitor_weight_over_time(self, time_s):
+            self.check_durations.append(time_s)
+            stable = len(self.check_durations) > 1
+            return [
+                dict(mass_g=10.0 if stable else 10.0 + (.05 if i % 2 else -.05),
+                     steady_status=stable)
+                for i in range(10)
+            ]
+
+    robot = SettlingRobot()
+    lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
+    monkeypatch.setattr(validation, 'SCALE_MAX_WAIT_SECONDS', 5.0)
+    monkeypatch.setattr(validation, 'SCALE_CHECK_SECONDS', 0.02)
+
+    assert validation._scale_ready(lash, 'water', 'small_tip', 0.001)
+    assert robot.check_durations == [0.02, 0.02]
+
+
+def test_scale_precheck_stops_at_maximum_wait(monkeypatch):
+    import time
+    import sys
+    from pipetting_data import embedded_calibration_validation as validation
+
+    class UnstableRobot:
+        def __init__(self):
+            self.check_durations = []
+
+        def monitor_weight_over_time(self, time_s):
+            self.check_durations.append(time_s)
+            time.sleep(time_s)
+            return [dict(mass_g=10.0 + (.05 if i % 2 else -.05),
+                         steady_status=False) for i in range(10)]
+
+    sent = []
+    monkeypatch.setitem(sys.modules, 'slack_agent', SimpleNamespace(send_slack_message=sent.append))
+    robot = UnstableRobot()
+    lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
+    monkeypatch.setattr(validation, 'SCALE_MAX_WAIT_SECONDS', 0.035)
+    monkeypatch.setattr(validation, 'SCALE_CHECK_SECONDS', 0.02)
+
+    assert not validation._scale_ready(lash, 'water', 'small_tip', 0.001)
+    assert sum(robot.check_durations) <= 0.035
+    assert len(sent) == 1
+
+
 def test_unstable_scale_before_start_skips_without_using_a_tip(check_confirm, tmp_path, monkeypatch):
     import sys
+    monkeypatch.setattr(check_confirm, 'SCALE_MAX_WAIT_SECONDS', 0.01)
     sent = []
     monkeypatch.setitem(sys.modules, 'slack_agent', SimpleNamespace(send_slack_message=sent.append))
     robot = ShakyScaleRobot()

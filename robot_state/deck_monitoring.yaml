@@ -1,0 +1,13 @@
+# Deck monitoring (computer vision) settings.
+# Used by the scheduler's Check Deck step (scheduler/deck_check.py).
+# See docs/platform/labaware_api.md for the server API.
+
+camera_folder: C:\Users\Imaging Controller\Desktop\camera-control  # C110 camera-control program folder
+capture_timeout_s: 20        # seconds to wait for one camera frame
+
+labaware_url: http://sdl4-not-for-gaming:8010   # Labaware server (Tailscale only)
+labaware_app_id: north_deck
+request_timeout_s: 30        # first call after a server restart takes ~4 s
+
+min_vial_confidence: 0.9     # vial readings below this count as empty (model sees phantom caps in empty edge slots)
+display_rotate_180: true     # show the photo turned 180 deg to match the operator's view (server still gets the raw frame)

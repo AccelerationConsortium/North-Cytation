@@ -1,6 +1,6 @@
 # Repository cleanup: current state and future work
 
-Updated: 2026-11-02
+Updated: 2026-11-10
 
 ## Current state
 
@@ -100,6 +100,31 @@ cleanup, but is optional and higher-risk.
   steps. Do not combine placement changes with controller refactoring.
 - Keep operator-facing GUIs and Slack integration at their current locations
   unless a separate concrete benefit justifies moving them.
+
+### 6. Optional simulation import optimization
+
+**Low priority; deferred at the operator's request (2026-11-10).** Startup
+delays are tolerable. No implementation is needed until this is explicitly resumed.
+
+- Defer calibration visualization and feature-analysis imports until reports
+  are requested (`save_files=True`). Import-only profiling measured about 4.6 s
+  for these dependencies, even when simulated runs save no reports.
+- Consider lazy calibration package exports: importing a small submodule
+  currently loads the experiment engine, optimizer and reporting stack.
+- Move shared Matplotlib imports in `North_Safe.py` into plotting methods;
+  review unconditional plotting setup in the adaptive and multidimensional
+  surfactant workflows. Matplotlib startup measured about 0.5-0.7 s.
+- Defer the fluorescence workflow's Slack import until a real notification is
+  needed; Slack dependencies measured about 0.54 s.
+- Preserve full simulated automation and scientific logic. Calibration Sobol
+  screening still uses Ax, and multidimensional Delaunay uses Torch/BoTorch;
+  hiding these imports alone would move the delay rather than remove it.
+- Audit covered all 81 Python files under `workflows`, including helpers and
+  archives. Most current plotting, camera and hardware-driver imports are
+  already deferred or mode-gated. Prioritize current paths over archive cleanup.
+- Before implementation, repeat isolated import timings in the existing
+  environment and verify unchanged in-memory results and saved reports. The
+  measurements above are single-run observations, not additive savings guarantees.
 
 ## Boundaries
 

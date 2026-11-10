@@ -198,6 +198,32 @@ log, so a closed terminal does not interrupt recording. There is no output-pipe 
 runtime, inactivity or estimate-based timeout. Ordinary per-experiment logs
 and run tracking still operate.
 
+## Deck Check
+
+**Check Deck** (footer, beside Simulate) is required before Run, like simulation.
+It photographs the north deck (C110 camera), sends the frame to the Labaware
+server ([API](../docs/platform/labaware_api.md)) and compares the result with the
+queue's combined vial files (the same occupancy as the Vial Layout tab). Settings:
+`robot_state/deck_monitoring.yaml`. Logic: `scheduler/deck_check.py`.
+
+- Checked: `main_8mL_rack` slot by slot, plus `clamp` and `clamp_2` (server
+  `clamp_1` = robot `clamp`). Other locations are listed as "not checked".
+- Flagged: missing vial, unexpected vial, wrong cap (`cap_type` open/closed vs
+  `open-cap`/`closed-cap`), labware not detected, server warnings. Uncapped vials
+  are checked for presence only. Missing vials suggest likely new positions.
+- Mismatch: Recheck, or Continue anyway after ticking "I have checked these
+  positions". Mismatched slots turn orange in Vial Layout.
+- Camera/server failure: reported plainly; Retry or Continue without deck check.
+- The dialog shows the photo rotated 180° to match the operator's view, with slot
+  boxes from the server's `detail=full` geometry: orange = issue (labelled with
+  `location_index`), green = vial OK, grey = empty. The server gets the raw frame.
+- Every check is saved to `scheduler/state/deck_checks/<timestamp>/` (raw frame,
+  `annotated.jpg`, full server response, expected layout, report with the operator's decision and the
+  Labaware `history_id`) and indexed in `scheduler/state/deck_checks/index.csv`.
+- The accepted check is tied to the vial files and `vial_positions.yaml`; editing
+  them, Reset Robot, or starting a live run clears it. There is no time expiry.
+  The Run confirmation states the deck check outcome.
+
 ## Live Run
 
 Run is enabled only after every queued job completes simulation with zero

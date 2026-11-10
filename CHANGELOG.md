@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026-11-10] - North Calibration Scale Settling
+
+- After tip conditioning, wait for the clamp scale to meet calibration stability
+  criteria, up to 15 seconds. If it remains unstable, continue into the existing
+  measurement quality checks.
+
+## [2026-11-10] - Embedded Validation Adaptive Scale Settling
+
+- Replace the fixed five-second settle delay with two-second stability checks,
+  continuing until stable or a 15-second maximum wait is reached.
+
 ## [2026-11-10] - Operator Pause and Crash Timing
 
 - Log operator pause, resume, and Ctrl+C wait durations; persist total paused_sec

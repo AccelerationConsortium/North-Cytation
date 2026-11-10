@@ -34,6 +34,7 @@ import yaml
 import logging
 import math
 import random
+import statistics
 from numbers import Real
 from contextlib import contextmanager
 from copy import deepcopy
@@ -55,6 +56,9 @@ logger = logging.getLogger(__name__)
 from pipetting_data.liquid_registry import get_liquid, load_liquids
 
 LIQUIDS = load_liquids()
+
+SCALE_SETTLE_MAX_SECONDS = 15.0
+SCALE_SETTLE_CHECK_SECONDS = 2.0
 
 
 from pipetting_data.pipetting_parameters import PipettingParameters
@@ -119,6 +123,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                                         move_to_aspirate=False, parameters=parameters, specified_tip=tip_type)
                 robot.dispense_into_vial(target_vial, self.conditioning_volume,
                                         initial_move=False, parameters=parameters)
+        if not lash_e.simulate:
+            self._wait_for_scale_stability(lash_e)
         robot.c9.goto(robot.get_location(use_pipet=True, location_name='clamp', location_index=0))
         logger.info("North calibration protocol ready: liquid=%s, vial=%s", liquid, target_vial)
         return {
@@ -382,7 +388,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         except Exception as e:
             self._report(f"WARNING: Vial swap check failed: {e}")
 
-    def _evaluate_measurement(self, stability_info: Dict[str, Any], std_threshold: float = 0.001) -> bool:
+    def _evaluate_measurement(self, stability_info: Dict[str, Any], std_threshold: float = 0.001,
+                              report: bool = True) -> bool:
         """Evaluate if a measurement is acceptable based on stability criteria.
         
         A baseline is considered stable if:
@@ -408,14 +415,54 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # Both baselines must be stable
         is_acceptable = pre_stable and post_stable
-        self._report(
-            f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
-            f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)"
-        )
-        self._report(
-            f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)"
-        )
+        if report:
+            self._report(
+                f"    Quality check: pre={pre_stable_pct:.1f}% stable "
+                f"(std={stability_info['pre_baseline_std']:.6f}g), "
+                f"post={post_stable_pct:.1f}% stable "
+                f"(std={stability_info['post_baseline_std']:.6f}g)"
+            )
+            self._report(
+                f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} "
+                f"(threshold: {std_threshold:.6f}g)"
+            )
         return is_acceptable
+
+    def _wait_for_scale_stability(self, lash_e):
+        """Wait for stable scale readings after conditioning, bounded by a timeout."""
+        deadline = time.monotonic() + SCALE_SETTLE_MAX_SECONDS
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                self._report(
+                    f"Scale did not stabilize within {SCALE_SETTLE_MAX_SECONDS:g}s; "
+                    "continuing with measurement quality checks"
+                )
+                return False
+            try:
+                readings = lash_e.nr_robot.monitor_weight_over_time(
+                    min(SCALE_SETTLE_CHECK_SECONDS, remaining))
+            except Exception as error:
+                self._report(
+                    f"Scale stability pre-check failed ({error}); "
+                    "continuing with measurement quality checks"
+                )
+                return False
+
+            masses = [reading['mass_g'] for reading in readings
+                      if reading.get('mass_g') is not None]
+            stability_info = {
+                'pre_stable_count': sum(bool(reading.get('steady_status')) for reading in readings),
+                'pre_total_count': len(readings),
+                'pre_baseline_std': statistics.stdev(masses) if len(masses) > 1 else math.inf,
+                'post_stable_count': sum(bool(reading.get('steady_status')) for reading in readings),
+                'post_total_count': len(readings),
+                'post_baseline_std': statistics.stdev(masses) if len(masses) > 1 else math.inf,
+            }
+            if len(masses) > 1 and self._evaluate_measurement(
+                    stability_info, self.quality_std_threshold, report=False):
+                self._report("Scale stabilized; continuing with calibration")
+                return True
 
     def validate_workflow_capacity(self, volume_ml, params, tip_type=None):
         """Enforce the North tip constraints for compensated measurement inputs."""
@@ -542,7 +589,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         measured_mass_g, stability_info = dispense_result
                         # Evaluate measurement quality if continuous monitoring was used
                         if continuous_mass_monitoring:
-                            measurement_acceptable = self._evaluate_measurement(stability_info, self.quality_std_threshold)
+                            measurement_acceptable = self._evaluate_measurement(
+                                stability_info, self.quality_std_threshold)
                         else:
                             measurement_acceptable = True  # Accept single-point measurements
                     else:

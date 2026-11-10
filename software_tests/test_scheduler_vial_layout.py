@@ -120,6 +120,12 @@ class SchedulerVialLayoutTests(unittest.TestCase):
         self.assertIn("Cannot load", view.errors.text())
 
     def test_presence_flag_controls_visibility_and_occupancy(self):
+        # Use a test-only disabled rack; don't depend on which racks the real lab config lists.
+        self.areas["small_vial_rack"] = {
+            "rack_present": False, "rack_size": 4, "vial_volume": 1,
+            "grid_params": {"num_cols": 2, "num_rows": 2, "x_delta_mm": None, "y_delta_mm": None},
+        }
+        (self.root / "robot_state" / "vial_positions.yaml").write_text(yaml.safe_dump(self.areas))
         self.workflow("first", [self.record("absent vial", "small_vial_rack", 0)])
         view = scheduler_gui.VialLayout()
         self.addCleanup(view.deleteLater)
