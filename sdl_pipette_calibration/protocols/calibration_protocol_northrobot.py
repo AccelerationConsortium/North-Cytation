@@ -592,7 +592,25 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         else:
                             # Calculate corrected source volume based on actual consumption
                             corrected_source_volume = source_volume_before - actual_volume_consumed_ml
-                            
+
+                            # Pipetting can never add liquid to the source vial (net change is ~0
+                            # when source == measurement vial), so a mass *gain* is scale noise.
+                            # Clamp to the pre-measurement volume and the vial's capacity so noise
+                            # cannot ratchet tracking above the dispense capacity check.
+                            upper_bound = source_volume_before
+                            try:
+                                source_location = lash_e.nr_robot.get_vial_info(source_vial, 'location')
+                                max_vial_volume = lash_e.nr_robot.get_config_parameter(
+                                    'vial_positions', source_location, 'vial_volume', error_on_missing=False)
+                                if max_vial_volume is not None:
+                                    upper_bound = min(upper_bound, float(max_vial_volume))
+                            except Exception:
+                                pass
+                            if corrected_source_volume > upper_bound:
+                                self._report(f"    Clamping source volume {corrected_source_volume:.6f}mL -> {upper_bound:.6f}mL (mass gain {-actual_mass_consumed_g*1000:.2f}mg treated as scale noise)")
+                                corrected_source_volume = upper_bound
+                            corrected_source_volume = max(corrected_source_volume, 0.0)
+
                             # Manually override robot's source volume tracking with actual measurement
                             if source_vial_index is not None:
                                 lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume

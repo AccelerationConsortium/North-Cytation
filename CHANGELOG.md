@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-11-10] - Operator Pause and Crash Timing
+
+- Log operator pause, resume, and Ctrl+C wait durations; persist total paused_sec
+  per run separately from wall-clock duration. Historical pause totals stay unknown.
+- Recover crashed runs using the log's last-write time rather than the next run's
+  start time; leave stop time unknown with a warning if the log is unavailable.
+- Extend existing tracker CSV headers without changing historical row values.
+- Correct the November 10 pipette crash record to its log's 00:38:59 last-write
+  time (127.18 seconds rather than 7.7 hours).
+
 ## [2026-11-07] - Embedded Validation Scale Settling
 
 - Wait five seconds after positioning the vial before the live scale precheck.

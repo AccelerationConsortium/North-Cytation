@@ -8,6 +8,7 @@ import math
 import time
 from statistics import median
 from decimal import Decimal, InvalidOperation
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,7 +18,8 @@ if str(REPO_ROOT) not in sys.path:
 
 import yaml
 from scheduler.console_output import ConsoleLogMirror
-from scheduler.config_lists import read_config_list, write_config_list
+from scheduler.config_lists import (live_experiment_id, read_config_entries, read_planned_consumables,
+                                    read_planned_queues, write_config_list)
 from scheduler.workflow_modules import workflow_paths
 from PySide6.QtCore import Qt, QProcess, QProcessEnvironment
 from PySide6.QtGui import QColor, QBrush
@@ -327,6 +329,10 @@ class SchedulerWindow(QMainWindow):
         import_queue.setToolTip("Append workflows from an ordered YAML list of config files")
         import_queue.clicked.connect(self.import_queue)
         toolbar.addWidget(import_queue)
+        planned_queue = QPushButton("Today's Planned Queue")
+        planned_queue.setToolTip("Append today's queue built by the lab agent from approved schedules")
+        planned_queue.clicked.connect(self.import_planned_queue)
+        toolbar.addWidget(planned_queue)
         save_queue = QPushButton("Save Queue")
         save_queue.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
         save_queue.setToolTip("Save queue order and each row's current configuration for later import")
@@ -650,31 +656,118 @@ class SchedulerWindow(QMainWindow):
         if not path:
             return
         try:
-            jobs = read_config_list(path, self.workflow_names)
+            jobs = read_config_entries(path, self.workflow_names)
         except (OSError, ValueError, yaml.YAMLError) as error:
             QMessageBox.warning(self, "Cannot Import Queue", str(error))
             return
-        # Validate the entire list before changing the current queue.
+        if self.append_jobs(jobs, "Cannot Import Queue"):
+            self.statusBar().showMessage(f"Imported {len(jobs)} jobs. Review Setup, then simulate the queue.")
+
+    def import_planned_queue(self):
+        """Append today's lab agent queue after the operator confirms its summary."""
+        if self._execution_busy or self.setup_window is not None or self.simulation_process is not None:
+            return
+        title = "Today's Planned Queue"
+        today = date.today().isoformat()
+        try:
+            queues = read_planned_queues()
+        except (OSError, ValueError) as error:
+            QMessageBox.warning(self, title, str(error))
+            return
+        entry = next((queue for queue in queues if queue.get("setup_day") == today), None)
+        if entry is None:
+            upcoming = sorted((queue for queue in queues if str(queue.get("setup_day", "")) > today),
+                              key=lambda queue: str(queue.get("setup_day")))
+            lines = [f"{queue.get('setup_day')}: {', '.join(queue.get('setup_by') or []) or 'unassigned'}"
+                     for queue in upcoming]
+            QMessageBox.information(self, title, f"The lab agent has no queue for today ({today}).\n\n"
+                                    + ("Upcoming setup days:\n" + "\n".join(lines) if lines else "No upcoming setup days."))
+            return
+        simulation = entry.get("simulation") or {}
+        status = simulation.get("status") or "unknown"
+        runs = [run.get("label") or run.get("experiment_id") or "?" for run in entry.get("runs") or []]
+        details = (f"Setup {today}, {entry.get('setup_window') or 'no window given'}\n"
+                   f"Set up by: {', '.join(entry.get('setup_by') or []) or 'unassigned'}\n"
+                   f"Estimated end: {entry.get('estimated_end') or 'unknown'}\n\n"
+                   "Runs:\n" + "\n".join(f"  {index}. {label}" for index, label in enumerate(runs, 1)) + "\n\n"
+                   f"Lab agent simulation: {status}"
+                   f" ({simulation.get('simulated_hours', '?')} h simulated, {simulation.get('planned_hours', '?')} h planned)")
+        if entry.get("setup_sheet"):
+            details += f"\nSetup sheet: {entry['setup_sheet']}"
+        details += "\n\n" + self.planned_consumables_reminder(entry.get("queue_file"))
+        if status != "succeeded":
+            details += ("\n\nWARNING: the lab agent's simulation of this queue did not succeed. "
+                        "Review it carefully before simulating here.")
+        details += "\n\nAppend these jobs? Review Setup and simulate here before running live."
+        if QMessageBox.question(self, title, details, QMessageBox.Yes | QMessageBox.No,
+                                QMessageBox.No) != QMessageBox.Yes:
+            return
+        try:
+            jobs = read_config_entries(entry.get("queue_file") or "", self.workflow_names)
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, title, f"Cannot load {entry.get('queue_file')}: {error}")
+            return
+        if self.append_jobs(jobs, title):
+            self.statusBar().showMessage(f"Added {len(jobs)} planned jobs for {today}. Review Setup, then simulate the queue.")
+
+    @staticmethod
+    def planned_consumables_reminder(queue_file):
+        """Reminder text only: the operator loads plates/tips and updates Track/Robot Status by hand."""
+        consumables = read_planned_consumables(queue_file) if queue_file else None
+        if consumables is None:
+            return "Wellplates and tips: no lab agent manifest found; check each run's needs before loading."
+        per_job = consumables["plates_per_job"]
+        total = sum(per_job)
+        kind = " / ".join(consumables["plate_types"]) or "wellplate"
+        if total:
+            runs = ", ".join(f"run {index}: {count}" for index, count in enumerate(per_job, 1) if count)
+            plates = f"Wellplates needed: {total} x {kind} ({runs})."
+        else:
+            plates = "Wellplates needed: none."
+        tips = consumables["tips"]
+        return (f"{plates}\nTips needed: {tips['small']} small, {tips['large']} large.\n"
+                "Load them and update Track Status / Robot Status before simulating.")
+
+    def append_jobs(self, jobs, error_title):
+        """Append validated entries; roll back on error and drop an empty starter row."""
         empty_row = (self.table.rowCount() == 1
                      and self.table.cellWidget(0, 0).currentData() is None)
         start = self.table.rowCount()
         try:
-            for name, config_path in jobs:
-                self.add_row(name, config_file=config_path)
+            for job in jobs:
+                self.add_row(job["workflow"], config_file=job["config_path"])
+                self.set_row_plan(self.table.cellWidget(self.table.rowCount() - 1, 0), job)
         except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
             while self.table.rowCount() > start:
                 self.table.removeRow(self.table.rowCount() - 1)
             self.count_label.setText(f"{self.table.rowCount()} queued")
             self.refresh_vial_layout()
-            QMessageBox.warning(self, "Cannot Import Queue", str(error))
-            return
+            QMessageBox.warning(self, error_title, str(error))
+            return False
         if empty_row:
             self.table.removeRow(0)
         self.approved_simulation_inputs = None
         self.pending_simulation_inputs = None
         self.count_label.setText(f"{self.table.rowCount()} queued")
         self.refresh_vial_layout()
-        self.statusBar().showMessage(f"Imported {len(jobs)} jobs. Review Setup, then simulate the queue.")
+        return True
+
+    PLAN_PROPERTIES = ("planned_experiment_id", "planned_config_sha256", "planned_label")
+
+    def set_row_plan(self, selector, plan=None):
+        """Record (or clear) the planner's experiment ID, fingerprint and label for a row."""
+        plan = plan or {}
+        values = (plan.get("experiment_id"), plan.get("config_sha256"), plan.get("label"))
+        for key, value in zip(self.PLAN_PROPERTIES, values):
+            selector.setProperty(key, value)
+        self.update_row_plan_tooltip(selector)
+
+    def update_row_plan_tooltip(self, selector):
+        planned_id, _, label = (selector.property(key) for key in self.PLAN_PROPERTIES)
+        lines = [label] if label else []
+        if planned_id:
+            lines.append(f"Planned experiment: {planned_id}")
+        selector.setToolTip("\n".join(lines))
 
     def add_row(self, selected_workflow=None, config_file=None):
         if self.setup_window is not None or self.simulation_process is not None:
@@ -728,6 +821,7 @@ class SchedulerWindow(QMainWindow):
                 selector.setProperty("config_file", None)
                 selector.setProperty("snapshot_workflow", name if valid else None)
                 selector.setProperty("config_source", None)
+                self.set_row_plan(selector, None)
                 status.setText("Not configured" if valid else "Not selected")
                 notes.setText("")
                 if valid:
@@ -936,7 +1030,10 @@ class SchedulerWindow(QMainWindow):
                 name = selector.currentData()
                 config_path, vial_path = read_workflow_vial_path(name, self.row_config_path(selector))
                 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-                jobs.append((row, name, config_path, config, vial_path))
+                # Fingerprint the config as loaded; SIMULATE and the vial path are overridden below.
+                experiment_id = live_experiment_id(selector.property("planned_experiment_id"),
+                                                   selector.property("planned_config_sha256"), config)
+                jobs.append((row, name, config_path, config, vial_path, experiment_id))
                 if vial_path is not None:
                     vial_files.append(str(vial_path))
             state_paths = set(vial_files) | {
@@ -948,14 +1045,14 @@ class SchedulerWindow(QMainWindow):
                 (REPO_ROOT / "robot_state" / "fluorescence_plate.yaml").resolve())
             if fluorescence_plate_state in approved_files:
                 state_paths.add(fluorescence_plate_state)
-            for row, name, config_path, config, vial_path in jobs:
+            for row, name, config_path, config, vial_path, experiment_id in jobs:
                 config["SIMULATE"] = False
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
                 folder = root / "jobs" / f"{row:03d}"
                 folder.mkdir(parents=True)
                 (folder / "input.json").write_text(json.dumps({
-                    # Generated here until an external experiment planner supplies queue IDs.
-                    "experiment_id": uuid4().hex,
+                    # Planned backlog ID while the config matches the lab agent's; random for hand-added rows.
+                    "experiment_id": experiment_id,
                     "workflow": name, "config_file": str(config_path.resolve()), "config": config,
                     "input_hashes": {path: digest for path, digest in approved_files.items() if path not in state_paths},
                     "state_hashes": {path: approved_files[path] for path in state_paths},
@@ -1381,7 +1478,7 @@ class SchedulerWindow(QMainWindow):
             return
         current = self.table.cellWidget(row, 0)
         neighbor = self.table.cellWidget(destination, 0)
-        properties = ("job_id", "config_file", "config_source", "snapshot_workflow")
+        properties = ("job_id", "config_file", "config_source", "snapshot_workflow", *self.PLAN_PROPERTIES)
         current_config = [current.property(key) for key in properties]
         neighbor_config = [neighbor.property(key) for key in properties]
         current_report = self.table.item(row, 3).data(Qt.UserRole)
@@ -1400,6 +1497,8 @@ class SchedulerWindow(QMainWindow):
             for key, current_value, neighbor_value in zip(properties, current_config, neighbor_config):
                 current.setProperty(key, neighbor_value)
                 neighbor.setProperty(key, current_value)
+            self.update_row_plan_tooltip(current)
+            self.update_row_plan_tooltip(neighbor)
             self.table.cellWidget(row, 1).setEnabled(current.currentData() in self.workflow_names)
             self.table.cellWidget(destination, 1).setEnabled(neighbor.currentData() in self.workflow_names)
             self.update_runtime_estimate(current, self.table.item(row, 4))

@@ -210,6 +210,64 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertEqual([first["experiment_id"], second_result["experiment_id"]], ids)
         self.assertNotEqual(ids[0], ids[1])
 
+    def test_planned_queue_keeps_planned_id_until_config_is_edited(self):
+        from datetime import date
+        from scheduler.config_lists import config_fingerprint
+        queue_folder = self.root / "agent_queue"
+        queue_folder.mkdir()
+        entries = []
+        for index, name in enumerate(("first", "second")):
+            config = yaml.safe_load((self.root / "workflow_configs" / f"{name}.yaml").read_text())
+            config["SIMULATE"] = True  # ignored by the fingerprint and overridden for live runs
+            (queue_folder / f"{index:02d}.yaml").write_text(yaml.safe_dump(config))
+            entries.append({"workflow": name, "config_file": f"{index:02d}.yaml", "experiment_id": f"EXP-{index}",
+                            "config_sha256": config_fingerprint(config), "label": f"Planned {name}"})
+        (queue_folder / "queue.yaml").write_text(yaml.safe_dump(entries, sort_keys=False))
+        index_file = self.root / "index.json"
+        index_file.write_text(json.dumps({"queues": [{
+            "setup_day": date.today().isoformat(), "setup_by": ["Tester"], "setup_window": "14:00-17:00",
+            "queue_file": str(queue_folder / "queue.yaml"),
+            "runs": [{"experiment_id": e["experiment_id"], "label": e["label"]} for e in entries],
+            "simulation": {"status": "failed", "simulated_hours": 1.0, "planned_hours": 2.0}}]}))
+        while self.window.table.rowCount():
+            self.window.table.removeRow(0)
+        self.window.add_row()
+        with patch.dict(os.environ, {"LAB_AGENT_QUEUE_INDEX": str(index_file)}), \
+                patch.object(QMessageBox, "question", return_value=QMessageBox.Yes) as confirm:
+            self.window.import_planned_queue()
+        summary = confirm.call_args.args[2]
+        self.assertIn("Tester", summary)
+        self.assertIn("Planned second", summary)
+        self.assertIn("WARNING", summary)
+        self.assertEqual(self.window.table.rowCount(), 2)
+        selector = self.window.table.cellWidget(0, 0)
+        self.assertEqual(selector.property("planned_experiment_id"), "EXP-0")
+        self.assertIn("Planned first", selector.toolTip())
+        self.assertFalse(self.window.run_button.isEnabled())
+
+        def live_ids():
+            self.window.start_simulation()
+            self.wait_for_queue()
+            with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+                    patch.object(self.window, "launch_next_simulation"):
+                self.window.start_live_run()
+            self.window.finish_simulation_queue()
+            root = self.window.simulation_session
+            return [json.loads((root / f"jobs/{job}/input.json").read_text())["experiment_id"] for job in ("000", "001")]
+
+        self.assertEqual(live_ids(), ["EXP-0", "EXP-1"])
+        snapshot = Path(self.window.row_config_path(selector))
+        config = yaml.safe_load(snapshot.read_text())
+        config["VOLUME_TARGETS_ML"] = [0.2]
+        snapshot.write_text(yaml.safe_dump(config))
+        changed = live_ids()
+        self.assertEqual(changed[0], f"EXP-0-changed-{config_fingerprint(config)[:8]}")
+        self.assertEqual(changed[1], "EXP-1")
+        # Choosing another workflow drops the plan, so the row gets a random ID again.
+        selector.setCurrentIndex(selector.findData("second"))
+        self.assertIsNone(selector.property("planned_experiment_id"))
+        self.assertEqual(selector.toolTip(), "")
+
     def test_failed_simulation_setup_after_live_run_does_not_reuse_live_folder(self):
         self.window.start_simulation()
         self.wait_for_queue()
