@@ -5,7 +5,8 @@ home = [0.0, 0.0, 0.0, 0.0]
 
 #Location of the clamp (gripper)
 vial_clamp = [2476, 7635, 44106, 17750] #Grab vial with gripper
-vial_clamp_cap = [2476, 7635, 44106, 16950] #17350 breaks caps - SQ
+vial_clamp_cap = [2472, 7625, 44089, 17350] #sp modifed05-nov-2026
+#[2476, 7635, 44106, 16950] #17350 breaks caps - SQ
 vial_clamp_pip = [2440, 5822, 39683, 11501] #Pipetting position at clamp
 
 clamp_2 = [-451, 39808, 33092, 22642]

@@ -16,6 +16,7 @@ import matplotlib.patches as patches
 import threading
 import json
 from robot_state.plate_inventory import PlateInventory, LID_ALIASES, number
+from experiment_tracking import experiment_run_logger
 
 class North_Base:
     """Base class for North robot components with shared functionality"""
@@ -33,7 +34,24 @@ class North_Base:
                 self.logger.error(f"Failed to send Slack message: {e}")
         
         if not self.simulate:
-            input(f"Error: {err_message}. Press Enter to continue...")
+            self.logger.warning("Paused, waiting for operator")
+            started = time.monotonic()
+            experiment_run_logger.begin_pause(self.logger)
+            interrupted = False
+            resumed = False
+            try:
+                input(f"Error: {err_message}. Press Enter to continue...")
+                resumed = True
+            except KeyboardInterrupt:
+                interrupted = True
+                raise
+            finally:
+                paused_sec = time.monotonic() - started
+                experiment_run_logger.end_pause(self.logger, paused_sec, interrupted)
+                if interrupted:
+                    self.logger.warning(f"Stopped by operator after {paused_sec / 60:.2f} min")
+                elif resumed:
+                    self.logger.info(f"Resumed after {paused_sec / 60:.2f} min")
         else:
             self.logger.warning(f"SIMULATION MODE: Would pause for error: {err_message}")
     

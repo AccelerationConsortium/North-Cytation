@@ -18,8 +18,10 @@ import getpass
 import inspect
 import os
 import sys
+import tempfile
 import traceback
 import uuid
+import warnings
 from datetime import datetime
 
 # Files that are internal plumbing, never the actual workflow - skip over them when walking
@@ -33,6 +35,7 @@ _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FIELDS = [
     "run_id", "workflow_name", "simulate", "datetime_started", "datetime_stopped",
     "status", "duration_sec", "log_filename", "pid", "user", "experiment_id",
+    "paused_sec",
 ]
 
 # Set by scheduler/live_runner.py for queued live jobs; empty for runs launched outside the scheduler.
@@ -57,6 +60,35 @@ class RunTracker:
         self.pid = os.getpid()
         self.user = getpass.getuser()
         self.cancelled = False
+        self.paused_sec = 0.0
+        self.pause_started = None
+        self.interrupted_by_user = False
+
+
+def _save_pause_state(tracker):
+    with open(tracker.marker_path, "a", encoding="utf-8") as stream:
+        stream.write(f"paused_sec={tracker.paused_sec}\n")
+        stream.write(f"pause_started={tracker.pause_started if tracker.pause_started is not None else ''}\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def begin_pause(logger):
+    """Record an operator wait if this logger belongs to a tracked run."""
+    tracker = vars(logger).get("_experiment_run_tracker")
+    if tracker is not None:
+        tracker.pause_started = datetime.now().timestamp()
+        _save_pause_state(tracker)
+
+
+def end_pause(logger, paused_sec, interrupted=False):
+    """Persist elapsed wait time, including operator cancellation."""
+    tracker = vars(logger).get("_experiment_run_tracker")
+    if tracker is not None:
+        tracker.paused_sec += paused_sec
+        tracker.pause_started = None
+        tracker.interrupted_by_user |= interrupted
+        _save_pause_state(tracker)
 
 
 def _pid_is_running(pid):
@@ -101,6 +133,20 @@ def _read_marker(marker_path):
 def _write_csv_row(csv_path, row):
     file_exists = os.path.isfile(csv_path)
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    if file_exists:
+        with open(csv_path, newline="", encoding="utf-8") as stream:
+            reader = csv.DictReader(stream)
+            if reader.fieldnames != CSV_FIELDS:
+                with tempfile.NamedTemporaryFile(mode="w", newline="", encoding="utf-8",
+                                                 dir=os.path.dirname(csv_path), delete=False) as migrated:
+                    writer = csv.DictWriter(migrated, fieldnames=CSV_FIELDS)
+                    writer.writeheader()
+                    writer.writerows(reader)
+                migrated_path = migrated.name
+            else:
+                migrated_path = None
+        if migrated_path is not None:
+            os.replace(migrated_path, csv_path)
     with open(csv_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         if not file_exists:
@@ -113,7 +159,6 @@ def _write_csv_row(csv_path, row):
 def _heal_orphaned_runs(csv_path, marker_dir):
     if not os.path.isdir(marker_dir):
         return
-    now = datetime.now()
     for marker_name in os.listdir(marker_dir):
         marker_path = os.path.join(marker_dir, marker_name)
         try:
@@ -126,25 +171,42 @@ def _heal_orphaned_runs(csv_path, marker_dir):
             # Still legitimately running in another process - not a crash, leave it alone.
             continue
 
-        started = fields.get("datetime_started", now.strftime(DATETIME_FMT))
+        log_path = os.path.join(os.path.dirname(marker_dir), fields.get("log_filename", ""))
+        stopped_dt = None
+        try:
+            stopped_dt = datetime.fromtimestamp(os.path.getmtime(log_path)) if os.path.isfile(log_path) else None
+        except OSError:
+            pass
+        if stopped_dt is None:
+            warnings.warn(f"Cannot determine crash stop time: log unavailable for {marker_name}", RuntimeWarning)
+
+        started = fields.get("datetime_started", "")
         try:
             started_dt = datetime.strptime(started, DATETIME_FMT)
-            duration_sec = (now - started_dt).total_seconds()
+            duration_sec = max(0.0, (stopped_dt - started_dt).total_seconds()) if stopped_dt else ""
         except ValueError:
             duration_sec = ""
+
+        paused_sec = fields.get("paused_sec", "")
+        if paused_sec != "":
+            paused_sec = float(paused_sec)
+            if fields.get("pause_started"):
+                paused_sec = (paused_sec + max(0.0, stopped_dt.timestamp() - float(fields["pause_started"]))
+                              if stopped_dt else "")
 
         row = {
             "run_id": fields.get("run_id", os.path.splitext(marker_name)[0]),
             "workflow_name": fields.get("workflow_name", ""),
             "simulate": fields.get("simulate", ""),
             "datetime_started": started,
-            "datetime_stopped": now.strftime(DATETIME_FMT),
+            "datetime_stopped": stopped_dt.strftime(DATETIME_FMT) if stopped_dt else "",
             "status": "interrupted_unknown_crash",
             "duration_sec": duration_sec,
             "log_filename": fields.get("log_filename", ""),
             "pid": pid or "",
             "user": fields.get("user", ""),
             "experiment_id": fields.get("experiment_id", ""),
+            "paused_sec": paused_sec,
         }
         _write_csv_row(csv_path, row)
         try:
@@ -198,6 +260,8 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
         f.flush()
         os.fsync(f.fileno())
 
+    _save_pause_state(tracker)
+    logger._experiment_run_tracker = tracker
     atexit.register(finalize_run, tracker)
     return tracker
 
@@ -222,10 +286,10 @@ def finalize_run(tracker):
         last_exc = getattr(sys, "last_exc", None)  # Python 3.12+
         last_value = last_exc if last_exc is not None else getattr(sys, "last_value", None)
 
-        if last_value is None:
-            status = "completed"
-        elif isinstance(last_value, KeyboardInterrupt):
+        if tracker.interrupted_by_user or isinstance(last_value, KeyboardInterrupt):
             status = "interrupted_by_user"
+        elif last_value is None:
+            status = "completed"
         else:
             status = "failed"
             os.makedirs(tracker.error_dir, exist_ok=True)
@@ -237,6 +301,9 @@ def finalize_run(tracker):
         datetime_stopped = datetime.now()
         started_dt = datetime.strptime(tracker.datetime_started, DATETIME_FMT)
         duration_sec = (datetime_stopped - started_dt).total_seconds()
+        paused_sec = tracker.paused_sec
+        if tracker.pause_started is not None:
+            paused_sec += max(0.0, datetime_stopped.timestamp() - tracker.pause_started)
 
         row = {
             "run_id": tracker.run_id,
@@ -250,6 +317,7 @@ def finalize_run(tracker):
             "pid": tracker.pid,
             "user": tracker.user,
             "experiment_id": tracker.experiment_id,
+            "paused_sec": paused_sec,
         }
         # Remove the marker before writing so a concurrent/duplicate finalize call sees it gone.
         try:

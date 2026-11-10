@@ -490,12 +490,15 @@ class EnhancedRobotArmController:
                 self.y_position_mm = y
                 
             def open_gripper(self):
-                logger.info("SIMULATION: Opening gripper")
-                self.gripper_is_open = True
+                self.set_output(7, False)
                 
             def close_gripper(self):
-                logger.info("SIMULATION: Closing gripper")
-                self.gripper_is_open = False
+                self.set_output(7, True)
+
+            def set_output(self, output, state):
+                logger.info("SIMULATION: Setting output %s to %s", output, state)
+                if output == 7:
+                    self.gripper_is_open = not state
                 
             def open_clamp(self):
                 logger.info("SIMULATION: Opening clamp")
@@ -2017,7 +2020,7 @@ class EnhancedRobotArmController:
         """Open gripper."""
         if self.is_connected and self._motion_allowed():
             try:
-                self.robot.open_gripper()
+                self.robot.set_output(7, False)
                 self.gripper_is_open = True
                 self.update_display()
             except Exception as e:
@@ -2027,7 +2030,7 @@ class EnhancedRobotArmController:
         """Close gripper."""
         if self.is_connected and self._motion_allowed():
             try:
-                self.robot.close_gripper()
+                self.robot.set_output(7, True)
                 self.gripper_is_open = False
                 self.update_display()
             except Exception as e:
