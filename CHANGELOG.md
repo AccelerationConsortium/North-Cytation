@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026-11-13] - Pipette Dispense Limit Rounding
+
+- Clamp a one-step dispense overrun without warning, retain the warning for
+  larger overruns, and allow unrelated controller errors to surface.
+
 ## [2026-11-10] - North Calibration Scale Settling
 
 - After tip conditioning, wait for the clamp scale to meet calibration stability

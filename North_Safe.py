@@ -1549,14 +1549,25 @@ class North_Robot(North_Base):
             blowout_vol (float): Volume for blowout after dispensing in mL
         """
         self.logger.debug(f"Dispensing {amount:.3f} mL then waiting {wait_time} s")
-      
-        try:
-            self.c9.dispense_ml(0, amount)
-        except: # If there's not enough to dispense
-            self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
-            self.c9.move_pump(0, 0)
 
-       
+        if self.simulate:
+            self.c9.dispense_ml(0, amount)
+        else:
+            pump = self.c9.pumps[0]
+            max_pump_position = self.get_config_parameter('pumps', 0, 'max_pump_position')
+            if max_pump_position is None:
+                raise ValueError("Missing max_pump_position for pipetting pump 0")
+
+            target_position = int(
+                pump['pos'] - amount * (max_pump_position / pump['volume'])
+            )
+            if target_position < 0:
+                if target_position < -1:
+                    self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
+                self.c9.move_pump(0, 0)
+            else:
+                self.c9.dispense_ml(0, amount)
+
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")

@@ -374,6 +374,55 @@ def test_invalid_configuration_fails_before_hardware_initialization():
     assert c8.mock_calls == []
 
 
+def test_one_step_dispense_overrun_is_clamped_without_warning(robot, caplog):
+    robot.c9.pumps = {0: {'pos': 3, 'volume': 1.0}}
+    robot.get_config_parameter = lambda config, key, field, **kw: (
+        3000 if config == 'pumps' and key == 0 and field == 'max_pump_position' else None
+    )
+
+    with caplog.at_level(logging.WARNING):
+        North_Robot.pipet_dispense(robot, 4 / 3000)
+
+    assert 'Dispense exceeded limit: Dispensing all liquid' not in caplog.text
+    robot.c9.dispense_ml.assert_not_called()
+    robot.c9.move_pump.assert_called_once_with(0, 0)
+
+
+def test_larger_dispense_overrun_warns_and_clamps_to_empty(robot, caplog):
+    robot.c9.pumps = {0: {'pos': 3, 'volume': 1.0}}
+    robot.get_config_parameter = lambda config, key, field, **kw: (
+        3000 if config == 'pumps' and key == 0 and field == 'max_pump_position' else None
+    )
+
+    with caplog.at_level(logging.WARNING):
+        North_Robot.pipet_dispense(robot, 5 / 3000)
+
+    assert 'Dispense exceeded limit: Dispensing all liquid' in caplog.text
+    robot.c9.dispense_ml.assert_not_called()
+    robot.c9.move_pump.assert_called_once_with(0, 0)
+
+
+def test_dispense_controller_errors_are_not_mislabeled_as_overflow(robot):
+    robot.c9.pumps = {0: {'pos': 3000, 'volume': 1.0}}
+    robot.get_config_parameter = lambda config, key, field, **kw: (
+        3000 if config == 'pumps' and key == 0 and field == 'max_pump_position' else None
+    )
+    robot.c9.dispense_ml.side_effect = OSError('Controller offline')
+
+    with pytest.raises(OSError, match='Controller offline'):
+        North_Robot.pipet_dispense(robot, .1)
+
+    robot.c9.move_pump.assert_not_called()
+
+
+def test_simulated_dispense_still_calls_controller(robot):
+    robot.simulate = True
+
+    North_Robot.pipet_dispense(robot, .1)
+
+    robot.c9.dispense_ml.assert_called_once_with(0, .1)
+
+
 def test_real_thread_collects_and_stops(robot, monkeypatch):
     monkeypatch.setattr(north.threading, 'Thread', REAL_THREAD)
     monkeypatch.setattr(north.time, 'sleep', REAL_SLEEP)
