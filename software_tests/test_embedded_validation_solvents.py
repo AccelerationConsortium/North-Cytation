@@ -91,4 +91,3 @@ def test_four_sessions_move_vials_without_held_tips(monkeypatch, tmp_path):
                                "ethyl_acetate": ("main_8mL_rack", 38)}
     assert len(calls) == 4
     assert [call["tip_type"] for call in calls] == ["small_tip", "large_tip"] * 2
-    assert all(call["compensate_overvolume"] is False for call in calls)

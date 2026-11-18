@@ -30,6 +30,7 @@ class WorkflowTemplateTests(unittest.TestCase):
             grab_new_wellplate=Mock(),
             measure_wellplate=Mock(return_value=None),
             discard_used_wellplate=Mock(),
+            safe_stop=Mock(),
         )
         def initialize(*args, **kwargs):
             self.lash.workflow_config = ConfigManager.resolve_workflow_config(
@@ -133,18 +134,17 @@ class WorkflowTemplateTests(unittest.TestCase):
 
     def test_cleanup_failures_do_not_mask_error_or_skip_other_actions(self):
         self.lash.measure_wellplate.side_effect = RuntimeError("reader failed")
-        self.temperature.turn_off_heating.side_effect = OSError("heater shutdown failed")
+        self.lash.safe_stop.side_effect = OSError("safe stop failed")
         with self.assertRaisesRegex(RuntimeError, "reader failed"):
             self.execute(self.config, show_gui=False)
-        self.temperature.turn_off_stirring.assert_called_once()
-        self.robot.move_home.assert_called_once()
-        self.lash.logger.exception.assert_any_call("Cleanup failed: turn_off_heating")
+        self.lash.safe_stop.assert_called_once()
+        self.lash.logger.exception.assert_any_call("Safe stop failed")
 
     def test_keyboard_interrupt_attempts_cleanup_and_propagates(self):
         self.lash.measure_wellplate.side_effect = KeyboardInterrupt()
         with self.assertRaises(KeyboardInterrupt):
             self.execute(self.config, show_gui=False)
-        self.robot.move_home.assert_called_once()
+        self.lash.safe_stop.assert_called_once()
 
     def live_config(self):
         protocol = Path(self.temporary.name) / "measurement.prt"
@@ -171,7 +171,7 @@ class WorkflowTemplateTests(unittest.TestCase):
         config = self.live_config()
         self.lash.measure_wellplate.side_effect = RuntimeError("reader failed")
         events = []
-        self.robot.move_home.side_effect = lambda: events.append("cleanup")
+        self.lash.safe_stop.side_effect = lambda reason: events.append("cleanup")
 
         def send(message):
             events.append(message)
@@ -186,7 +186,7 @@ class WorkflowTemplateTests(unittest.TestCase):
         config = self.live_config()
         self.lash.measure_wellplate.side_effect = KeyboardInterrupt()
         events = []
-        self.robot.move_home.side_effect = lambda: events.append("cleanup")
+        self.lash.safe_stop.side_effect = lambda reason: events.append("cleanup")
         with patch.dict(sys.modules, {"slack_agent": types.SimpleNamespace(
                 safe_send_slack_message=lambda message: events.append(message) or True)}):
             with self.assertRaises(KeyboardInterrupt):

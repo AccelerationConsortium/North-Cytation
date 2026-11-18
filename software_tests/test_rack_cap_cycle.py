@@ -79,8 +79,7 @@ def test_interrupt_runs_shared_cleanup(rack_test, operation):
     getattr(lash.nr_robot, operation).side_effect = KeyboardInterrupt
     with pytest.raises(KeyboardInterrupt):
         workflow["execute"](config=lash.workflow_config, show_gui=False)
-    lash.nr_track.reset_after_initialization.assert_called_once_with()
-    lash.nr_robot._perform_physical_cleanup.assert_called_once_with()
+    lash.safe_stop.assert_called_once_with("workflow failed or was interrupted")
 
 
 @pytest.mark.parametrize("bad_location", [31, 42, 48])

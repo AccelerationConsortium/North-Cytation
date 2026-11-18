@@ -1,0 +1,139 @@
+# Powder dispensing protocols (used by North_Powder.cl_pow_dispense).
+# Moved from powder_settings.py on 2026-11-18 with identical values.
+# tol: best expected dispense tolerance (mg). scale_delay: seconds before weighing (fall time).
+# Each stage applies below its thresh (mg remaining): fast, then med, then slow.
+#   opening_deg: valve opening (0-90]. percent_target: aim for this fraction of what's left each shake.
+#   max_growth: how much the shake time may grow or shrink between shakes. amplitude (%), freq (Hz).
+#   min_shake_t / max_shake_t (ms). shut_valve: close the valve between shakes (free-flowing powders).
+default:
+  tol: 0.2
+  fast_settings:
+    opening_deg: 50
+    percent_target: 0.75
+    max_growth: 3
+    thresh: 10
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: true
+  med_settings:
+    opening_deg: 30
+    percent_target: 0.5
+    max_growth: 1.25
+    thresh: 5
+    amplitude: 75
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: true
+  slow_settings:
+    opening_deg: 25
+    percent_target: 1
+    max_growth: 1.1
+    thresh: 3
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  scale_delay: 1
+sticky:
+  tol: 0.2
+  fast_settings:
+    opening_deg: 40
+    percent_target: 0.5
+    max_growth: 2
+    thresh: 10
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  med_settings:
+    opening_deg: 35
+    percent_target: 0.5
+    max_growth: 1.25
+    thresh: 10
+    amplitude: 90
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  slow_settings:
+    opening_deg: 25
+    percent_target: 0.5
+    max_growth: 1.1
+    thresh: 3
+    amplitude: 70
+    freq: 80
+    max_shake_t: 250
+    min_shake_t: 100
+    shut_valve: false
+  scale_delay: 2
+friendly:
+  tol: 0.2
+  fast_settings:
+    opening_deg: 45
+    percent_target: 0.5
+    max_growth: 2
+    thresh: 10
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  med_settings:
+    opening_deg: 30
+    percent_target: 0.5
+    max_growth: 1.25
+    thresh: 10
+    amplitude: 80
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  slow_settings:
+    opening_deg: 25
+    percent_target: 0.25
+    max_growth: 1.1
+    thresh: 2
+    amplitude: 70
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: false
+  scale_delay: 2.5
+flowing:
+  tol: 0.2
+  fast_settings:
+    opening_deg: 45
+    percent_target: 0.5
+    max_growth: 2
+    thresh: 10
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: true
+  med_settings:
+    opening_deg: 40
+    percent_target: 0.5
+    max_growth: 1.25
+    thresh: 10
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: true
+  slow_settings:
+    opening_deg: 30
+    percent_target: 0.25
+    max_growth: 1.1
+    thresh: 2
+    amplitude: 100
+    freq: 80
+    max_shake_t: 1000
+    min_shake_t: 25
+    shut_valve: true
+  scale_delay: 2.5

@@ -1051,38 +1051,32 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO', etc.)
         specified_tip: Resolved tip to keep throughout conditioning, if supplied.
     """
-    try:
-        # Calculate volume per conditioning cycle (5 cycles total)
-        cycles = 5
-        volume_per_cycle_ul = conditioning_volume_ul
-        volume_per_cycle_ml = volume_per_cycle_ul / 1000
+    # Calculate volume per conditioning cycle (5 cycles total)
+    cycles = 5
+    volume_per_cycle_ul = conditioning_volume_ul
+    volume_per_cycle_ml = volume_per_cycle_ul / 1000
 
-        # Simple dummy parameters - fast and reliable for conditioning only
-        from pipetting_data.pipetting_parameters import PipettingParameters
-        dummy_params = PipettingParameters(
-            aspirate_speed=15,      # Fast aspirate
-            dispense_speed=5,       # Fast dispense  
-            dispense_wait_time=0.0, # No waiting
-            blowout_vol=0.5         # Minimal blowout
+    # Simple dummy parameters - fast and reliable for conditioning only
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    dummy_params = PipettingParameters(
+        aspirate_speed=15,      # Fast aspirate
+        dispense_speed=5,       # Fast dispense  
+        dispense_wait_time=0.0, # No waiting
+        blowout_vol=0.5         # Minimal blowout
+    )
+    
+    lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
+    
+    for cycle in range(cycles):
+        # Aspirate from vial 
+        lash_e.nr_robot.aspirate_from_vial(
+            vial_name, volume_per_cycle_ml, parameters=dummy_params,
+            specified_tip=specified_tip,
         )
-        
-        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
-        
-        for cycle in range(cycles):
-            # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(
-                vial_name, volume_per_cycle_ml, parameters=dummy_params,
-                specified_tip=specified_tip,
-            )
-            # Dispense back into same vial
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
-        
-        lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
-        
-    except Exception as e:
-        if specified_tip is not None:
-            raise
-        lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
+        # Dispense back into same vial
+        lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+    
+    lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
 
 def get_pipette_usage_breakdown(lash_e):
     """Get detailed pipette usage breakdown by tip type from North_Robot.PIPETS_USED property."""
@@ -5439,8 +5433,8 @@ def execute(config=None, show_gui=True):
             else:
                 print(f"Unknown workflow type: '{WORKFLOW_TYPE}'.")
                 print("Set WORKFLOW_TYPE to one of: 'single', '2_stage', 'iterative', 'kinetics', 'kinetics_all'")
-    except KeyboardInterrupt:
-        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+    except (Exception, KeyboardInterrupt):
+        lash_e.logger.exception("Workflow failed or was interrupted; attempting cleanup")
         cleanup_after_keyboard_interrupt(lash_e)
         raise
 

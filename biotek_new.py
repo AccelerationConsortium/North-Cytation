@@ -52,6 +52,42 @@ class Biotek_Wrapper:
         if self.logger:
             getattr(self.logger, level)(message)
     
+    def _notify_not_connected(self):
+        """Best-effort Slack message before waiting for the operator; never raises.
+
+        Only when someone could answer the prompt (a console). Without one (the scheduler),
+        input() fails straight away and the scheduler's own "failed" message reports it.
+        """
+        try:
+            import sys
+            if not (sys.stdin and sys.stdin.isatty()):
+                return
+            import slack_agent
+            slack_agent.safe_send_slack_message(
+                "Cytation not connected: power-cycle it (about 5 minutes), then restart the run.")
+        except Exception as error:
+            self._log('warning', f"Slack message about the Cytation not sent: {error}")
+
+    @staticmethod
+    def _gen5_error_message(monitor):
+        """Gen5's own reason for a failed read, from the read monitor; "" if it can't be read.
+
+        Never raises. Not yet tried against the real driver: if the call names differ,
+        this just returns "" and the read error is reported as before.
+        """
+        try:
+            count = monitor.errors_count
+            count = count() if callable(count) else count
+            messages = []
+            for index in range(1, int(count) + 1):
+                try:
+                    messages.append(str(monitor.get_error_message(index)))
+                except Exception:
+                    pass
+            return "; ".join(m for m in messages if m)
+        except Exception:
+            return ""
+
     def __init__(self, ComPort=4, simulate=False, logger=None):
         """
         Initialize the Biotek wrapper.
@@ -85,7 +121,13 @@ class Biotek_Wrapper:
         elif not simulate:
             self._log('error', "Cytation5 not connected... May need to restart")
             if not self.simulate:
-                input("Error: Cytation5 not connected. Please check connection and restart if needed. Press Enter to continue...")
+                self._notify_not_connected()
+                try:
+                    input("Error: Cytation5 not connected. Please check connection and restart if needed. Press Enter to continue...")
+                except BaseException as error:
+                    # Same error as before (e.g. EOFError with no console); tagged for the run's error record
+                    error.error_code = "CYTATION_NOT_CONNECTED"
+                    raise
             else:
                 self._log('warning', "SIMULATION MODE: Would pause for Cytation5 connection error")
             
@@ -136,8 +178,9 @@ class Biotek_Wrapper:
                     self._log('warning', "Plate read is paused (waiting).")
                     # Continue waiting for read to resume
                 elif rstatus == 4:
-                    self._log('error', "Plate read error encountered.")
-                    raise RuntimeError("Plate read error encountered")
+                    reason = self._gen5_error_message(monitor)
+                    self._log('error', f"Plate read error encountered.{' Gen5: ' + reason if reason else ''}")
+                    raise RuntimeError(f"Plate read error encountered{' (Gen5: ' + reason + ')' if reason else ''}")
 
                 time.sleep(2)  # Check status every 2 seconds
 

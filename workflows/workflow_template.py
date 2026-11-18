@@ -9,7 +9,8 @@ configuration, without opening the GUI or reading/writing workflow YAML.
 Supplying config does not mean simulation: its SIMULATE value selects the mode.
 execute(show_gui=False) uses saved YAML without operator review.
 The example enables temperature control but not powder dispensing. If adding
-photoreactor steps, add supported per-reactor shutdown calls to cleanup too.
+photoreactor steps, list the reactors under safe_stop in robot_hardware.yaml so
+cleanup (lash_e.safe_stop) turns them off.
 For liquid dispensing, replace validation_sources with the real source vials,
 registry liquid names, and volumes from the final dispense plan. Set
 VALIDATE_LIQUIDS=True to run embedded gravimetric checks before the experiment,
@@ -306,15 +307,10 @@ def execute(config=None, show_gui=True):
 
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(f"Workflow failed with error: {e}")
-        for label, action in (
-            ("turn_off_heating", lash_e.temp_controller.turn_off_heating),
-            ("turn_off_stirring", lash_e.temp_controller.turn_off_stirring),
-            ("move_home", lash_e.nr_robot.move_home),
-        ):
-            try:
-                action()
-            except Exception:
-                logger.exception(f"Cleanup failed: {label}")
+        # One cleanup for errors and interrupts: instruments off, track parked (unless it holds
+        # a plate), robot cleared, vials home, and a report of anything left for an operator.
+        from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
+        cleanup_after_keyboard_interrupt(lash_e)
         # The scheduler live runner reports failures; it does not report interrupts.
         if isinstance(e, KeyboardInterrupt):
             _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted by operator; cleanup attempted, review experiment log")

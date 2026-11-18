@@ -111,33 +111,29 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         conditioning_volume_ul: Total volume for conditioning (default 100 uL)
         liquid_type: Type of liquid for pipetting parameters (ignored - always uses dummy params)
     """
-    try:
-        # Calculate volume per conditioning cycle (3 cycles total)
-        cycles = 3
-        volume_per_cycle_ul = conditioning_volume_ul
-        volume_per_cycle_ml = volume_per_cycle_ul / 1000
-        
-        # Use simple dummy parameters for fast conditioning (accuracy not needed)
-        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL (fast dummy params)")
-        
-        # Simple dummy parameters - fast and reliable for conditioning only
-        from pipetting_data.pipetting_parameters import PipettingParameters
-        dummy_params = PipettingParameters(
-            aspirate_speed=15,      # Fast aspirate
-            dispense_speed=5,       # Fast dispense  
-            dispense_wait_time=0.0, # No waiting
-            blowout_vol=0.5         # Minimal blowout
-        )
-        
-        for cycle in range(cycles):
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml,
-                                               parameters=dummy_params, specified_tip=tip_type)
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
-        
-        lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
-        
-    except Exception as e:
-        lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
+    # Calculate volume per conditioning cycle (3 cycles total)
+    cycles = 3
+    volume_per_cycle_ul = conditioning_volume_ul
+    volume_per_cycle_ml = volume_per_cycle_ul / 1000
+    
+    # Use simple dummy parameters for fast conditioning (accuracy not needed)
+    lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL (fast dummy params)")
+    
+    # Simple dummy parameters - fast and reliable for conditioning only
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    dummy_params = PipettingParameters(
+        aspirate_speed=15,      # Fast aspirate
+        dispense_speed=5,       # Fast dispense  
+        dispense_wait_time=0.0, # No waiting
+        blowout_vol=0.5         # Minimal blowout
+    )
+    
+    for cycle in range(cycles):
+        lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml,
+                                           parameters=dummy_params, specified_tip=tip_type)
+        lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+    
+    lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
 
 # Add path for imports if needed
 if "../utoronto_demo" not in sys.path:

@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox,
     QStatusBar, QMenuBar, QToolBar, QScrollArea, QFrame,
     QSplitter, QGroupBox, QTextEdit, QDialogButtonBox, QTreeWidget,
-    QTreeWidgetItem, QHeaderView, QSizePolicy
+    QTreeWidgetItem, QHeaderView, QSizePolicy, QTableWidget, QTableWidgetItem
 )
 from PySide6.QtCore import Qt, Signal, QSize, QMimeData, QTimer, QObject, QEvent, QRectF
 from PySide6.QtGui import (
@@ -479,6 +479,20 @@ class VialEditDialog(QDialog):
         disable_wheel_events(self.home_index_spin)  # Prevent scroll interference
         form_layout.addRow("Home Index:", self.home_index_spin)
         
+        # Sample tracking: which stock this vial holds, and what the log says is in it
+        from stock_dialogs import fill_stock_combo, handle_add_new
+        self.stock_combo = QComboBox()
+        fill_stock_combo(self.stock_combo, self._original_stock())
+        self.stock_combo.activated.connect(
+            lambda _: handle_add_new(self.stock_combo, self, self._original_stock()))
+        self.stock_combo.setToolTip("Changing a vial's stock makes it a new vial (new ID).")
+        form_layout.addRow("Stock:", self.stock_combo)
+        self.contents_label = QLabel(self._contents_text())
+        self.contents_label.setWordWrap(True)
+        self.contents_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.contents_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        form_layout.addRow("Contents:", self.contents_label)
+
         # Notes field (optional - for additional information)
         self.notes_edit = QTextEdit()
         self.notes_edit.setMaximumHeight(60)
@@ -579,8 +593,27 @@ class VialEditDialog(QDialog):
         
         self.notes_edit.setPlainText(str(self.vial_data.get('notes', '')))
     
+    def _original_stock(self):
+        value = self.vial_data.get("stock_id")
+        return value.strip() if isinstance(value, str) else ""
+
+    def _contents_text(self):
+        try:
+            from experiment_tracking import sample_tracking
+            return sample_tracking.describe_contents(self.vial_data.get("container_id"), self._original_stock())
+        except Exception as error:
+            return f"Unavailable ({error})"
+
     def get_vial_data(self) -> Dict:
-        """Get updated vial data from form."""
+        """Get updated vial data from form; a changed stock gives the vial a new ID."""
+        from experiment_tracking import sample_tracking
+        data = self._form_data()
+        choice = self.stock_combo.currentData()
+        if choice != self._original_stock() and choice is not None and choice != "__new__":
+            data = sample_tracking.vial_after_stock_choice(data, choice)
+        return data
+
+    def _form_data(self) -> Dict:
         return {
             'vial_name': self.name_edit.text(),
             'location': self.location_edit.text(),
@@ -1380,7 +1413,70 @@ from robot_state.plate_inventory_widget import PlateInventoryWidget
 
 class TrackStatusWidget(PlateInventoryWidget):
     """Position inventory editor; preserves parent-window load/save integration."""
-    pass
+
+    def clear_plates(self):
+        """Record that every plate and lid has been taken off the robot (it doesn't move).
+        Changes the draft only; the main window's Save writes it."""
+        if not self.inventory:
+            return
+        def clear():
+            with self.inventory.edit():
+                attached = set(self.inventory.attachments.values())  # lids go with their plates
+                for object_id in [o for o in list(self.inventory.objects) if o not in attached]:
+                    self.inventory.remove(object_id)
+                self.inventory.data["pending_transfer"] = None
+        self._guard(clear)
+
+    def selected_plate_id(self):
+        """The selected plate (or the plate a selected lid sits on, or the top plate at the
+        selected position), or None."""
+        if not self.inventory:
+            return None
+        try:
+            object_id = self.selected_object()
+        except ValueError:
+            contents = self.inventory.contents(self.selected_position())
+            object_id = contents[-1] if contents else None
+        if object_id is None:
+            return None
+        if self.inventory.objects.get(object_id, {}).get("kind") == "plate":
+            return object_id
+        for plate, lid in self.inventory.attachments.items():
+            if lid == object_id:
+                return plate
+        return None
+
+    def show_well_contents(self, contents_file=None):
+        """What each well of the selected plate holds, from the stored contents."""
+        from experiment_tracking import sample_contents
+        plate_id = self.selected_plate_id()
+        if plate_id is None:
+            QMessageBox.information(self, "Well contents", "Select a plate first.")
+            return None
+        store = sample_contents.ContentsStore(contents_file or sample_contents.CONTENTS_FILE)
+        wells = sorted(((int(cid.rsplit(":", 1)[1]), record) for cid, record in store.records.items()
+                        if cid.startswith(plate_id + ":")), key=lambda item: item[0])
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Well contents: {plate_id}")
+        dialog.resize(720, 420)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel(f"{len(wells)} wells with recorded contents (well numbers as the workflows use them)."))
+        table = QTableWidget(len(wells), 3)
+        table.setHorizontalHeaderLabels(["Well", "Contents", "Updated"])
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setStretchLastSection(True)
+        for row, (index, record) in enumerate(wells):
+            for column, value in enumerate([str(index), sample_contents.describe(record), record.get("updated", "")]):
+                table.setItem(row, column, QTableWidgetItem(value))
+        table.resizeColumnsToContents()
+        layout.addWidget(table)
+        close = QPushButton("Close")
+        close.clicked.connect(dialog.accept)
+        layout.addWidget(close)
+        self._well_dialog = dialog
+        dialog.show()
+        return dialog
 
 
 class RobotStatusWidget(QWidget):
@@ -1481,7 +1577,24 @@ class RobotStatusWidget(QWidget):
         button_layout.addStretch()
         
         layout.addLayout(button_layout)
-    
+
+    # Record-only clears: for after a person has emptied the gripper or tip, or refilled the
+    # racks, by hand. They change the form; Save writes them. The robot doesn't move.
+    def clear_gripper(self):
+        self.gripper_status_edit.setText("")
+        self.gripper_vial_index_edit.setText("")
+
+    def clear_pipet_holder(self):
+        self.held_pipet_type_edit.setText("")
+        self.pipet_fluid_vial_index_edit.setText("")
+        self.pipet_fluid_volume_spin.setValue(0.0)
+        self.robot_data["pipet_fluid_contents"] = None  # the tip's tracked contents go with it (on Save)
+
+    def refill_pipets(self):
+        for spin in (self.large_tip_rack_1_spin, self.large_tip_rack_2_spin,
+                     self.small_tip_rack_1_spin, self.small_tip_rack_2_spin):
+            spin.setValue(0)
+
     def _load_robot_status(self):
         """Load robot status from YAML file."""
         self.state_loaded = False
@@ -1987,7 +2100,7 @@ class VialManagerMainWindow(QMainWindow):
         )
         self.return_home_button.setToolTip("Reset all vials' current locations to their home locations (digital only)")
         button_layout.addWidget(self.return_home_button)
-        
+
         button_layout.addStretch()
         
         # Workflow control buttons (hidden by default)
@@ -2023,7 +2136,7 @@ class VialManagerMainWindow(QMainWindow):
         button_layout.addWidget(self.stats_label)
         
         layout.addLayout(button_layout)
-    
+
     def _setup_menu_bar(self):
         """Set up menu bar."""
         menubar = self.menuBar()

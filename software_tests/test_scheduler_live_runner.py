@@ -257,8 +257,14 @@ class LiveRunnerTests(unittest.TestCase):
         self.run_with(Mock(side_effect=RuntimeError("IO: MOTOR FAULT")))
         self.assertEqual([call.args[0] for call in self.notify.call_args_list], [
             "North experiment exp-fixture started | workflow=fixture",
-            "North experiment exp-fixture failed | workflow=fixture | error=RuntimeError: IO: MOTOR FAULT",
+            "North experiment exp-fixture failed | workflow=fixture | error=RuntimeError: IO: MOTOR FAULT"
+            " [C9_MOTOR_FAULT: Power-cycle the C9 controller. The fault doesn't say which motor; check the step and the deck.]",
         ])
+
+    def test_slack_skips_hard_estop_like_an_interrupt(self):
+        self.run_with(Mock(side_effect=RuntimeError("IO: SYSTEM ERROR: Hard E-Stop triggered")))
+        self.assertEqual([call.args[0] for call in self.notify.call_args_list],
+                         ["North experiment exp-fixture started | workflow=fixture"])
 
     def test_slack_reports_blocked_start_as_failure(self):
         self.source.write_text("changed")

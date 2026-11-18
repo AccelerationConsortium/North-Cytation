@@ -1,0 +1,68 @@
+# Known error codes for run error records (experiment_tracking/error_records.py).
+# Each failed run gets logs/experiment_run_errors/<run_id>.yaml with the matching code.
+# An error that matches nothing here is recorded as UNKNOWN, with its message kept.
+#
+# Kinds: hardware_fault, operator_stop, setup_problem, measurement_check, protocol_error, software_bug
+#
+# How an error is matched, first match wins:
+#   1. code set on the exception by our code (error.error_code), for cases only the code can tell
+#   2. c9_error: the C9 error number the North SDK attaches to its RuntimeError
+#   3. message_contains: text in the error message (also finds errors wrapped by our own code)
+#   4. exception: the Python exception type name
+#
+# This file is kept here, not in robot_state/, because the scheduler treats every
+# robot_state/*.yaml as a reviewed input, so editing it would force a new simulation.
+
+codes:
+  C9_MOTOR_FAULT:
+    kind: hardware_fault
+    device: C9 controller
+    c9_error: 21
+    message_contains: ["MOTOR FAULT"]
+    what_to_do: "Power-cycle the C9 controller. The fault doesn't say which motor; check the step and the deck."
+    slack: true
+
+  C9_HARD_ESTOP:
+    kind: operator_stop
+    device: C9 controller
+    c9_error: 8
+    message_contains: ["Hard E-Stop"]
+    what_to_do: "Release the E-stop button, then power-cycle the C9 controller."
+    slack: false
+
+  C9_NOT_RESPONDING:
+    kind: setup_problem
+    device: C9 controller
+    what_to_do: "The C9 controller didn't answer the first command. Check it is powered on, then start again."
+    slack: true
+
+  HELD_VIAL_UNKNOWN:
+    kind: setup_problem
+    device: robot arm
+    what_to_do: "The saved status says the gripper holds a vial but not which one, or where it lives. Check the gripper by hand, then correct robot_status.yaml or the vial file."
+    slack: true
+
+  CYTATION_NOT_CONNECTED:
+    kind: setup_problem
+    device: Cytation
+    what_to_do: "Power-cycle the Cytation (about 5 minutes), then start again."
+    slack: true
+
+  CYTATION_READ_ERROR:
+    kind: protocol_error
+    device: Cytation
+    message_contains: ["Plate read error encountered"]
+    what_to_do: "Usually a problem with the Gen5 protocol; check it. The plate is still in the Cytation."
+    slack: true
+
+  OPERATOR_STOP:
+    kind: operator_stop
+    exception: [KeyboardInterrupt]
+    what_to_do: "Stopped by the operator."
+    slack: false
+
+  PYTHON_EXCEPTION:
+    kind: software_bug
+    exception: [KeyError, TypeError, AttributeError, NameError, IndexError, ZeroDivisionError, UnboundLocalError]
+    what_to_do: "A bug in our code. See the traceback."
+    slack: true

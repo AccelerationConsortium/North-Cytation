@@ -4,6 +4,8 @@ main_8mL_rack:
   vial_positions_in_Locator: rack  # Variable name in Locator.py for gripper positions
   pipetting_positions_in_Locator: rack_pip  # Variable name in Locator.py for pipetting positions
   rack_size: 48  # Number of positions in the rack
+  small_tip_safe_indices: [43, 44, 45, 46, 47]  # Small tip can reach the bottom without problems
+  small_tip_staging_rank: {47: 2, 46: 3, 45: 4, 44: 6, 43: 7}  # stage_vials order across locations (1 = safest); 44 and 43 have had pull-outs
   vial_volume: 8  # Standard vial volume in mL
   height_volume_constant: 6
   vials_movable: true  # Whether vials can be moved (if capped and 8mL type)
@@ -36,6 +38,8 @@ clamp_2:
   vial_positions_in_Locator: clamp_2  # Single clamp position for gripper
   pipetting_positions_in_Locator: clamp_2_pip  # No pipetting position defined for this clamp
   rack_size: 1  # Single position
+  small_tip_safe_indices: [0]
+  small_tip_staging_rank: {0: 5}
   vial_volume: 8  # Variable - depends on vial placed in clamp
   height_volume_constant: 6
   vials_movable: true  # Vials can be moved (this is the manipulation station)
@@ -81,6 +85,7 @@ photoreactor_array:
   vial_positions_in_Locator: photo_reactor_0  # Single photoreactor (could be made into array later if needed)
   pipetting_positions_in_Locator: PR_PIP_0  # Single pipetting position for photoreactor
   rack_size: 1  # Currently only one photoreactor in use
+  small_tip_safe_indices: [0]  # Safe to aspirate from, but not a staging target
   vial_volume: 8  # Standard vial volume in mL (assuming 8mL vials)
   height_volume_constant: 6
   vials_movable: true  # Vials can be moved if capped
@@ -97,6 +102,8 @@ clamp:
   vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper
   pipetting_positions_in_Locator: vial_clamp_pip  # Single clamp position for pipetting
   rack_size: 1  # Single position
+  small_tip_safe_indices: [0]
+  small_tip_staging_rank: {0: 1}  # Safest: the clamp grips the vial
   vial_volume: 8  # Variable - depends on vial placed in clamp
   height_volume_constant: 6
   vials_movable: true  # Vials can be moved (this is the manipulation station)
@@ -113,6 +120,7 @@ heater:
   vial_positions_in_Locator: heater_grid  # Variable name in Locator.py for gripper positions
   pipetting_positions_in_Locator: heater_grid_pip  # Variable name in Locator.py for pipetting positions
   rack_size: 12  # Number of positions in the heater grid
+  small_tip_safe_indices: [2]  # TODO: confirm 5 and 8; not a staging target
   vial_volume: 8  # Variable - depends on vial type placed
   height_volume_constant: 6
   vials_movable: true  # Vials can be moved if capped

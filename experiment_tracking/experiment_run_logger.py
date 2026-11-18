@@ -16,6 +16,7 @@ import csv
 import ctypes
 import getpass
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -35,7 +36,7 @@ _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FIELDS = [
     "run_id", "workflow_name", "simulate", "datetime_started", "datetime_stopped",
     "status", "duration_sec", "log_filename", "pid", "user", "experiment_id",
-    "paused_sec",
+    "paused_sec", "config_file", "output_folder", "error_kind", "error_code",
 ]
 
 # Set by scheduler/live_runner.py for queued live jobs; empty for runs launched outside the scheduler.
@@ -63,6 +64,10 @@ class RunTracker:
         self.paused_sec = 0.0
         self.pause_started = None
         self.interrupted_by_user = False
+        self.config_file = ""
+        self.output_folder = ""
+        self.vial_file = None  # set by Lash_E; used for the end-of-run well contents
+        self.safe_stop_report = None  # set by Lash_E.safe_stop; saved in the error record
 
 
 def _save_pause_state(tracker):
@@ -207,6 +212,10 @@ def _heal_orphaned_runs(csv_path, marker_dir):
             "user": fields.get("user", ""),
             "experiment_id": fields.get("experiment_id", ""),
             "paused_sec": paused_sec,
+            "config_file": fields.get("config_file", ""),
+            "output_folder": fields.get("output_folder", ""),
+            "error_kind": "",
+            "error_code": "",
         }
         _write_csv_row(csv_path, row)
         try:
@@ -215,7 +224,31 @@ def _heal_orphaned_runs(csv_path, marker_dir):
             pass
 
 
-def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
+def _save_run_config(config, config_dir, run_id, logger):
+    """Save the confirmed workflow config as <config_dir>/<run_id>.yaml. Returns the path, or "" on failure."""
+    try:
+        import yaml
+        os.makedirs(config_dir, exist_ok=True)
+        path = os.path.join(config_dir, f"{run_id}.yaml")
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(dict(config), f, sort_keys=False)
+        return path
+    except Exception as e:
+        # Never stop a run because the config snapshot could not be written
+        logger.warning(f"experiment_run_logger could not save config for run {run_id}: {e}")
+        return ""
+
+
+def record_output_folder(tracker, output_folder):
+    """Record where this run saved its data (written to experiment_runs.csv at the end of the run)."""
+    tracker.output_folder = os.path.abspath(output_folder)
+    with open(tracker.marker_path, "a", encoding="utf-8") as stream:
+        stream.write(f"output_folder={tracker.output_folder}\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def start_run(workflow_name, simulate, log_filename, logger, logging_folder, config=None):
     """Register this run for tracking. Call once, early in Lash_E.__init__.
 
     logging_folder must be the same folder Lash_E already writes its per-run .log file to, so
@@ -223,6 +256,9 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
     working directory. experiment_runs.csv itself always lives next to this module
     (experiment_tracking/), independent of logging_folder, so it stays out of the
     gitignored logs/ folder no matter what the caller passes.
+
+    config, if given, is the confirmed workflow config. It is saved as
+    <logging_folder>/experiment_run_configs/<run_id>.yaml and its path goes in the CSV row.
     """
     csv_path = os.path.join(_MODULE_DIR, "experiment_runs.csv")
     marker_dir = os.path.join(logging_folder, ".active_runs")
@@ -247,6 +283,9 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
     marker_path = os.path.join(marker_dir, f"{run_id}.txt")
     tracker = RunTracker(run_id, workflow_name, simulate, log_filename, datetime_started, marker_path,
                          csv_path, error_dir, logger, os.environ.get(EXPERIMENT_ID_ENV, ""))
+    if config is not None:
+        tracker.config_file = _save_run_config(
+            config, os.path.join(logging_folder, "experiment_run_configs"), run_id, logger)
 
     with open(marker_path, "w", encoding="utf-8") as f:
         f.write(f"run_id={run_id}\n")
@@ -257,6 +296,7 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
         f.write(f"user={tracker.user}\n")
         f.write(f"log_filename={log_filename}\n")
         f.write(f"experiment_id={tracker.experiment_id}\n")
+        f.write(f"config_file={tracker.config_file}\n")
         f.flush()
         os.fsync(f.fileno())
 
@@ -275,6 +315,25 @@ def cancel_run(tracker):
         pass
 
 
+def _save_error_record(tracker, error):
+    """Write <error_dir>/<run_id>.yaml next to the traceback. Returns (kind, code). Never raises."""
+    try:
+        from experiment_tracking.error_records import classify, write_record
+        record = {"run_id": tracker.run_id, "workflow": tracker.workflow_name,
+                  "time": datetime.now().strftime(DATETIME_FMT), **classify(error)}
+        record.pop("slack", None)
+        record["traceback_file"] = f"{tracker.run_id}.txt"
+        report = tracker.safe_stop_report
+        # Round-trip through JSON so numpy values etc. can't stop the YAML being written
+        record["state_after_error"] = json.loads(json.dumps(report, default=str)) if report else None
+        if not write_record(os.path.join(tracker.error_dir, f"{tracker.run_id}.yaml"), record):
+            tracker.logger.warning(f"experiment_run_logger could not write the error record for run {tracker.run_id}")
+        return record["kind"], record["code"]
+    except Exception as e:
+        tracker.logger.warning(f"experiment_run_logger could not save the error record for run {tracker.run_id}: {e}")
+        return "", ""
+
+
 def finalize_run(tracker):
     """Registered with atexit - writes this run's single CSV row and clears its marker."""
     if tracker.cancelled:
@@ -286,8 +345,10 @@ def finalize_run(tracker):
         last_exc = getattr(sys, "last_exc", None)  # Python 3.12+
         last_value = last_exc if last_exc is not None else getattr(sys, "last_value", None)
 
+        error_kind = error_code = ""
         if tracker.interrupted_by_user or isinstance(last_value, KeyboardInterrupt):
             status = "interrupted_by_user"
+            error_kind, error_code = "operator_stop", "OPERATOR_STOP"
         elif last_value is None:
             status = "completed"
         else:
@@ -297,6 +358,7 @@ def finalize_run(tracker):
             tb_text = "".join(traceback.format_exception(type(last_value), last_value, last_tb))
             with open(os.path.join(tracker.error_dir, f"{tracker.run_id}.txt"), "w", encoding="utf-8") as f:
                 f.write(tb_text)
+            error_kind, error_code = _save_error_record(tracker, last_value)
 
         datetime_stopped = datetime.now()
         started_dt = datetime.strptime(tracker.datetime_started, DATETIME_FMT)
@@ -318,6 +380,10 @@ def finalize_run(tracker):
             "user": tracker.user,
             "experiment_id": tracker.experiment_id,
             "paused_sec": paused_sec,
+            "config_file": tracker.config_file,
+            "output_folder": tracker.output_folder,
+            "error_kind": error_kind,
+            "error_code": error_code,
         }
         # Remove the marker before writing so a concurrent/duplicate finalize call sees it gone.
         try:
@@ -325,6 +391,12 @@ def finalize_run(tracker):
         except OSError:
             pass
         _write_csv_row(tracker.csv_path, row)
+        if not tracker.simulate:
+            # What each container this run filled now holds (sample tracking). Never raises.
+            from experiment_tracking.sample_tracking import snapshot, write_well_contents
+            snapshot(tracker.run_id, "end", tracker.vial_file, tracker.output_folder or None, logger=tracker.logger)
+            write_well_contents(tracker.run_id, tracker.vial_file, tracker.output_folder or None,
+                                logger=tracker.logger)
     except Exception as e:
         # Never let logging failures crash the interpreter shutdown - just surface them.
         tracker.logger.error(f"experiment_run_logger failed to finalize run {tracker.run_id}: {e}")

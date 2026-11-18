@@ -13,6 +13,7 @@ LIQUID_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "robot_state" / "li
 class LiquidProperties(TypedDict):
     density: float
     refill_pipets: bool
+    condition_tip: bool
 
 
 def load_liquids(path: Path = LIQUID_REGISTRY_PATH) -> dict[str, LiquidProperties]:
@@ -35,7 +36,11 @@ def load_liquids(path: Path = LIQUID_REGISTRY_PATH) -> dict[str, LiquidPropertie
             raise ValueError(f"Liquid '{name}' in {path}: density_g_ml must be a finite positive number")
         if type(properties["refill_pipets"]) is not bool:
             raise ValueError(f"Liquid '{name}' in {path}: refill_pipets must be true or false")
-        liquids[name] = {"density": float(density), "refill_pipets": properties["refill_pipets"]}
+        condition_tip = properties.get("condition_tip", False)  # Optional; absent means off
+        if type(condition_tip) is not bool:
+            raise ValueError(f"Liquid '{name}' in {path}: condition_tip must be true or false")
+        liquids[name] = {"density": float(density), "refill_pipets": properties["refill_pipets"],
+                         "condition_tip": condition_tip}
     return liquids
 
 
@@ -53,3 +58,12 @@ def get_liquid(
             "TARGET_VIAL identifies a physical vial and does not register a liquid."
         )
     return liquids[name]
+
+
+def liquid_conditions_tip(name: Optional[str], liquids: Optional[Mapping[str, LiquidProperties]] = None) -> bool:
+    """True if the liquid's condition_tip setting is on. Unknown or unspecified liquids are not conditioned."""
+    if name is None:
+        return False
+    if liquids is None:
+        liquids = load_liquids()
+    return bool(liquids.get(name, {}).get("condition_tip", False))

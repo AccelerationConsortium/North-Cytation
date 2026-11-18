@@ -19,6 +19,15 @@ track_pneumatics:
   gripper_open: 4   # Pneumatic output for opening track gripper
   gripper_close: 5  # Pneumatic output for closing track gripper
 
+# Pneumatic output for the robot arm's vial gripper (used by open_vial_gripper / close_vial_gripper)
+robot_pneumatics:
+  vial_gripper: 7   # True = close (grip), False = open (release)
+
+# Pneumatic outputs for the centrifuge (North_Spin)
+centrifuge_pneumatics:
+  lid: 11      # True = open lid, False = close lid
+  vacuum: 10   # True = vacuum on, False = vacuum off
+
 # Movement speeds (mm/s or units/s)
 # ORIGINAL VALUES (commented for restoration): default_robot: 20, fast_approach: 30, standard_xy: 15, precise_movement: 5, retract: 5
 movement_speeds:
@@ -39,3 +48,17 @@ gripper_timing:
 # Physical constants
 physical_constants:
   safe_height_z: 292    # Safe height for general robot movements
+
+# Module state readout (Lash_E.get_module_state; see docs/plans/module_state_readout.md)
+module_state:
+  track_parked_location: origin   # The track is ready only when parked here
+  station_locations:              # Resource name -> vial location in vial_positions.yaml
+    clamp: clamp
+    clamp_2: clamp_2
+    heater: heater
+    photoreactor: photoreactor_array
+
+# Safe stop (Lash_E.safe_stop): instruments to switch off after an error or interrupt
+safe_stop:
+  heater_channels: [0]            # North_Temp channels to turn off
+  photoreactor_reactors: [0]   # Photoreactor reactor numbers: LED and fan off (one reactor installed)

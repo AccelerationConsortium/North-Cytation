@@ -80,8 +80,9 @@ def test_serial_plate_dispense_reuses_resolved_tip_parameters(monkeypatch):
     robot.dispense_into_wellplate = Mock()
     robot.remove_pipet = Mock()
     robot.return_vial_home = Mock()
+    robot._resolve_pipetting_plate = Mock(return_value='96 WELL PLATE')
     plate = pd.DataFrame({'DMSO': [.195]}, index=[0])
-    robot._dispense_wellplate_serial(plate, None, 'DMSO', '96 WELL PLATE')
+    robot.dispense_from_vials_into_wellplate(plate, liquid='DMSO', well_plate_type='96 WELL PLATE')
     aspirate = robot.aspirate_from_vial.call_args
     dispense = robot.dispense_into_wellplate.call_args
     assert aspirate.kwargs['specified_tip'] == 'large_tip'

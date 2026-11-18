@@ -117,13 +117,9 @@ class PlateInventoryWidget(QWidget):
         self.feedback.setWordWrap(True)
         self.diagram.drop_feedback.connect(self.feedback.setText)
         layout.addWidget(self.feedback)
-        coordinates = QToolButton()
-        coordinates.setText("Track coordinates")
-        coordinates.setCheckable(True)
-        layout.addWidget(coordinates)
+        # Where the robot last recorded the track arm. Display only: the robot sets it.
         self.pose_label = QLabel()
-        self.pose_label.hide()
-        coordinates.toggled.connect(self.pose_label.setVisible)
+        self.pose_label.setStyleSheet("color: #555;")
         layout.addWidget(self.pose_label)
 
     def _confirm_positions(self):
@@ -222,7 +218,9 @@ class PlateInventoryWidget(QWidget):
             obj = pending["object_id"]
             self.recovery_label.setText(f"A transfer involving {obj} stopped. Check the physical setup and update the positions above. Then choose ‘Positions are correct’. Save to keep the correction.")
         pose = self.inventory.data.get("track_pose", {})
-        self.pose_label.setText(f"{pose.get('location')} · X {pose.get('x')}, Z {pose.get('z')}")
+        show = lambda value: "–" if value is None else value
+        self.pose_label.setText(f"Track arm last recorded at: {show(pose.get('location'))} "
+                                f"(X {show(pose.get('x'))}, Z {show(pose.get('z'))})")
         self._show_contents()
         if old_id:
             self._select_object(old_id)

@@ -434,7 +434,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         controller = types.SimpleNamespace(
             nr_robot=self.robot, simulate=confirmed['SIMULATE'],
             workflow_config=confirmed, _workflow_should_continue=True,
-            logger=Mock(spec_set=logging.Logger))
+            logger=Mock(spec_set=logging.Logger), safe_stop=getattr(self, 'safe_stop', Mock()))
         self.controllers.append(controller)
         return controller
 
@@ -669,7 +669,8 @@ class WorkflowExecutionTests(unittest.TestCase):
             with self.subTest(failure=type(failure).__name__):
                 self.robot.reset_mock()
                 self.controllers.clear()
-                self.robot.remove_pipet.side_effect = RuntimeError('cleanup sentinel')
+                # Errors and interrupts both run safe_stop; a failing safe_stop must not hide the original error
+                self.safe_stop = Mock(side_effect=RuntimeError('cleanup sentinel'))
                 with patch.object(self.workflow, 'Lash_E', side_effect=self.fake_lash), \
                         patch.object(CalibrationExperiment, 'run', side_effect=failure), \
                         patch.object(run_validation, 'ValidationRunner') as validator, \
@@ -678,13 +679,10 @@ class WorkflowExecutionTests(unittest.TestCase):
                         self.workflow.execute(config=deepcopy(self.config), show_gui=False)
                 self.assertIs(raised.exception, failure)
                 validator.assert_not_called()
+                self.safe_stop.assert_called_once_with("workflow failed or was interrupted")
                 if isinstance(failure, KeyboardInterrupt):
-                    self.robot._perform_physical_cleanup.assert_called_once_with()
-                    self.robot.return_vial_home.assert_not_called()
                     self.robot.c9.network.disconnect.assert_not_called()
                 else:
-                    self.robot.return_vial_home.assert_called_once_with(self.config['TARGET_VIAL'])
-                    self.robot.move_home.assert_called_once()
                     self.robot.c9.network.disconnect.assert_called_once()
                 self.assertTrue(self.controllers[0].logger.exception.called)
                 messages = [call.args[1] for call in slack.call_args_list]

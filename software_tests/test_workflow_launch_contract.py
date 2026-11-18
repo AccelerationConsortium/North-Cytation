@@ -65,7 +65,9 @@ class WorkflowLaunchContractTests(unittest.TestCase):
         config = deepcopy({key: namespace[key] for key in keys})
         body = Mock(side_effect=ExperimentBodyReached())
         robot = types.SimpleNamespace(VIAL_FILE=str(self.vials), home_robot_components=body)
-        lash = types.SimpleNamespace(_workflow_should_continue=True, simulate=True, nr_robot=robot)
+        # logger and safe_stop: workflows clean up (and re-raise) on any error, like the real Lash_E
+        lash = types.SimpleNamespace(_workflow_should_continue=True, simulate=True, nr_robot=robot,
+                                     logger=Mock(), safe_stop=Mock())
         def initialize(*args, **kwargs):
             selected = ConfigManager.resolve_workflow_config(
                 kwargs['workflow_name'], kwargs['workflow_globals'],

@@ -106,11 +106,19 @@ def create_session(vial_files):
             shutil.copy2(path, root / path.name)
         marker = REPO_ROOT / "robot_state" / "fluorescence_plate.yaml"
         (root / marker.name).write_text(marker.read_text() if marker.exists() else "null\n")
+        # Sample tracking: the simulation starts from the real stored contents, in its own copy.
+        contents = REPO_ROOT / "status" / "container_contents.csv"
+        if contents.exists():
+            shutil.copy2(contents, root / contents.name)
         (root / "vials").mkdir()
         mapping = {}
         for index, source in enumerate(sorted(sources)):
             target = root / "vials" / f"{index}_{Path(source).name}"
             shutil.copy2(source, target)
+            # The copy gets container IDs so the simulation exercises sample tracking; the
+            # real file is never changed here (a live run fills its own IDs at start).
+            from experiment_tracking.sample_tracking import prepare_vial_file
+            prepare_vial_file(target)
             mapping[source] = str(target.resolve())
         (root / "session.json").write_text(
             json.dumps({"simulation": True, "vial_files": mapping}, indent=2), encoding="utf-8"

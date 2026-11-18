@@ -512,11 +512,10 @@ def execute(config=None, show_gui=True):
                 "output_dir": str(output) if output is not None else None}
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("Pipette calibration workflow failed")
-        if isinstance(error, KeyboardInterrupt):
-            from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
-            cleanup_after_keyboard_interrupt(lash_e)
-        else:
-            _cleanup(lash_e, confirmed, physical=True)
+        from workflows.helpers.interrupt_cleanup import cleanup_after_keyboard_interrupt
+        cleanup_after_keyboard_interrupt(lash_e)
+        if not isinstance(error, KeyboardInterrupt):
+            _cleanup(lash_e, confirmed, physical=False)  # Disconnect the controller
         # The scheduler live runner reports failures; it does not report interrupts.
         if isinstance(error, KeyboardInterrupt):
             _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} interrupted; cleanup attempted")

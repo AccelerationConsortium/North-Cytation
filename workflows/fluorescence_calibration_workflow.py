@@ -818,7 +818,7 @@ def execute(config=None, show_gui=True):
                     # Serial dispensing removes its tip and returns the source home.
                     # Large vials are aspirated in place, with no staging move.
                     lash.nr_robot.dispense_from_vials_into_wellplate(
-                        volumes, liquid=liquid, strategy="serial", well_plate_type=c["WELLPLATE_TYPE"])
+                        volumes, liquid=liquid, well_plate_type=c["WELLPLATE_TYPE"])
             # Schedule starts after dispensing; optional shaking adds to actual read time.
             t0 = time.monotonic()
             clock_id = f"rep{int(wells.repetition.iloc[0])}_plate{int(plate)}"
@@ -887,8 +887,8 @@ def execute(config=None, show_gui=True):
         if not c["SIMULATE"]:
             slack_agent.send_slack_message(f"Fluorescence calibration workflow complete! Results saved to {output}")
         return output
-    except KeyboardInterrupt:
-        lash.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+    except (Exception, KeyboardInterrupt):
+        lash.logger.exception("Workflow failed or was interrupted; attempting cleanup")
         cleanup_after_keyboard_interrupt(lash)
         raise
 
