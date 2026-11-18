@@ -2778,8 +2778,8 @@ def execute(config=None, show_gui=True):
             )
 
         return run_multidim_workflow(lash_e)
-    except KeyboardInterrupt:
-        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+    except (Exception, KeyboardInterrupt):
+        lash_e.logger.exception("Workflow failed or was interrupted; attempting cleanup")
         cleanup_after_keyboard_interrupt(lash_e)
         raise
 

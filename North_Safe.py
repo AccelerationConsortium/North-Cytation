@@ -12,14 +12,64 @@ import matplotlib.pyplot as plt
 from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
 from pipetting_data.pipetting_wizard import PipettingWizard, NEAR_EXTRAPOLATION_FRACTION
 from pipetting_data.dispense_recording import recording_density, record_dispense, capture_aspiration
+from pipetting_data.liquid_registry import liquid_conditions_tip
 import matplotlib.patches as patches
 import threading
 import json
 from robot_state.plate_inventory import PlateInventory, LID_ALIASES, number
 from experiment_tracking import experiment_run_logger
+from experiment_tracking import sample_tracking
+from experiment_tracking import sample_contents
+
+_QUIET_YAML_CACHE = {}
+
+def _read_yaml_quietly(file_path):
+    """Read a YAML file once and cache it; return {} if it is missing or invalid."""
+    if file_path not in _QUIET_YAML_CACHE:
+        try:
+            with open(file_path, 'r') as file:
+                _QUIET_YAML_CACHE[file_path] = yaml.safe_load(file) or {}
+        except (OSError, yaml.YAMLError):
+            _QUIET_YAML_CACHE[file_path] = {}
+    return _QUIET_YAML_CACHE[file_path]
+
 
 class North_Base:
     """Base class for North robot components with shared functionality"""
+
+    ROBOT_HARDWARE_PATH = "robot_state/robot_hardware.yaml"
+    CAROUSEL_POSITIONS_PATH = "robot_state/carousel_positions.yaml"
+
+    def _hardware_setting(self, section, key, default):
+        """Look up a value in robot_hardware.yaml, falling back to `default` if it is not set."""
+        hardware = getattr(self, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(self.ROBOT_HARDWARE_PATH)
+        value = (hardware.get(section) or {}).get(key)
+        return default if value is None else value
+
+    # ---- Primitives: scale (shared C9 controller) ----
+    def read_scale(self):
+        """Primitive: read the balance once. Returns (steady_status, mass_g)."""
+        return self.c9.read_scale()
+
+    def read_steady_scale(self):
+        """Primitive: wait for a steady balance reading and return the mass (g)."""
+        return self.c9.read_steady_scale()
+
+    def zero_scale(self):
+        """Primitive: tare the balance."""
+        return self.c9.zero_scale()
+
+    # ---- Primitives: carousel ----
+    _DEFAULT_CAROUSEL_POSITIONS = {
+        'home': {'angle': 0, 'height': 0},
+        'powder_dispense_mg': {'angle': 66.5, 'height': 70},
+    }
+
+    def move_carousel_to(self, position_name):
+        """Primitive: move the carousel to a named position from carousel_positions.yaml."""
+        position = _read_yaml_quietly(self.CAROUSEL_POSITIONS_PATH).get(position_name)             or self._DEFAULT_CAROUSEL_POSITIONS[position_name]
+        self.c9.move_carousel(position['angle'], position['height'])
+
     
     def pause_after_error(self, err_message, send_slack=True):
         """Pause execution after an error with logging and optional Slack notification"""
@@ -654,13 +704,14 @@ class North_Track(North_Base):
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
         return f"{n}{suffix}"
 
-class North_Powder:
+class North_Powder(North_Base):
 
     p2 = None
     c9 = None
+    POWDER_CHANNELS_PATH = "robot_state/powder_channels.yaml"
 
     def __init__(self, c9,simulate = False, logger=None):
-        
+
         self.c9 = c9
         self.simulate = simulate
         self.logger = logger
@@ -668,6 +719,17 @@ class North_Powder:
         if not simulate:
             from north import NorthC9
             self.p2 = NorthC9('C', network=c9.network)
+        else:
+            self.p2 = MagicMock()  # simulated dispenser board: commands are accepted and do nothing
+
+    def powder_channels(self):
+        """The cartridge slots listed in powder_channels.yaml, as {channel: settings}."""
+        return {int(k): v for k, v in (_read_yaml_quietly(self.POWDER_CHANNELS_PATH) or {}).items()}
+
+    def close_all_valves(self):
+        """Safe stop: close the valve of every listed cartridge slot."""
+        for channel in self.powder_channels():
+            self.set_opening(channel, 0)
 
     def activate_powder_channel(self, channel=0):
         self.logger.debug(f"Activating powder channel: {channel}")
@@ -682,21 +744,6 @@ class North_Powder:
     def set_opening(self, channel, deg):
         self.logger.debug(f"Setting opening for channel {channel} to {deg} degrees")
         self.p2.move_axis(channel, deg*(1000/360.0))
-
-    def dispense_powder_time(self, channel, time):
-        self.logger.info(f"Dispensing powder for {time} ms on channel {channel}")
-        self.activate_powder_channel(channel)
-        self.c9.move_carousel(70,70)
-        
-        initial_mass = self.c9.read_steady_scale()
-        self.set_opening(channel,45)
-        self.shake(time)
-        self.set_opening(channel,0)
-        final_mass = self.c9.read_steady_scale()
-        dispensed_mass = final_mass - initial_mass
-        self.logger.info("Mass dispensed: ", dispensed_mass)
-        
-        self.c9.move_carousel(0,0)
 
     def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
         from robot_state import powder_settings as settings
@@ -718,9 +765,9 @@ class North_Powder:
         shake_t = ps.min_shake_t
 
         if zero_scale:
-            self.c9.zero_scale()
+            self.zero_scale()
             self.c9.delay(protocol.scale_delay)
-        tare = self.c9.read_steady_scale() * 1000
+        tare = self.read_steady_scale() * 1000
 
         meas_mass = 0
         count = 0
@@ -732,9 +779,9 @@ class North_Powder:
             if ps.shut_valve:
                 self.set_opening(channel,0)
             self.c9.delay(0.5)
-            self.c9.read_steady_scale()  # dummy read to wait for steady
+            self.read_steady_scale()  # dummy read to wait for steady
             self.c9.delay(protocol.scale_delay)  # delay after steady to allow for more settling time
-            meas_mass = self.c9.read_steady_scale() * 1000 - tare
+            meas_mass = self.read_steady_scale() * 1000 - tare
 
             mg_togo = mg_target - meas_mass
             delta_mass = meas_mass - prev_mass
@@ -774,15 +821,22 @@ class North_Powder:
         return meas_mass
 
     def dispense_powder_mg(self, mass_mg, channel=0):
+        channels = self.powder_channels()
+        if channel not in channels:
+            raise ValueError(f"Powder channel {channel} isn't listed in {self.POWDER_CHANNELS_PATH} "
+                             f"(listed: {sorted(channels) or 'none'}); add the slot there first")
         self.logger.info(f"Dispensing {mass_mg} mg on channel {channel}")
-        
+
         self.activate_powder_channel(channel)
-        self.c9.move_carousel(66.5,70)
+        self.move_carousel_to('powder_dispense_mg')
         #Dispense protocol
-        mass_dispensed = self.cl_pow_dispense(mass_mg, channel)
+        if self.simulate:
+            mass_dispensed = mass_mg  # no scale in simulation: assume the target was reached
+        else:
+            mass_dispensed = self.cl_pow_dispense(mass_mg, channel)
         self.logger.info(f"Mass dispensed: {mass_dispensed} mg")
 
-        self.c9.move_carousel(0,0)
+        self.move_carousel_to('home')
         return mass_dispensed
 
 class North_Temp:
@@ -831,7 +885,7 @@ class North_Temp:
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
 
-class North_Spin:
+class North_Spin(North_Base):
     c8 = None
     c9 = None
     def __init__(self,c9,c8, simulate = False, logger=None):
@@ -853,19 +907,19 @@ class North_Spin:
 
     def open_lid(self):
         self.logger.debug("Opening centrifuge lid")
-        self.c9.set_output(11, True)  # Open lid pneumatic
+        self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), True)  # Open lid pneumatic
 
     def close_lid(self):
         self.logger.debug("Closing centrifuge lid")
-        self.c9.set_output(11, False)  # Close lid pneumatic
+        self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), False)  # Close lid pneumatic
 
     def turn_on_vacuum(self):
         self.logger.debug("Turning on centrifuge vacuum")
-        self.c9.set_output(10, True)  # Turn on vacuum pneumatic
+        self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), True)  # Turn on vacuum pneumatic
 
     def turn_off_vacuum(self):
         self.logger.debug("Turning off centrifuge vacuum")
-        self.c9.set_output(10, False)  # Turn off vacuum pneumatic
+        self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), False)  # Turn off vacuum pneumatic
 
 class North_Robot(North_Base):
     """
@@ -1011,7 +1065,8 @@ class North_Robot(North_Base):
                     
                 self.PIPET_FLUID_VOLUME = robot_status.get('pipet_fluid_volume', 0.0) or 0.0
                 self.PIPET_FLUID_VIAL_INDEX = robot_status.get('pipet_fluid_vial_index')
-                
+                getattr(self, "_restore_tip_state", lambda saved: None)(robot_status.get('pipet_fluid_contents'))
+
                 self.logger.debug("Robot status loaded successfully")
             except KeyError as e:
                 self.logger.warning(f"Missing field in robot status, using defaults: {e}")
@@ -1165,9 +1220,17 @@ class North_Robot(North_Base):
         self._dispense_aspiration_source = None
         self.logger.info("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
-        self.c9.open_clamp()
-        self.c9.zero_scale()
-        self.c9.set_output(7, False)  # Ensure gripper is initially open
+        try:
+            self.open_clamp()  # First real command to the controller after connecting
+        except Exception as error:
+            # A read timeout here has always meant the controller is switched off. Same error is
+            # re-raised; this only adds a clear message and a code for the run's error record.
+            if type(error).__name__ == "SerialReadTimeoutException":
+                error.error_code = "C9_NOT_RESPONDING"
+                self.logger.error("C9 controller did not answer the first command: is it powered on?")
+            raise
+        self.zero_scale()
+        self.open_vial_gripper()  # Ensure gripper is initially open
         self.c9.delay(3)
        
         
@@ -1183,6 +1246,8 @@ class North_Robot(North_Base):
                 break  # Success, exit retry loop
                 
             except Exception as e:
+                if getattr(e, "error_code", None) == "HELD_VIAL_UNKNOWN":
+                    raise  # a data problem: retrying and homing can't fix it
                 # For any remaining errors, just log and retry
                 retry_count += 1
                 self.logger.warning(f"Physical cleanup failed (attempt {retry_count}/{max_retries}): {e}")
@@ -1201,11 +1266,29 @@ class North_Robot(North_Base):
                     self.logger.error(f"Failed to complete physical cleanup after {max_retries} attempts: {e}")
                     raise
         
+        self._return_stray_vials_at_startup()
+
         # Final setup
         # Now load pumps after homing
         
         #self.c9.open_gripper()
-        self.c9.set_output(7, False)  
+        self.open_vial_gripper()  
+
+    def _return_stray_vials_at_startup(self):
+        """Return vials left away from home (e.g. after a crash or a closed window). Never raises:
+        a vial that can't be returned is logged as a warning and left in place."""
+        try:
+            if not self._vials_available():
+                return
+            returned, left = self.return_all_vials_home()
+            if returned:
+                self.logger.warning("Startup cleanup returned vials that were not home: "
+                                    + ", ".join(map(str, returned)))
+                self.move_home()
+            for name, why in left:
+                self.logger.warning(f"Startup cleanup left vial {name} away from home ({why})")
+        except Exception as error:
+            self.logger.warning(f"Startup cleanup could not check vials are home: {type(error).__name__}: {error}")
  
     def _perform_physical_cleanup(self):
         """
@@ -1237,11 +1320,22 @@ class North_Robot(North_Base):
             if self.GRIPPER_STATUS == "Cap":
                 self.logger.warning("The robot reports having a cap in its gripper... Recapping the clamp vial...")
                 self.recap_clamp_vial()
-                self.return_vial_home(vial_index)
+                if vial_index is not None:
+                    self.return_vial_home(vial_index)
+                else:
+                    # Recap uses the vial in the clamp; with no saved number it is returned with the other vials
+                    self.logger.warning("No vial number saved for the held cap; the recapped clamp vial is returned with the other vials")
             elif self.GRIPPER_STATUS == "Vial":
                 self.logger.warning("The robot reports having a vial in the gripper... Returning that vial home...")
-                location = self.get_vial_info(vial_index, 'home_location')
-                location_index = self.get_vial_info(vial_index, 'home_location_index')
+                location = self.get_vial_info(vial_index, 'home_location') if vial_index is not None else None
+                location_index = self.get_vial_info(vial_index, 'home_location_index') if vial_index is not None else None
+                if location is None or location_index is None:
+                    error = RuntimeError(
+                        f"Gripper status says it holds a vial, but "
+                        + ("no vial number is saved" if vial_index is None else f"vial {vial_index} has no home location in the vial file")
+                        + ". Check the gripper by hand, then correct robot_status.yaml or the vial file.")
+                    error.error_code = "HELD_VIAL_UNKNOWN"
+                    raise error
                 self.drop_off_vial(vial_index, location=location, location_index=location_index)
         
         # Move to home position
@@ -1261,7 +1355,9 @@ class North_Robot(North_Base):
             "held_pipet_type": self.HELD_PIPET_TYPE,
             "pipets_used": self.PIPETS_USED,  # Save all rack usage directly
             "pipet_fluid_vial_index": int(self.PIPET_FLUID_VIAL_INDEX) if self.PIPET_FLUID_VIAL_INDEX is not None else None,
-            "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME) if self.PIPET_FLUID_VOLUME is not None else 0.0
+            "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME) if self.PIPET_FLUID_VOLUME is not None else 0.0,
+            # Sample tracking: what the liquid in the tip is and where it came from, so it survives a restart
+            "pipet_fluid_contents": getattr(self, "_tip_state_for_saving", lambda: None)(),
         }
 
         save_state = not self.simulate
@@ -1293,6 +1389,185 @@ class North_Robot(North_Base):
     # 4. PIPETTING & TIP MANAGEMENT
     # ====================================================================
 
+    # --- Sample tracking (records only; never changes or stops what the robot does) ---------
+
+    def _tip_contents(self):
+        tip = getattr(self, "_tip_contents_state", None)
+        if tip is None:
+            tip = self._tip_contents_state = sample_tracking.TipContents()
+        return tip
+
+    def _vial_container_id(self, vial_index):
+        """The vial's container_id from the vial file, or None if it has none yet."""
+        try:
+            if "container_id" not in self.VIAL_DF.columns:
+                return None
+            value = self.VIAL_DF.at[self.normalize_vial_index(vial_index), "container_id"]
+            return value.strip() if isinstance(value, str) and value.strip() else None
+        except Exception:
+            return None
+
+    def _well_container_id(self, well_index):
+        plate_id = getattr(self, "last_plate_id", None)
+        return sample_tracking.well_id(plate_id, well_index) if plate_id else None
+
+    # Stored contents travel with the sample (experiment_tracking/sample_contents.py): the tip
+    # picks up the source's record on aspirate; a dispense mixes it into the destination's record.
+
+    def _tip_record(self):
+        record = getattr(self, "_tip_record_state", None)
+        if record is None:
+            record = self._tip_record_state = sample_contents.empty_record()
+        return record
+
+    def _tip_state_for_saving(self):
+        try:
+            tip = self._tip_contents()
+            if tip.total() <= 0:
+                return None
+            return {"parts": [[source, amount] for source, amount in tip.parts],
+                    "record": sample_contents.to_json(self._tip_record())}
+        except Exception:
+            return None
+
+    def _restore_tip_state(self, saved):
+        try:
+            self._tip_contents().clear()
+            self._tip_record_state = sample_contents.empty_record()
+            if saved:
+                self._tip_contents().parts = [[source, float(amount)] for source, amount in saved.get("parts", [])]
+                if saved.get("record"):
+                    self._tip_record_state = sample_contents.from_json(saved["record"])
+        except Exception as error:
+            self.logger.warning(f"Sample tracking: could not restore the tip's contents: {error}")
+
+    def _clear_tip_tracking(self):
+        self._tip_contents().clear()
+        self._tip_record_state = sample_contents.empty_record()
+
+    def _contents_store(self):
+        """The stored-contents file for this robot, or None in a plain simulation."""
+        path = sample_contents.contents_path(self)
+        if path is None:
+            return None
+        store = getattr(self, "_contents_store_state", None)
+        if store is None or store.path != path:
+            store = self._contents_store_state = sample_contents.ContentsStore(path)
+        return store
+
+    def _vial_stock_id(self, vial_index):
+        if "stock_id" not in self.VIAL_DF.columns:
+            return None
+        value = self.VIAL_DF.at[self.normalize_vial_index(vial_index), "stock_id"]
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    def _container_record(self, container_id, vial_index=None, volume_mL=None):
+        """(record, stored) for a container: its stored record, else its stock, else unknown.
+        For a vial, the record is set to the vial file's volume (a hand correction changes only
+        the amount, not what's in it)."""
+        store = self._contents_store()
+        record = store.get(container_id) if (store is not None and container_id) else None
+        if record is not None:
+            if volume_mL is not None:
+                sample_contents.rescale(record, volume_mL)
+            return record, True
+        stock_id = self._vial_stock_id(vial_index) if vial_index is not None else \
+            sample_tracking.source_stocks().get(container_id)
+        volume = volume_mL if volume_mL is not None else 0.0
+        if stock_id:
+            return sample_contents.stock_record(stock_id, sample_tracking.load_stocks(), volume), False
+        return sample_contents.unknown_record(volume), False
+
+    def _dispense_error_mL(self, liquid, amount_mL):
+        """(random, shared) error of this dispense in mL from the validation history, or None."""
+        estimator = getattr(self, "_dispense_errors", None)
+        if estimator is None:
+            from pipetting_data.dispense_uncertainty import DispenseUncertainty
+            estimator = self._dispense_errors = DispenseUncertainty(logger=self.logger)
+        found = estimator.lookup(liquid, self.HELD_PIPET_TYPE, float(amount_mL) * 1000)
+        return None if found is None else (found[0] / 1000, found[1] / 1000)
+
+    def _track_aspirate(self, source, amount_mL, vial_index=None):
+        try:
+            self._tip_contents().aspirate(source, amount_mL)
+            if vial_index is not None:  # the vial file already has the volume after aspirating
+                before = float(self.VIAL_DF.at[self.normalize_vial_index(vial_index), 'vial_volume']) + amount_mL
+                record, stored = self._container_record(source, vial_index, before)
+            else:  # a well: only its stored record knows its volume
+                record, stored = self._container_record(source)
+                if not stored:
+                    record = sample_contents.unknown_record(amount_mL)
+            portion, left = sample_contents.take(record, amount_mL)
+            self._tip_record_state = sample_contents.add(self._tip_record(), portion, amount_mL, (0.0, 0.0),
+                                                         getattr(self, "run_id", None))
+            store = self._contents_store()
+            if store is not None and source and stored:
+                store.put(source, left)
+        except Exception as error:
+            self.logger.warning(f"Sample tracking: could not note aspiration from {source}: {error}")
+
+    def _track_dispense(self, destination, amount_mL, liquid=None, vial_index=None):
+        try:
+            for source, share in self._tip_contents().dispense(amount_mL):
+                sample_tracking.record_transfer(self, source, destination, share, "mL", self.HELD_PIPET_TYPE, liquid)
+            portion, self._tip_record_state = sample_contents.take(self._tip_record(), amount_mL)
+            store = self._contents_store()
+            if store is None or not destination:
+                return
+            if vial_index is not None:  # the vial file already has the volume after dispensing
+                before = float(self.VIAL_DF.at[self.normalize_vial_index(vial_index), 'vial_volume']) - amount_mL
+                record, stored = self._container_record(destination, vial_index, max(before, 0.0))
+            else:
+                record, stored = self._container_record(destination)
+                if not stored:
+                    record = sample_contents.empty_record()  # a well the robot hasn't filled yet
+            updated = sample_contents.add(record, portion, amount_mL, self._dispense_error_mL(liquid, amount_mL),
+                                          getattr(self, "run_id", None))
+            if (not stored and vial_index is not None and record["stocks"]
+                    and sample_contents.same_contents(record, updated) and updated["stocks"] == record["stocks"]):
+                return  # its own stock went back into a stock vial: it still just holds its stock
+            store.put(destination, updated)
+        except Exception as error:
+            self.logger.warning(f"Sample tracking: could not record dispense into {destination}: {error}")
+
+    def _track_reservoir_dispense(self, reservoir_index, vial_index, volume_mL, liquid=None):
+        """Reservoir into a vial: logged, and the vial's record updated (reservoir dispenses
+        have no validation history, so the uncertainty can't be estimated)."""
+        try:
+            source = sample_tracking.reservoir_id(reservoir_index)
+            destination = self._vial_container_id(vial_index)
+            sample_tracking.record_transfer(self, source, destination, volume_mL, "mL", "reservoir", liquid)
+            store = self._contents_store()
+            if store is None or not destination:
+                return
+            load_record, _ = self._container_record(source, volume_mL=volume_mL)
+            portion, _ = sample_contents.take(load_record, volume_mL)
+            before = float(self.VIAL_DF.at[self.normalize_vial_index(vial_index), 'vial_volume']) - volume_mL
+            record, stored = self._container_record(destination, vial_index, max(before, 0.0))
+            updated = sample_contents.add(record, portion, volume_mL, None, getattr(self, "run_id", None))
+            if not (not stored and record["stocks"] and sample_contents.same_contents(record, updated)
+                    and updated["stocks"] == record["stocks"]):
+                store.put(destination, updated)
+        except Exception as error:
+            self.logger.warning(f"Sample tracking: could not record the reservoir dispense: {error}")
+
+    def track_powder_dispense(self, channel, vial, mass_mg):
+        """Powder into a vial: logged, and the vial's record updated with mg of that powder."""
+        try:
+            source = sample_tracking.source_container(sample_tracking.cartridge_slot(channel))
+            destination = self._vial_container_id(vial)
+            sample_tracking.record_transfer(self, source, destination, mass_mg, "mg", "powder")
+            store = self._contents_store()
+            if store is None or not destination:
+                return
+            stock_id = sample_tracking.source_stocks().get(source)
+            materials = [r["material"] for r in sample_tracking.load_stocks() if r["stock_id"] == stock_id]
+            volume = float(self.VIAL_DF.at[self.normalize_vial_index(vial), 'vial_volume'])
+            record, _ = self._container_record(destination, vial, volume)
+            store.put(destination, sample_contents.add_solid(record, materials, float(mass_mg), stock_id))
+        except Exception as error:
+            self.logger.warning(f"Sample tracking: could not record the powder dispense: {error}")
+
     #Remove the pipet tip
     def remove_pipet(self):
         self._dispense_aspiration_settings = None
@@ -1313,6 +1588,7 @@ class North_Robot(North_Base):
         self.HELD_PIPET_TYPE = None
         self.PIPET_FLUID_VIAL_INDEX = None
         self.PIPET_FLUID_VOLUME = 0
+        self._clear_tip_tracking()  # liquid left in a dropped tip is lost, not transferred
         self.save_robot_status() #Update in memory
 
     #Take a pipet tip from the active rack with the active pipet tip dimensions 
@@ -1527,8 +1803,8 @@ class North_Robot(North_Base):
         if amount <= 1:
             try:
                 self.c9.aspirate_ml(0, amount)
-            except:
-                self.logger.warning("Aspirate exceeded limit: Aspirating to maximum")
+            except BaseException as error:  # same as the old bare except; now logs the real error
+                self.logger.warning(f"Aspirate exceeded limit: Aspirating to maximum ({type(error).__name__}: {error})")
                 max_pump_pos = self.get_config_parameter('pumps', 0, 'max_pump_position', error_on_missing=False) or 3000
                 self.c9.move_pump(0, max_pump_pos)
                 self.logger.warning(f"Aspirate was exceeded for {amount} mL. Aspirating to maximum volume of 1 mL.")
@@ -1549,14 +1825,25 @@ class North_Robot(North_Base):
             blowout_vol (float): Volume for blowout after dispensing in mL
         """
         self.logger.debug(f"Dispensing {amount:.3f} mL then waiting {wait_time} s")
-      
-        try:
-            self.c9.dispense_ml(0, amount)
-        except: # If there's not enough to dispense
-            self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
-            self.c9.move_pump(0, 0)
 
-       
+        if self.simulate:
+            self.c9.dispense_ml(0, amount)
+        else:
+            pump = self.c9.pumps[0]
+            max_pump_position = self.get_config_parameter('pumps', 0, 'max_pump_position')
+            if max_pump_position is None:
+                raise ValueError("Missing max_pump_position for pipetting pump 0")
+
+            target_position = int(
+                pump['pos'] - amount * (max_pump_position / pump['volume'])
+            )
+            if target_position < 0:
+                if target_position < -1:
+                    self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
+                self.c9.move_pump(0, 0)
+            else:
+                self.c9.dispense_ml(0, amount)
+
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
@@ -2016,17 +2303,8 @@ class North_Robot(North_Base):
         if required_tip_type == 'small_tip':
             _vial_loc = self.get_vial_info(source_vial_num, 'location')
             _vial_loc_idx = int(self.get_vial_info(source_vial_num, 'location_index'))
-            # Safe positions for small-tip aspiration (sufficient vial stability/access)
-            # TODO: add confirmed safe heater indices to the 'heater' entry below
-            _SAFE_SMALL_TIP = {
-                'main_8mL_rack': range(43, 48),
-                'clamp': [0],
-                'clamp_2': [0],
-                'photoreactor_array': [0],
-                'heater': [2],  # fill in once confirmed
-            }
-            _safe_indices = _SAFE_SMALL_TIP.get(_vial_loc)
-            if _safe_indices is None or _vial_loc_idx not in _safe_indices:
+            # Safe positions for small-tip aspiration: small_tip_safe_indices in vial_positions.yaml
+            if _vial_loc_idx not in self.get_small_tip_safe_indices(_vial_loc):
                 self.logger.warning(f"WARNING: Aspirating from {_vial_loc}[{_vial_loc_idx}] with a small tip may cause an automation issue")
             else:
                 _remaining_vol = self.get_vial_info(source_vial_num, 'vial_volume')
@@ -2107,7 +2385,7 @@ class North_Robot(North_Base):
                 if not self.simulate and source_vial_clamped:
                     try:
                         current_time = time.time()
-                        steady_status, weight = self.c9.read_scale()  # Get BOTH stability and weight
+                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
                         
                         # Determine phase based on timing
                         time_relative = current_time - start_time
@@ -2211,6 +2489,7 @@ class North_Robot(North_Base):
         #Update the new volume in memory
         self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
         self.PIPET_FLUID_VOLUME += amount_mL
+        self._track_aspirate(self._vial_container_id(source_vial_num), amount_mL, vial_index=source_vial_num)
         self.save_robot_status()
 
         # Observation only: retain the settings used, rather than looking them up again.
@@ -2397,6 +2676,10 @@ class North_Robot(North_Base):
             self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit transfer limits")
         volume = sub_volume
 
+        # Condition a fresh tip first if this liquid needs it (condition_tip in liquids.yaml)
+        if liquid_conditions_tip(liquid) and self.HELD_PIPET_TYPE != resolved_tip:
+            self.condition_tip(source_vial_index, volume_per_cycle_mL=volume, specified_tip=resolved_tip)
+
         total_mass = 0
         for i in range(repeats):
             last_run = (i == repeats - 1)
@@ -2521,8 +2804,11 @@ class North_Robot(North_Base):
         self.adjust_pump_speed(0, speed)
         if aspirate:
             self.pipet_aspirate(actual_aspirate_vol, wait_time=wait_time)
+            self._track_aspirate(self._well_container_id(wp_index), volume)
         else:
             self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+            self._track_dispense(self._well_container_id(wp_index), volume, liquid)
+        self.save_robot_status()  # keeps the tip's tracked contents across a restart
 
     #Mix the well
     def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type=None, parameters=None, liquid=None):
@@ -2643,7 +2929,7 @@ class North_Robot(North_Base):
         if measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
                 # Zero the scale before measurement to prevent baseline drift
-                initial_mass = self.c9.read_steady_scale()
+                initial_mass = self.read_steady_scale()
                 self.logger.info(f"Initial mass reading (traditional): {initial_mass:.6f} g")
             else:
                 initial_mass = 0
@@ -2676,7 +2962,7 @@ class North_Robot(North_Base):
                 if not self.simulate and dest_vial_clamped:
                     try:
                         current_time = time.time()
-                        steady_status, weight = self.c9.read_scale()  # Get BOTH stability and weight
+                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
 
                         # Determine phase based on timing
                         time_relative = current_time - start_time
@@ -2750,6 +3036,7 @@ class North_Robot(North_Base):
          #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
         self.PIPET_FLUID_VOLUME -= amount_mL
+        self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
         self.save_robot_status()
 
         # Analyze continuous mass data after monitoring is stopped
@@ -2859,7 +3146,7 @@ class North_Robot(North_Base):
         # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
         elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
-                final_mass = self.c9.read_steady_scale()
+                final_mass = self.read_steady_scale()
                 self.logger.info(f"Final mass reading: {final_mass:.6f} g")
             else:
                 final_mass = 0
@@ -3022,7 +3309,7 @@ class North_Robot(North_Base):
             while (time.time() - start_time) < time_s:
                 try:
                     current_time = time.time()
-                    steady_status, weight = self.c9.read_scale()
+                    steady_status, weight = self.read_scale()
                     time_relative = current_time - start_time
                     
                     weight_data.append({
@@ -3136,245 +3423,105 @@ class North_Robot(North_Base):
                                optimized_parameters.post_asp_air_vol)
 
             #Dispense and then wait
-            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)     
+            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+            self._track_dispense(self._well_container_id(dest_wp_num_array[i]), amount_mL, liquid)
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
         self.save_robot_status()    
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="serial", 
-                                          low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type=None):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, parameters=None, liquid=None, well_plate_type=None):
         """
-        Dispense from multiple vials into wellplate wells using strategy pattern.
-        
+        Flow: dispense from one or more vials into wellplate wells. Ends with no tip held and the vials home.
+
+        Steps:
+            1. Stage vials if needed: vials that will use the small tip, are movable, and are not already
+               in a small-tip-safe position are moved to one (stage_vials). The vial that will be
+               emptiest after dispensing gets the safest position; ties go to the lowest starting volume.
+            2. Condition the tip if the liquid has condition_tip: true in liquids.yaml, once per tip
+               group, at that group's largest dose.
+            3. Dispense with as few tip switches as possible: per vial, wells are grouped by resolved
+               tip (smallest tip first, largest dose first within a group) and the tip is locked within
+               a group. Each vial gets a fresh tip, because vials may hold different contents.
+            4. Remove the tip after each vial, and return staged and moved vials home.
+
+        Future option (needs sample-contents metadata): when several vials hold the same solute in the
+        same solvent, optionally reuse one tip across them, dispensing from the most dilute to the most
+        concentrated and conditioning only once. Off by default; without metadata every vial gets a
+        fresh tip.
+
         Args:
-            well_plate_df (DataFrame): DataFrame where columns are vial names and rows are well volumes
-            vial_names (list, optional): DEPRECATED - for backwards compatibility only
+            well_plate_df (DataFrame): Columns are vial names, index is well index, values are volumes (mL)
             parameters (PipettingParameters, optional): Manual parameter overrides
-            liquid (str, optional): Liquid type for automatic parameter optimization
-            strategy (str): "serial", "batched", or "auto" (default: auto-select based on parameters)
-            low_volume_cutoff (float): Volume threshold for switching between tip types (mL)
-            buffer_vol (float): Extra volume to aspirate for accuracy, returned to source vial (mL)
+            liquid (str, optional): Liquid type for calibrated parameters and the condition_tip setting
             well_plate_type (str): Type of wellplate for positioning
-            
+
         Example:
             well_plate_df = pd.DataFrame({
                 "vial_A": [0.1, 0.2, 0.0, 0.1],  # volumes for wells 0-3
-                "vial_B": [0.0, 0.1, 0.3, 0.0], 
-                "vial_C": [0.2, 0.0, 0.1, 0.2]
+                "vial_B": [0.0, 0.1, 0.3, 0.0],
             })
         """
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, well_plate_df.index)
-        # Handle backwards compatibility for vial_names
-        if vial_names is not None:
-            self.logger.warning("vial_names parameter is deprecated. Use DataFrame columns for vial names.")
-        
-        # Extract vial names from DataFrame columns
         vial_names = well_plate_df.columns.tolist()
-        
-        self.logger.info(f"Dispensing from vials {vial_names} into wellplate using {strategy} strategy")
-        
-        # Dispatch to appropriate strategy
-        if strategy == "serial":
-            return self._dispense_wellplate_serial(well_plate_df, parameters, liquid, well_plate_type)
-        elif strategy == "batched":
-            return self._dispense_wellplate_batched(well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type)
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}. Use 'serial' or 'batched'")
+        self.logger.info(f"Dispensing from vials {vial_names} into wellplate")
 
-    def _dispense_wellplate_serial(self, well_plate_df, parameters, liquid, well_plate_type):
-        """
-        Serial strategy: One aspirate -> one dispense per well, full parameter support.
-        Slower but supports all PipettingParameters features.
-        """
-        self.logger.debug("Using serial dispensing strategy")
-        
-        # Check if there's enough liquid in each vial
+        # Check there is enough liquid in each vial
         vols_required = well_plate_df.sum(axis=0)
-        
         for vial_name, volume_needed in vols_required.items():
-            if volume_needed > 1e-6:  # Only check vials that are actually used
-                vial_index = self.normalize_vial_index(vial_name)
-                vial_volume = self.get_vial_info(vial_index, 'vial_volume')
+            if volume_needed > 1e-6:
+                vial_volume = self.get_vial_info(self.normalize_vial_index(vial_name), 'vial_volume')
                 if vial_volume < volume_needed - 1e-6:
                     self.pause_after_error(f"Not enough solution in vial {vial_name}: need {volume_needed:.3f} mL, have {vial_volume:.3f} mL")
-        
-        # Process each vial with proper tip size grouping
-        for vial_name in well_plate_df.columns:
-            # Collect all volumes for this vial
-            vial_volumes = well_plate_df[vial_name]
-            
-            # Skip vials with no volumes
-            if vial_volumes.sum() < 1e-6:
-                continue
-            
-            self.logger.debug(f"Processing vial {vial_name}")
-            
-            # Sort volumes by size to minimize tip changes (small to large)
-            volume_list = [(well_idx, volume) for well_idx, volume in vial_volumes.items() if volume > 1e-6]
-            volume_list.sort(key=lambda x: x[1])  # Sort by volume (ascending)
-            
-            self.logger.debug(f"Processing {len(volume_list)} volumes for vial {vial_name} in sorted order")
-            
-            # Process volumes in sorted order - this naturally groups similar volumes
-            for well_idx, volume in volume_list:
-                resolved_params, resolved_tip = self.resolve_pipetting_setup(volume, liquid, parameters)
-                self.aspirate_from_vial(vial_name, volume, parameters=resolved_params,
-                                        liquid=liquid, specified_tip=resolved_tip)
-                self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=liquid,
-                                           well_plate_type=well_plate_type)
-            
-            # Remove tip after processing all volumes for this vial
+
+        # Resolve the tip and parameters for every dose before moving anything
+        plans = {}
+        for vial_name in vial_names:
+            groups = {}
+            for well_idx, volume in well_plate_df[vial_name].items():
+                if volume > 1e-6:
+                    resolved_params, resolved_tip = self.resolve_pipetting_setup(volume, liquid, parameters)
+                    groups.setdefault(resolved_tip, []).append((well_idx, volume, resolved_params))
+            if groups:
+                for doses in groups.values():
+                    doses.sort(key=lambda dose: (-dose[1], dose[0]))  # Largest dose first, then well order
+                plans[vial_name] = [(tip, groups[tip]) for tip in
+                                    sorted(groups, key=lambda tip: self.PIPET_TIPS[tip]['volume'])]
+
+        # 1. Stage vials that will use the small tip and are not already in a safe position
+        to_stage = []
+        for vial_name, tip_groups in plans.items():
+            vial_index = self.normalize_vial_index(vial_name)
+            location = self.get_vial_info(vial_index, 'location')
+            location_index = int(self.get_vial_info(vial_index, 'location_index'))
+            uses_small_tip = any(tip == 'small_tip' for tip, _ in tip_groups)
+            already_safe = location_index in self.get_small_tip_safe_indices(location)
+            if uses_small_tip and not already_safe and self.is_vial_movable(vial_index):
+                current = float(self.get_vial_info(vial_index, 'vial_volume'))
+                to_stage.append((current - vols_required[vial_name], current, vial_name))
+        staged = self.stage_vials([name for _, _, name in sorted(to_stage)]) if to_stage else {}
+
+        conditioning = liquid_conditions_tip(liquid)
+        for vial_name, tip_groups in plans.items():
+            for tip, doses in tip_groups:
+                # 2. Condition once per tip group, at the group's largest dose
+                if conditioning:
+                    self.condition_tip(vial_name, volume_per_cycle_mL=doses[0][1], specified_tip=tip)
+                # 3. Dispense with the tip locked for this group
+                for well_idx, volume, resolved_params in doses:
+                    self.aspirate_from_vial(vial_name, volume, parameters=resolved_params,
+                                            liquid=liquid, specified_tip=tip)
+                    self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=liquid,
+                                                 well_plate_type=well_plate_type)
+            # 4. Fresh tip for the next vial; return the vial home unless it was staged
             if self.HELD_PIPET_TYPE is not None:
                 self.remove_pipet()
+            if vial_name not in staged:
                 self.return_vial_home(vial_name)
-              
-        self.logger.info("Serial wellplate dispensing completed")
+
+        self.return_staged_vials(staged.keys())
+        self.logger.info("Wellplate dispensing completed")
         return True
-
-    def _dispense_wellplate_batched(self, well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type):
-        """
-        Batched strategy: Multiple dispenses per aspirate for speed optimization.
-        Faster but limited parameter support (no air volumes, minimal mixing).
-        """
-        self.logger.debug("Using batched dispensing strategy")
-        
-        # Extract basic parameters for batched mode (ignore complex parameters)
-        # Note: aspirate_speed will be determined after tip is acquired
-        base_wait_time = parameters.aspirate_wait_time or 1.0
-        
-        vial_names = well_plate_df.columns.tolist()
-        vial_indices = [self.normalize_vial_index(v) for v in vial_names]
-        
-        # Check if there's enough liquid in each vial
-        vols_required = well_plate_df.sum(axis=0)
-        for i, vial_index in enumerate(vial_indices):
-            volume_needed = vols_required.iloc[i]
-            if volume_needed > 1e-6:
-                vial_volume = self.get_vial_info(vial_index, 'vial_volume')
-                if vial_volume < volume_needed - 1e-6:
-                    self.pause_after_error(f"Not enough solution in vial {vial_index}: need {volume_needed:.3f} mL, have {vial_volume:.3f} mL")
-        
-        # Split dispenses based on tip type
-        well_plate_df_low = well_plate_df.where(well_plate_df < low_volume_cutoff).fillna(0)
-        well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0)
-        
-        # Get tip capacities from configuration
-        small_tip_volume = self.get_config_parameter('pipet_tips', 'small_tip', 'volume', error_on_missing=True)
-        large_tip_volume = self.get_config_parameter('pipet_tips', 'large_tip', 'volume', error_on_missing=True)
-        
-        tip_configs = [
-            (well_plate_df_low, small_tip_volume, "small_tip"),
-            (well_plate_df_high, large_tip_volume, "large_tip")
-        ]
-        
-        # Process each tip configuration
-        for df_subset, max_volume, tip_type in tip_configs:
-            if df_subset.empty or df_subset.sum().sum() < 1e-6:
-                continue
-                
-            # Process each vial
-            for vial_idx, vial_name in enumerate(vial_names):
-                vial_index = self.normalize_vial_index(vial_name)
-                vial_volumes = df_subset.iloc[:, vial_idx]
-                total_needed = vial_volumes.sum()
-                
-                if total_needed < 1e-6:
-                    continue
-                
-                self.logger.debug(f"Batched dispensing from {vial_name}: {total_needed:.3f} mL total")
-                
-                # Process batches for this vial
-                dispensed = 0.0
-                well_idx = 0
-                
-                while well_idx < len(vial_volumes):
-                    # Collect next batch that fits within tip capacity
-                    batch_wells, batch_volumes, next_idx = self._collect_next_batch(vial_volumes, well_idx, max_volume)
-                    
-                    if not batch_wells:  # No more batches
-                        break
-                    
-                    # Execute the batch
-                    batch_total = self._execute_batch(
-                        vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
-                        parameters, liquid, tip_type, well_plate_type
-                    )
-                    
-                    dispensed += batch_total
-                    well_idx = next_idx
-                    self.logger.debug(f"Batched {len(batch_wells)} wells, total: {batch_total:.3f} mL")
-                
-                # Remove pipet after finishing this vial (if any dispensing occurred)
-                if dispensed > 1e-6:
-                    self.remove_pipet()
-                    self.return_vial_home(vial_index)
-                    self.logger.debug(f"Completed batched dispensing from vial {vial_name} ({tip_type})")
-        
-        self.logger.info("Batched wellplate dispensing completed")
-        return True
-
-    def _collect_next_batch(self, vial_volumes, start_idx, max_volume):
-        """
-        Collect volumes that fit in one batch.
-        
-        Args:
-            vial_volumes: Pandas Series of volumes for wells
-            start_idx: Index to start collecting from
-            max_volume: Maximum volume that fits in tip
-            
-        Returns:
-            tuple: (batch_wells, batch_volumes, next_idx)
-        """
-        batch_wells = []
-        batch_volumes = []
-        batch_total = 0.0
-        current_idx = start_idx
-        
-        for i in range(start_idx, len(vial_volumes)):
-            volume = vial_volumes.iloc[i]
-            if volume > 1e-6 and batch_total + volume <= max_volume:
-                batch_wells.append(vial_volumes.index[i])  # Well index
-                batch_volumes.append(volume)
-                batch_total += volume
-                current_idx = i + 1
-            elif volume > 1e-6:
-                break  # Can't fit this volume, end batch
-            else:
-                current_idx = i + 1  # Skip zero volume, continue
-        
-        return batch_wells, batch_volumes, current_idx
-
-    def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
-                      parameters, liquid, tip_type, well_plate_type):
-        """
-        Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
-        
-        Returns:
-            float: Total volume dispensed (excluding buffer)
-        """
-        batch_total = sum(batch_volumes)
-        
-        # Calculate buffer volume for accuracy
-        extra_aspirate_vol = min(buffer_vol, max_volume - batch_total)
-        total_aspirate = batch_total + extra_aspirate_vol
-        
-        # Determine speeds after tip is acquired (get tip first via aspirate)
-        # Note: aspirate_from_vial will handle tip acquisition and speed setting
-        
-        # Aspirate with buffer
-        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, liquid=liquid, specified_tip=tip_type)
-        
-        # Dispense to wells
-        self.dispense_into_wellplate(batch_wells, batch_volumes, 
-                                   parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
-        
-        # Return buffer volume to source vial if any
-        if extra_aspirate_vol > 1e-6:
-            self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
-            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters, liquid=liquid, record_measurement=False)
-        
-        return batch_total
 
     # ====================================================================
     # RESERVOIR SYSTEM
@@ -3447,7 +3594,7 @@ class North_Robot(North_Base):
             }
             
             if not self.simulate:
-                initial_mass = self.c9.read_steady_scale()
+                initial_mass = self.read_steady_scale()
             else:
                 initial_mass = 0.0
 
@@ -3476,7 +3623,7 @@ class North_Robot(North_Base):
                 while monitoring_active.is_set():
                     try:
                         if not self.simulate:
-                            steady_status, weight = self.c9.read_scale()  # Actually returns (steady_status, weight)
+                            steady_status, weight = self.read_scale()  # Actually returns (steady_status, weight)
                         else:
                             weight, steady_status = 0.0, True
                             
@@ -3583,9 +3730,10 @@ class North_Robot(North_Base):
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
         self.save_robot_status()
+        self._track_reservoir_dispense(reservoir_index, vial_index, volume, liquid)
 
         #Step 4: Return the vial back to home
-        self.c9.move_carousel(0,0)
+        self.move_carousel_to('home')
 
         # Analyze continuous monitoring data or do traditional measurement
         if continuous_mass_monitoring and continuous_mass_data:
@@ -3702,7 +3850,7 @@ class North_Robot(North_Base):
         
         elif measure_weight: # Traditional before/after measurement
             if not self.simulate:
-                final_mass = self.c9.read_steady_scale()
+                final_mass = self.read_steady_scale()
                 measured_mass = final_mass - initial_mass
             else:
                 measured_mass = volume * 1.0  # Simulate perfect transfer (assuming water density)
@@ -3767,14 +3915,14 @@ class North_Robot(North_Base):
         release_speed = self.get_speed('precise_movement')
         self.c9.goto_safe(destination, vel=move_speed if move_speed is not None else self.get_speed('default_robot')) #move vial to destination
         #self.c9.open_gripper()
-        self.c9.set_output(7, False)  
+        self.open_vial_gripper()  
         if not self.simulate:
             time.sleep(release_settle_time_s)
 
         if location == 'clamp':
-            self.c9.close_clamp()
+            self.close_clamp()
             self.move_rel_xyz(z_distance=10, vel=release_speed)
-            self.c9.open_clamp()
+            self.open_clamp()
 
         self.VIAL_DF.at[vial_index, 'location']=location
         self.VIAL_DF.at[vial_index, 'location_index']=location_index
@@ -3806,7 +3954,7 @@ class North_Robot(North_Base):
         #self.open_gripper()
         self.goto_location_if_not_there(initial_location, move_speed=move_speed) #move to vial
         #self.c9.close_gripper() #grip vial
-        self.c9.set_output(7, True)  
+        self.close_vial_gripper()  
 
         if not self.simulate:
             time.sleep(grab_settle_time_s)
@@ -3873,23 +4021,25 @@ class North_Robot(North_Base):
         grip_settle_time_s = self.get_config_parameter(
             'robot_hardware', 'gripper_timing', 'uncap_grip_settle_time_s', error_on_missing=True
         )
-        self.c9.close_clamp() #clamp vial
+        self.close_clamp() #clamp vial
         self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
         if not self.simulate:
             time.sleep(position_settle_time_s)
         
         #self.c9.close_gripper()
-        self.c9.set_output(7, True) 
+        self.close_vial_gripper() 
 
         if not self.simulate:
             time.sleep(grip_settle_time_s)
         self.c9.uncap(revs=revs)
+        # Record the cap, the vial it belongs to and the uncapped vial together, and save, before
+        # moving again: a fault in the next moves must not leave "Cap" with no vial number
         self.GRIPPER_STATUS = "Cap"
-        self.move_rel_xyz(z_distance=5)
-        self.c9.open_clamp()
-
-        self.VIAL_DF.at[clamp_vial_index, 'capped']=False
         self.GRIPPER_VIAL_INDEX = clamp_vial_index
+        self.VIAL_DF.at[clamp_vial_index, 'capped']=False
+        self.save_robot_status()
+        self.move_rel_xyz(z_distance=5)
+        self.open_clamp()
         self.save_robot_status()
 
     #Recap the vial in the clamp
@@ -3910,17 +4060,17 @@ class North_Robot(North_Base):
         position_settle_time_s = self.get_config_parameter(
             'robot_hardware', 'gripper_timing', 'recap_position_settle_time_s', error_on_missing=True
         )
-        self.c9.close_clamp() #Make sure vial is clamped
+        self.close_clamp() #Make sure vial is clamped
         self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
         if not self.simulate:
             time.sleep(position_settle_time_s)
 
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         #self.c9.open_gripper() #Open the gripper to release the cap
-        self.c9.set_output(7, False)  
+        self.open_vial_gripper()  
         
         self.GRIPPER_STATUS = None
-        self.c9.open_clamp()
+        self.open_clamp()
 
         self.VIAL_DF.at[clamp_vial_index, 'capped']=True #Update the vial status
         self.GRIPPER_VIAL_INDEX = None
@@ -3949,9 +4099,10 @@ class North_Robot(North_Base):
             `vortex_time` (float): Time (in seconds) to vortex
             `vortex_speed` (float): Speed of vortexing (default is 70)
             `return_location` (tuple[str, int] | None): Destination name and
-                index, e.g. ("main_8mL_rack", 25). None returns to the original
-                location. An explicit destination avoids intermediate release
-                and regripping; it does not change the safe transport approach.
+                index, e.g. ("main_8mL_rack", 25). None returns the vial to its
+                home location, so the call ends state-preserving. An explicit
+                destination avoids intermediate release and regripping; it does
+                not change the safe transport approach.
         """
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
@@ -3989,12 +4140,234 @@ class North_Robot(North_Base):
         self.c9.reduce_axis_position(axis=gripper_axis)
 
         if return_location is None:
-            location = self.get_vial_info(vial_index,'location')
-            location_index = self.get_vial_info(vial_index,'location_index')
+            location = self.get_vial_info(vial_index,'home_location')
+            location_index = self.get_vial_info(vial_index,'home_location_index')
         else:
             location, location_index = return_location
 
         self.drop_off_vial(vial_index, location, location_index)
+
+    # ---- Unit operations: tip conditioning and small-tip staging ----
+    def _present_vial_locations(self):
+        """Locations from vial_positions.yaml whose rack is present on the deck."""
+        positions = getattr(self, 'VIAL_POSITIONS', None) or {}
+        return {name: rack for name, rack in positions.items() if isinstance(rack, dict) and rack.get('rack_present')}
+
+    def get_small_tip_safe_indices(self, location):
+        """Indices at a location where the small tip can aspirate safely (small_tip_safe_indices in vial_positions.yaml)."""
+        rack = self._present_vial_locations().get(location) or {}
+        return [int(i) for i in (rack.get('small_tip_safe_indices') or [])]
+
+    def get_small_tip_staging_positions(self):
+        """(location, index) staging targets, safest first (small_tip_staging_rank in vial_positions.yaml)."""
+        ranked = []
+        for name, rack in self._present_vial_locations().items():
+            for index, rank in (rack.get('small_tip_staging_rank') or {}).items():
+                ranked.append((rank, name, int(index)))
+        return [(name, index) for _, name, index in sorted(ranked)]
+
+    def condition_tip(self, vial_name, volume_per_cycle_mL=0.1, cycles=5, specified_tip=None):
+        """
+        Unit operation: condition the pipet tip by aspirating from and dispensing back
+        into the same vial several times. Leaves the (wet) tip attached.
+
+        Args:
+            vial_name (str): Vial to condition the tip with
+            volume_per_cycle_mL (float): Volume aspirated and dispensed per cycle (default 0.1 mL)
+            cycles (int): Number of aspirate/dispense cycles (default 5)
+            specified_tip (str, optional): Tip type to use and keep ("small_tip" or "large_tip")
+        """
+        # Fast, simple parameters: conditioning does not need calibrated accuracy.
+        conditioning_params = PipettingParameters(
+            aspirate_speed=15,
+            dispense_speed=5,
+            dispense_wait_time=0.0,
+            blowout_vol=0.5,
+        )
+        self.logger.info(f"Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_mL*1000:.1f} uL")
+        for _ in range(cycles):
+            self.aspirate_from_vial(vial_name, volume_per_cycle_mL, parameters=conditioning_params,
+                                    specified_tip=specified_tip)
+            self.dispense_into_vial(vial_name, volume_per_cycle_mL, parameters=conditioning_params)
+
+    def stage_vials(self, vial_names, safe_positions=None):
+        """
+        Unit operation: move vials into small-tip-safe positions before small-volume pipetting.
+        Staging targets and their order come from small_tip_staging_rank in vial_positions.yaml.
+        This is a deliberate state change; undo it with return_staged_vials().
+
+        Vials are placed in priority order: the first vial gets the safest free position.
+        Choosing the order (e.g. highest pull-out risk first) is left to the caller,
+        for example with workflows/helpers/vial_risk_analyzer.py.
+
+        Args:
+            vial_names (list): Vial names in priority order (highest priority first)
+            safe_positions (list, optional): (location, index) pairs, safest first.
+                Defaults to small_tip_staging_rank in vial_positions.yaml.
+
+        Returns:
+            dict: {vial_name: (location, index)} for each vial that was staged.
+                Vials that could not be staged (no free safe position) stay where they are.
+        """
+        positions = list(safe_positions if safe_positions is not None else self.get_small_tip_staging_positions())
+        staged = {}
+        for vial_name in vial_names:
+            vial_index = self.normalize_vial_index(vial_name)
+            current = (self.get_vial_info(vial_index, 'location'), self.get_vial_info(vial_index, 'location_index'))
+            if current in positions:  # Already in a safe position
+                positions.remove(current)
+                staged[vial_name] = current
+                continue
+            target = None
+            while positions:
+                candidate = positions.pop(0)
+                occupant = self.get_vial_in_location(candidate[0], candidate[1])
+                if occupant is None or occupant == vial_index:
+                    target = candidate
+                    break
+            if target is None:
+                self.logger.warning(f"No free small-tip-safe position for {vial_name}; leaving it in place")
+                continue
+            self.logger.info(f"Staging {vial_name} -> {target[0]}[{target[1]}]")
+            self.move_vial_to_location(vial_index, target[0], target[1])
+            staged[vial_name] = target
+        return staged
+
+    def return_staged_vials(self, vial_names):
+        """
+        Unit operation: return staged vials to their home positions (the reset for stage_vials).
+        Vials that are already home are not moved.
+
+        Args:
+            vial_names (iterable): Vial names to return (e.g. the keys returned by stage_vials)
+        """
+        for vial_name in vial_names:
+            vial_index = self.normalize_vial_index(vial_name)
+            at_home = (self.get_vial_info(vial_index, 'location') == self.get_vial_info(vial_index, 'home_location')
+                       and self.get_vial_info(vial_index, 'location_index') == self.get_vial_info(vial_index, 'home_location_index'))
+            if not at_home:
+                self.return_vial_home(vial_index)
+
+    def return_all_vials_home(self):
+        """
+        Cleanup: return every vial that is not at home, one by one. Used by Lash_E.safe_stop.
+        Vials that can't be moved (is_vial_movable is False, e.g. uncapped) are left in place and
+        reported. A failure on one vial is logged and the rest are still tried.
+
+        Returns:
+            (returned, left): lists of vial names; left is a list of (vial_name, reason)
+        """
+        returned, left = [], []
+        vial_df = getattr(self, 'VIAL_DF', None)
+        if vial_df is None:
+            return returned, left
+        for vial_index in list(vial_df.index):
+            vial_name = self.get_vial_info(vial_index, 'vial_name')
+            at_home = (self.get_vial_info(vial_index, 'location') == self.get_vial_info(vial_index, 'home_location')
+                       and self.get_vial_info(vial_index, 'location_index') == self.get_vial_info(vial_index, 'home_location_index'))
+            if at_home:
+                continue
+            if not self.is_vial_movable(vial_index):
+                self.logger.warning(f"Vial {vial_name} is not home but can't be moved; leaving it in place")
+                left.append((vial_name, "not movable"))
+                continue
+            try:
+                self.return_vial_home(vial_index)
+                returned.append(vial_name)
+            except Exception as e:
+                self.logger.exception(f"Could not return vial {vial_name} home")
+                left.append((vial_name, f"return failed: {e}"))
+        return returned, left
+
+    # ---- Flows: adding liquid to vials ----
+    # Sources are specified by the caller for now. Later these may choose sources from
+    # sample-contents metadata (e.g. find a vial with matching contents), which is not implemented yet.
+
+    def _add_liquid_to_vial(self, dest_vial_name, volume_mL, reservoir=None, source_vial=None,
+                            liquid=None, measure_weight=False):
+        """Add liquid to a vial from a reservoir or, by pipet transfer, from a source vial. Returns the volume added (mL)."""
+        if (reservoir is None) == (source_vial is None):
+            raise ValueError("Specify exactly one of reservoir or source_vial")
+        if reservoir is not None:
+            self.dispense_into_vial_from_reservoir(reservoir, dest_vial_name, volume_mL, liquid=liquid,
+                                                   measure_weight=measure_weight)
+        else:
+            self.dispense_from_vial_into_vial(source_vial, dest_vial_name, volume_mL, liquid=liquid,
+                                              measure_weight=measure_weight)
+        return volume_mL
+
+    def refill_vial(self, vial_name, target_volume_mL, reservoir=None, source_vial=None, liquid=None,
+                    min_addition_mL=0.0, measure_weight=False):
+        """
+        Flow: top a vial up to a target volume from a reservoir or a source vial.
+        Ends with no tip held and the vials home.
+
+        Exactly one source must be given. Choosing the source automatically from
+        sample-contents metadata is planned but not implemented yet.
+
+        Args:
+            vial_name (str): Vial to refill
+            target_volume_mL (float): Volume the vial should hold afterwards
+            reservoir (int, optional): Reservoir (pump) index to dispense from
+            source_vial (str, optional): Vial to pipet from
+            liquid (str, optional): Liquid type for calibrated parameters
+            min_addition_mL (float): Skip the refill if less than this would be added (default 0)
+            measure_weight (bool): Weigh the addition (default False)
+
+        Returns:
+            float: Volume added (mL); 0 if no refill was needed or possible
+        """
+        if reservoir is None and source_vial is None:
+            raise NotImplementedError("Automatic source selection needs sample-contents metadata; "
+                                      "specify reservoir or source_vial")
+        current_mL = self.get_vial_info(vial_name, 'vial_volume')
+        volume_mL = target_volume_mL - current_mL
+        if source_vial is not None:
+            volume_mL = min(volume_mL, self.get_vial_info(source_vial, 'vial_volume'))
+        if volume_mL <= 0 or volume_mL < min_addition_mL:
+            self.logger.info(f"No refill needed for {vial_name} ({current_mL:.2f} mL, target {target_volume_mL:.2f} mL)")
+            return 0.0
+        self.logger.info(f"Refilling {vial_name}: {current_mL:.2f} mL -> {current_mL + volume_mL:.2f} mL")
+        return self._add_liquid_to_vial(vial_name, volume_mL, reservoir=reservoir, source_vial=source_vial,
+                                        liquid=liquid, measure_weight=measure_weight)
+
+    def create_substock(self, dest_vial_name, components, vortex_time=None, measure_weight=False):
+        """
+        Flow: prepare a substock by adding several components to one vial, then optionally vortex.
+        Ends with no tip held and the vials home.
+
+        Reservoir additions run first, then pipetted additions in the order given.
+        Each addition returns the vial home; keeping the vial on the clamp to weigh every
+        addition is a possible future improvement. Sources are specified for now; choosing
+        them from sample-contents metadata is planned but not implemented.
+
+        Args:
+            dest_vial_name (str): Vial to prepare the substock in
+            components (list of dict): Each has 'volume_mL' and either 'reservoir' (int) or
+                'source_vial' (str), plus an optional 'liquid'
+            vortex_time (float, optional): Vortex for this many seconds after the last addition
+            measure_weight (bool): Weigh each addition (default False)
+
+        Returns:
+            float: Total volume added (mL)
+        """
+        for component in components:
+            if (component.get('reservoir') is None) == (component.get('source_vial') is None):
+                raise ValueError(f"Each component needs exactly one of 'reservoir' or 'source_vial': {component}")
+        ordered = ([c for c in components if c.get('reservoir') is not None]
+                   + [c for c in components if c.get('reservoir') is None])
+        total_mL = 0.0
+        for component in ordered:
+            if component['volume_mL'] <= 0:
+                continue
+            total_mL += self._add_liquid_to_vial(dest_vial_name, component['volume_mL'],
+                                                 reservoir=component.get('reservoir'),
+                                                 source_vial=component.get('source_vial'),
+                                                 liquid=component.get('liquid'),
+                                                 measure_weight=measure_weight)
+        if vortex_time:
+            self.vortex_vial(dest_vial_name, vortex_time)
+        return total_mL
         
     #This is just to formalize the process of error checking so its more extensible
     #This may end up deprecated
@@ -4083,6 +4456,23 @@ class North_Robot(North_Base):
         
         return current_position_safe and dest_position_safe
  
+    # ---- Primitives: vial gripper and clamp ----
+    def open_vial_gripper(self):
+        """Primitive: open the robot arm's vial gripper (releases a vial or cap)."""
+        self.c9.set_output(self._hardware_setting('robot_pneumatics', 'vial_gripper', 7), False)
+
+    def close_vial_gripper(self):
+        """Primitive: close the robot arm's vial gripper (grips a vial or cap)."""
+        self.c9.set_output(self._hardware_setting('robot_pneumatics', 'vial_gripper', 7), True)
+
+    def open_clamp(self):
+        """Primitive: open the vial clamp."""
+        self.c9.open_clamp()
+
+    def close_clamp(self):
+        """Primitive: close the vial clamp."""
+        self.c9.close_clamp()
+
     def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
         if vel is None:
             vel = self.get_speed('standard_xy')
@@ -4108,7 +4498,7 @@ class North_Robot(North_Base):
     def move_home(self):
         self.logger.info("Moving robot to home position")
         self.c9.goto_safe(home)
-        self.c9.move_carousel(0,0)
+        self.move_carousel_to('home')
 
     # ====================================================================
     # 9. VIAL INFO & LOCATION UTILITIES

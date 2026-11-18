@@ -184,8 +184,8 @@ randomizes well assignment reproducibly with `RANDOMIZATION_SEED`. Dispensing is
 grouped by source; this option does not randomize chronological pipetting order.
 
 `DISPENSE_ORDER` can be `[medium, dye]` or `[dye, medium]`. The selected pair's
-solvent is passed as the dye pipetting liquid name. The aqueous surfactant pipetting liquid defaults
-to water and can be changed with `SURFACTANT_LIQUID`.
+solvent is passed as the dye pipetting liquid name. Surfactant transfers always use the `SDS` pipetting
+liquid; this is fixed in the workflow and is not a setting.
 
 Before hardware execution, update the example vial status CSV to the actual
 loaded rack positions and volumes, including empty destinations named in the
@@ -201,7 +201,7 @@ When `TEST_SURFACTANT` is enabled, startup tops the `surfactant` vial up to
 Load the same premixed surfactant solution in this 20 mL source vial at
 `large_vial_rack[2]`; the example starting volume is 19.9 mL. The workflow checks
 the refill source has enough liquid before starting any transfers and uses
-`SURFACTANT_LIQUID` for the refill's pipetting parameters.
+the `SDS` pipetting parameters for the refill.
 The example inventory supplies both dye/solvent pairs with 19.9 mL in each bulk
 solvent vial. Each solvent has an additional empty closed-cap 8 mL working vial:
 `DMSO_working` at `main_8mL_rack[27]` and `acetone_working` at `[28]`.
@@ -267,6 +267,6 @@ checks before dispensing, or set `VALIDATION_ONLY: true` to stop after the
 checks. Sessions are separate for each source liquid and resolved tip. The
 checked volumes are the minimum, middle, and maximum values used by each tip.
 `liquid_type` is the
-exact liquid registry name (`water`, `DMSO`, or `SURFACTANT_LIQUID`), while the
+exact liquid registry name (`water`, `DMSO`, or `SDS`), while the
 source vial identifies the physical container. Validation uses three replicates
 per volume and may consume liquid. Simulations do not save validation data.

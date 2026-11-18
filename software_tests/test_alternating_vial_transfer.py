@@ -112,9 +112,11 @@ def test_interrupt_cleanup_keeps_safe_homes_until_tip_is_cleared(transfer_setup)
 
     robot.dispense_into_vial.side_effect = interrupted_dispense
     robot._perform_physical_cleanup.side_effect = cleanup
+    # lash is a fake here: stand in for Lash_E.safe_stop's robot step (tested in test_workflow_interrupt_cleanup.py)
+    lash.safe_stop.side_effect = lambda reason="": robot._perform_physical_cleanup()
     with pytest.raises(KeyboardInterrupt):
         workflow["execute"](config=lash.workflow_config, show_gui=False)
-    lash.nr_track.reset_after_initialization.assert_called_once_with()
+    lash.safe_stop.assert_called_once_with("workflow failed or was interrupted")
     robot._perform_physical_cleanup.assert_called_once_with()
     assert list(robot.VIAL_DF.home_location_index) == [9, 10]
     assert robot.HELD_PIPET_TYPE is None

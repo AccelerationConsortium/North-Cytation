@@ -242,32 +242,28 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, cycles=3):
         conditioning_volume_ul: Total volume for conditioning (default 100 uL)
         liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO', etc.)
     """
-    try:
-        # Calculate volume per conditioning cycle (5 cycles total)
-        volume_per_cycle_ul = conditioning_volume_ul
-        volume_per_cycle_ml = volume_per_cycle_ul / 1000
+    # Calculate volume per conditioning cycle (5 cycles total)
+    volume_per_cycle_ul = conditioning_volume_ul
+    volume_per_cycle_ml = volume_per_cycle_ul / 1000
 
-        # Simple dummy parameters - fast and reliable for conditioning only
-        from pipetting_data.pipetting_parameters import PipettingParameters
-        dummy_params = PipettingParameters(
-            aspirate_speed=10,      # Fast aspirate
-            dispense_speed=5,       # Fast dispense  
-            dispense_wait_time=0.0, # No waiting
-            blowout_vol=0.5         # Minimal blowout
-        )
-        
-        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
-        
-        for cycle in range(cycles):
-            # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
-            # Dispense back into same vial
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
-        
-        lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
-        
-    except Exception as e:
-        lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
+    # Simple dummy parameters - fast and reliable for conditioning only
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    dummy_params = PipettingParameters(
+        aspirate_speed=10,      # Fast aspirate
+        dispense_speed=5,       # Fast dispense  
+        dispense_wait_time=0.0, # No waiting
+        blowout_vol=0.5         # Minimal blowout
+    )
+    
+    lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
+    
+    for cycle in range(cycles):
+        # Aspirate from vial 
+        lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+        # Dispense back into same vial
+        lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+    
+    lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
 
 def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=0.15,replicates=1, solvent='2MeTHF'):
     lash_e.logger.info(f"\nTransferring sample: {sample_name} to wellplate at wells {first_well_index} to {first_well_index + replicates - 1} ({replicates} replicates)")
@@ -718,8 +714,8 @@ def execute(config=None, show_gui=True):
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', None)
         lash_e.logger.info(lash_e.nr_robot.VIAL_DF)
-    except KeyboardInterrupt:
-        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+    except (Exception, KeyboardInterrupt):
+        lash_e.logger.exception("Workflow failed or was interrupted; attempting cleanup")
         cleanup_after_keyboard_interrupt(lash_e)
         raise
 

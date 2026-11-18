@@ -46,6 +46,9 @@ def convert(new_run_csv, legacy_csv):
     if 'tip_type' not in new_df or not new_df['tip_type'].isin(('small_tip', 'large_tip')).all():
         raise ValueError('Calibration run must have a confirmed small_tip or large_tip for every row')
     new_df['volume_ul'] = new_df['volume_target']
+    # When each row was calibrated (the date it was merged in). Rows from before this column
+    # existed stay blank ("unknown"); the scheduler's Liquids tab shows the latest date.
+    new_df['calibrated_on'] = datetime.now().strftime('%Y-%m-%d %H:%M')
 
     # None is a runtime fallback (e.g. blowout_speed uses aspirate_speed),
     # not a numeric value to write into a calibration CSV.
@@ -55,7 +58,7 @@ def convert(new_run_csv, legacy_csv):
     legacy_path = Path(legacy_csv)
     if not legacy_path.is_file():
         # First calibration for this liquid -- nothing to merge with or back up.
-        columns = [c for c in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults])
+        columns = [c for c in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults, "calibrated_on"])
                    if c in new_df.columns or c in defaults]
         created = new_df.reindex(columns=columns)
         defaulted = {}
@@ -87,7 +90,7 @@ def convert(new_run_csv, legacy_csv):
     # production file predates it. Fill missing hardware values below using
     # the same defaults as the robot; measurement columns remain untouched.
     columns = list(legacy_df.columns)
-    for column in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults]):
+    for column in dict.fromkeys([*COLUMN_MAP.values(), "volume_ul", "tip_type", *defaults, "calibrated_on"]):
         if (column in new_df.columns or column in defaults) and column not in columns:
             columns.append(column)
     new_df = new_df.reindex(columns=columns)

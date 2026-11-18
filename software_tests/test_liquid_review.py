@@ -5,7 +5,7 @@ import unittest
 
 import pandas as pd
 
-from scheduler.liquid_review import (coverage, current_parameters,
+from scheduler.liquid_review import (IMPOSSIBLE, NOT_CALIBRATED, UNSTABLE, coverage, current_parameters,
     matching_measurements, parse_log, environmental_history, past_results,
     past_result_measurements, past_result_parameters, session_overaspirate_estimates,
     summarize_overaspirate, summarize_past_validation)
@@ -55,10 +55,9 @@ class LiquidReviewTests(unittest.TestCase):
         _, one, _ = summarize_past_validation(pd.DataFrame(rows[:10]))
         self.assertTrue(pd.isna(one.iloc[0].ci_low_ul))
 
-    def test_past_validation_matches_interpolated_volume_allowing_overvolume_changes(self):
+    def test_past_validation_only_counts_calibration_rows_allowing_overvolume_changes(self):
         frame = pd.DataFrame({'volume_target': [20, 50], 'aspirate_speed': [15, 15]})
-        parameters = current_parameters(frame, 35)
-        row = dict(parameters, target_volume_ml=.035, measured_volume_ml=.035,
+        row = dict(current_parameters(frame, 50), target_volume_ml=.05, measured_volume_ml=.05,
                    liquid_type='water', validation_type='vial_to_vial', session_id='a',
                    timestamp='20261009_120000', accepted=True)
         with tempfile.TemporaryDirectory() as folder:
@@ -66,14 +65,39 @@ class LiquidReviewTests(unittest.TestCase):
             directory.mkdir()
             pd.DataFrame([dict(row, overaspirate_vol=.001),
                           dict(row, session_id='b', overaspirate_vol=.005),
+                          # float noise on a calibration row still counts as that row
+                          dict(row, session_id='c', target_volume_ml=.05 + 1e-12, overaspirate_vol=.003),
+                          dict(row, session_id='off', target_volume_ml=.035, measured_volume_ml=.035),
                           dict(row, session_id='old', aspirate_speed=10)]).to_csv(
                               directory / 'master_pipetting_measurements.csv', index=False)
             matched, excluded = matching_measurements(folder, 'water', frame)
             data, summary, excluded = summarize_past_validation(matched, excluded)
-            self.assertEqual(len(data), 2)
-            self.assertEqual(summary.iloc[0].target_ul, 35)
-            self.assertEqual(summary.iloc[0].sessions, 2)
+            self.assertEqual(len(data), 3)
+            self.assertEqual(summary.target_ul.tolist(), [50])
+            self.assertEqual(summary.iloc[0].sessions, 3)
             self.assertEqual(excluded['Different aspirate_speed'], 1)
+            self.assertEqual(excluded[NOT_CALIBRATED], 1)
+
+    def test_matching_drops_unstable_impossible_and_other_tip_readings(self):
+        frame = pd.DataFrame({'volume_target': [20, 200], 'aspirate_speed': [15, 15],
+                              'tip_type': ['small_tip', 'large_tip']})
+        row = dict(current_parameters(frame, 20), target_volume_ml=.02, measured_volume_ml=.02,
+                   overaspirate_vol=.002, liquid_type='water', validation_type='vial_to_vial',
+                   session_id='a', timestamp='20261116_120000', tip_type='small_tip')
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder) / 'pipetting_data'
+            directory.mkdir()
+            # Real rows from 2026-11: unstable balance gave 807 uL and -223 uL for a 20 uL target.
+            pd.DataFrame([row,
+                          dict(row, session_id='b', measured_volume_ml=.80666, measurement_acceptable=False),
+                          dict(row, session_id='c', measured_volume_ml=-.22297),
+                          dict(row, session_id='d', tip_type='large_tip')]).to_csv(
+                              directory / 'master_pipetting_measurements.csv', index=False)
+            matched, excluded = matching_measurements(folder, 'water', frame)
+            self.assertEqual(matched.session_id.tolist(), ['a'])
+            self.assertEqual(excluded[UNSTABLE], 1)
+            self.assertEqual(excluded[IMPOSSIBLE], 1)
+            self.assertEqual(excluded['Different tip than the calibration row'], 1)
 
     def test_log_counts_destinations_and_retains_explicit_class(self):
         with tempfile.TemporaryDirectory() as folder:

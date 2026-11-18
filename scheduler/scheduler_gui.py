@@ -596,6 +596,16 @@ class SchedulerWindow(QMainWindow):
             reload_button.clicked.connect(lambda checked=False, widget=widget, reload=reload:
                                          self.reload_shared_state(widget, reload))
             buttons.addWidget(reload_button)
+            # Record-only clears (the robot doesn't move): they change the draft; Save writes it.
+            extras = ([("Clear gripper", widget.clear_gripper), ("Clear pipet holder", widget.clear_pipet_holder),
+                       ("Refill pipets", widget.refill_pipets)] if widget is self.robot_status_widget
+                      else [("Clear plates", widget.clear_plates), ("Well contents…", widget.show_well_contents)])
+            for text, action in extras:
+                extra = QPushButton(text)
+                extra.setToolTip("Shows what each well of the selected plate holds" if text.startswith("Well")
+                                 else "Updates the record only, after you've done it by hand; press Save to keep it")
+                extra.clicked.connect(lambda checked=False, action=action: action())
+                buttons.addWidget(extra)
             buttons.addStretch()
             widget.layout().addLayout(buttons)
             self.shared_state_baselines[widget] = self.shared_state_snapshot(widget)
@@ -613,6 +623,17 @@ class SchedulerWindow(QMainWindow):
                     control.valueChanged.connect(self.shared_state_changed)
                 elif isinstance(control, QComboBox):
                     control.currentIndexChanged.connect(self.shared_state_changed)
+        # Sample tracking: stocks are saved as soon as they are added (status/stocks.csv),
+        # so this tab has no Save button and isn't part of the shared-state drafts above.
+        from stock_dialogs import LiquidsWidget, PowdersWidget, ReservoirsWidget, StocksWidget
+        self.liquids_widget = LiquidsWidget(self)
+        self.tabs.addTab(self.liquids_widget, "Liquids")
+        self.stocks_widget = StocksWidget(self)
+        self.tabs.addTab(self.stocks_widget, "Stocks")
+        self.reservoirs_widget = ReservoirsWidget(self)
+        self.tabs.addTab(self.reservoirs_widget, "Reservoirs")
+        self.powders_widget = PowdersWidget(self)
+        self.tabs.addTab(self.powders_widget, "Powders")
 
     def shared_state_snapshot(self, widget):
         if hasattr(widget, "state_snapshot"):

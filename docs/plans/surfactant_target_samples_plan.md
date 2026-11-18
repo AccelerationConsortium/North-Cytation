@@ -1,0 +1,233 @@
+# Surfactant target-samples workflow — plan
+
+Date: 2026-11-16 · Status: **draft for discussion, nothing implemented.**
+North_Safe is about to be updated (new refill/dispensing functions not yet synced);
+refill and dispense steps below name *what* is needed and must be mapped onto the
+synced functions before implementation.
+
+## Goal
+
+Given a list of target samples (which surfactants, at what final concentration,
+whether an additive is present, plus free metadata), the workflow:
+
+1. **Checks feasibility** against the stocks and substocks we actually have
+   (identity, concentration, volume on hand).
+2. **Plans and makes any missing substocks** by dilution, never pipetting below a
+   set minimum volume, inserting intermediate dilutions automatically.
+3. **Makes the samples** in wellplates the way the current workflow does, then
+   measures as today.
+
+Planning (1–2) is pure code with no hardware, so it can run as a dry run from the
+scheduler or a script, and be unit-tested.
+
+**Scope (decided 2026-11-16):** this is its own, simpler workflow. The target list
+is decided elsewhere and handed in. There is no recommender, no Bayesian
+optimisation, no grid generation and no iteration loop: one pass of
+plan → make substocks → make samples → measure. It is not an engine for multidim
+and does not replace Ailsa.
+
+Proposed files: `workflows/lib/substock_planning.py` (planner; the home already
+proposed in `docs/workflows/REFACTORING_surfactants.md` Step 8),
+`workflows/surfactant_target_samples.py` (workflow), config
+`workflow_configs/surfactant_target_samples.yaml`.
+
+## What exists today (checked 2026-11-16)
+
+- **Current workflow**: `workflows/surfactant_multidimensional_workflow.py` (hardware
+  runs 11-07 to 11-12). Targets are generated internally (grid/simplex/recommender);
+  helpers come from `workflows/surfactant_grid_adaptive_concentrations.py`.
+  `workflows/surfactant_grid_ailsa.py` is a replay workflow reading per-well recipes
+  from CSV and has the most robust refill logic.
+- **Stocks are identified by name only**: vial CSVs have no identity/concentration
+  column. `<S>_stock` concentration comes from `SURFACTANT_LIBRARY[S]["stock_conc"]`;
+  `<S>_dilution_<n>` concentrations are *recomputed each run* from a fixed log series
+  (`calculate_systematic_dilution_series`). If settings change, a leftover
+  `SDS_dilution_2` is topped up as if it held a different concentration.
+- **Substock recipes** (`calculate_dilution_recipes`): picks the source giving the
+  smallest transfer ≥ `MIN_SUBSTOCK_VOLUME_UL` (200 uL), final 6 mL. If none
+  qualifies it only logs "NEEDS INTERMEDIATE DILUTION" — no automatic intermediate.
+- **Source selection per well** (multidim `joint_select_sources`): each surfactant
+  volume in `[MIN_WELL_PIPETTE_VOLUME_UL=10, SURFACTANT_BUDGET_UL=225]`, total ≤ 225;
+  picks the combination maximising (min volume, total). Ignores volume on hand.
+- **Making samples** (`execute_dispensing_nd`): per surfactant, position vials
+  (safe positions), condition tip once, aspirate per well → `dispense_into_wellplate`,
+  grouped by tip from `resolve_pipetting_setup`; then water (split over `water`,
+  `water_2`), optional buffer, pyrene/DMSO 5 uL; Cytation turbidity + fluorescence.
+  Liquid class `"SDS"` is hard-coded for every surfactant.
+- **Refills**: multidim tops up only between iterations, so a 96-well chunk can run a
+  vial dry. Ailsa refills in chunks (`_dispense_vial_in_chunks`,
+  `ensure_vial_above_threshold`, `validate_stock_refill_sources`).
+- **Hidden globals**: multidim helpers silently use the adaptive module's defaults
+  (e.g. `WELL_VOLUME_UL=200` vs multidim's 250, `PYRENE_VOLUME_UL`).
+- **Registry**: `robot_state/components.yaml` (draft, not loaded) holds identities and
+  MW; vial-contents storage is still undecided (see vial-contents plan).
+
+The new workflow must not rely on name-based concentration inference or the
+adaptive module's globals.
+
+## Inputs
+
+**Target file** (CSV), one row per sample:
+
+| Column | Meaning |
+|---|---|
+| `sample_id` | unique, carried to all outputs |
+| `<S>_conc_mm` | one column per surfactant, final in-well mM; blank/0 = absent. Any number of surfactants. |
+| `<additive>` | one boolean column per additive (e.g. `pyrene`, `buffer`); present = fixed configured volume added. Concentration-based additives are a possible later extension (they'd be planned like surfactants), not in this version. |
+| `replicates` | optional, default 1 |
+| anything else | metadata, passed through untouched |
+
+Surfactant names must be keys in `components.yaml` with `kind: surfactant`.
+
+**Config**: well volume and plate type; minimum volumes (below); max substock final
+volume; dead volume per vial type; liquid class per surfactant (default `SDS`, but
+explicit); additive volumes; measurement protocols.
+
+**Minimum volumes (the risk rule)** — all configurable:
+- `MIN_WELL_TRANSFER_UL` — smallest volume pipetted into a well (today 10).
+- `MIN_SUBSTOCK_TRANSFER_UL` — smallest source volume when making a substock (today 200).
+- `MIN_WATER_DISPENSE_UL` — water remainders below this are handled as today.
+Hence max dilution per step = `final_volume / MIN_SUBSTOCK_TRANSFER_UL`
+(6 mL / 200 uL = 30×).
+
+## Step i — Inventory and feasibility
+
+1. **Inventory**: every vial with known identity + concentration + tracked volume.
+   The vial CSV is **not** changed. Contents (identity, concentration, how long a
+   solution has been open) come from the user's sample metadata system, which is
+   still being built. **This workflow waits for that system**; no temporary
+   backend. The planner reads/writes contents only through that system's
+   interface, so it can be designed and unit-tested now against a fake. Vials
+   whose contents are unknown are not used as concentration sources.
+2. **Per-sample source assignment** (generalised `joint_select_sources`): for each
+   surfactant in the sample, a source of concentration c is usable if
+   `v = target × V_well / c` is within `[MIN_WELL_TRANSFER_UL, per-component max]`;
+   pick the combination with total + additives + water reserve ≤ V_well, maximising
+   the smallest volume (risk) then preferring existing vials over new substocks.
+3. **Volume on hand**: sum each source's planned use + conditioning + dead volume
+   (+ margin); compare with tracked volume + what can be refilled (`<S>_refill`
+   vials, new North_Safe refill functions). Shortfalls on stocks → refill plan;
+   shortfalls on substocks → top-up or remake.
+4. **Classify each sample**: `ready` (existing sources), `needs_substock` (feasible
+   once planned substocks exist), `infeasible` with a reason:
+   - above max achievable (needs > stock concentration × budget),
+   - combination exceeds well budget,
+   - surfactant not in inventory and no stock,
+   - not enough material even with refills.
+
+## Step ii — Plan and make substocks
+
+**Use what exists, make on demand (decided 2026-11-16).** For each target, an
+existing stock or substock is used if it is within *healthy bounds*; only targets
+no existing vial can serve healthily get new substocks. Healthy bounds (decided
+2026-11-16):
+- well transfer `t × V_well / c` within `[MIN_WELL_TRANSFER_UL, per-component max]`;
+- enough volume on hand for all planned uses + dead volume + conditioning, after
+  any refill/top-up that is possible;
+- contents known.
+No age or minimum-remaining-volume limit. How long a solution has been open is
+kept as metadata (by the metadata system), not used to reject vials.
+An existing vial that's healthy but gives a worse (smaller) transfer than a new
+substock would is still used: reuse wins over making more vials.
+
+**Choosing new concentrations (minimum number of vials).**
+A substock at c serves target t if `t × V_well / v_max ≤ c ≤ t × V_well / v_min`.
+Each target left uncovered gives an interval; the minimum set of concentrations
+covering all of them is the greedy interval cover (sort by right end, place c at
+the right end, rounded *down* to a "nice" value inside the interval). Rounding down
+keeps transfers above the minimum. New substocks are made for this run but kept
+(with recorded contents), so later runs can reuse them.
+
+**Making each new concentration.** From the most concentrated available source
+(existing or planned) with `c_src / c ≤ max dilution`: if none, insert intermediates
+geometrically (e.g. stock 50 → 0.05 mM = 1000× → two steps of ~31.6×, rounded to
+nice values that keep each step ≤ 30×). Intermediates are ordinary substocks and can
+serve samples too. Order of creation = dependency order (topological; cycles
+impossible by construction but checked).
+
+**Final volume**: enough for planned use + dead volume + conditioning + margin, as
+long as each step keeps the source transfer ≥ `MIN_SUBSTOCK_TRANSFER_UL` and fits
+the vial; cap at the vial's capacity (decision 3).
+
+**Concentrations recorded are computed from the actual volumes**, not the rounded
+target, and recorded through the contents interface with preparation date and
+recipe parentage.
+
+**Physical vials**: new substocks need empty vials at known positions. The pre-run
+report lists them (`main_8mL_rack [12]` style); the deck check confirms they're there
+(decision 2).
+
+**Making**: source → new vial (`dispense_from_vial_into_vial`, surfactant's liquid
+class), water by reservoir, vortex — as `create_substocks_from_recipes` does today,
+but driven by the plan and writing contents. Map to the synced North_Safe dispense /
+refill functions.
+
+## Step iii — Make the samples
+
+One pass over the target list (no iterations). Reuse today's dispensing sequence
+(`execute_dispensing_nd` behaviour) with the new source assignment:
+- per surfactant: position vials, condition tip, dispense per well grouped by tip,
+  dilute → concentrated;
+- water remainder, optional buffer/additive, pyrene/DMSO (or configured dye);
+- refill in chunks Ailsa-style (check before each chunk, refill/top-up, re-stage,
+  re-condition) so a plate never runs a vial dry;
+- liquid class from config per surfactant, not hard-coded;
+- plate handling, controls and Cytation measurements as today;
+- every sample row saved with its target, assigned sources, volumes, *achieved*
+  concentrations, and metadata.
+
+All functions take their settings as arguments — no reliance on another module's
+globals.
+
+## Pre-run report (dry run)
+
+Printed and saved before any hardware motion, and available without hardware:
+- per sample: status, sources, volumes, achieved concentrations;
+- substocks to make: concentration, source, transfer volumes, final volume, vial
+  position, dependency order;
+- refills needed and from where; empty vials to place;
+- infeasible samples with reasons;
+- total consumption per vial vs on hand; tip counts.
+
+Infeasible samples are dropped and reported (decision 4) — never a crash mid-run.
+
+## Outputs
+
+`output/surfactant_target_samples/<run>/`: `targets_input.csv` (copy),
+`feasibility.csv`, `substock_plan.csv`, `well_recipes.csv`, `results.csv` (with
+measurements). Contents of new substocks are recorded in the sample metadata system,
+not in the vial CSV.
+
+## Tests (mocked; named files only)
+
+`software_tests/test_substock_planning.py`:
+- one surfactant, targets reachable from stock → no substocks;
+- low targets → minimum substock set; every transfer ≥ minimums;
+- 1000× dilution → intermediates inserted, each step ≤ max dilution;
+- existing leftover substock reused; a substock with unknown contents is ignored;
+- multi-surfactant sample exceeding the well budget → infeasible with reason;
+- insufficient volume → refill or remake planned; infeasible when nothing can cover it;
+- achieved concentration computed from rounded volumes;
+- determinism (same input → same plan).
+Plus a simulated run of the workflow on a small target file.
+
+## Decided (2026-11-16)
+
+- Additives are fixed volume; concentration-based additives may be added later.
+- No vial CSV change. Contents come from the user's sample metadata system;
+  implementation waits for it (no temporary backend).
+- Substocks: use existing vials when within healthy bounds, make new ones on demand.
+- Healthy bounds = transfer within limits, enough volume, contents known. No age
+  limit; open time is kept as metadata.
+- Standalone, simple workflow: targets come from elsewhere; no setup, BO or iterations.
+
+## Open decisions
+
+1. **Minimum volumes**: 10 uL per well and 200 uL per substock transfer as today? Per
+   liquid (viscous surfactants higher)?
+2. **Empty vials**: user places empties at positions from the report, or a standing
+   pool of empty vials the planner draws from?
+3. **Substock final volume**: sized to need (plan) or fixed 6 mL?
+4. **Infeasible samples**: drop + report and run the rest (plan), or stop and ask?
+5. **Plate/well**: plate type, well volume, controls, and replicate layout
+   (randomised or not) — same defaults as multidim?

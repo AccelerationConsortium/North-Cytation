@@ -192,6 +192,10 @@ class MeasurementHandle:
 
 # ================================================================================
 
+# The most recently created coordinator, so the scheduler can tidy up after a workflow finishes
+last_coordinator = None
+
+
 class Lash_E:
     nr_robot = None
     nr_track = None
@@ -249,6 +253,8 @@ class Lash_E:
         
         # Flag to control workflow continuation
         self._workflow_should_continue = True
+        global last_coordinator
+        last_coordinator = self
 
         self.logger = logging.getLogger("my_logger")
         self.logger.setLevel(logging.DEBUG)
@@ -318,8 +324,11 @@ class Lash_E:
         self.logger.info(f"Confirmed SIMULATE mode: {self.simulate}")
 
         self._run_tracker = experiment_run_logger.start_run(
-            self.workflow_name, self.simulate, self.log_filename, self.logger, logging_folder
+            self.workflow_name, self.simulate, self.log_filename, self.logger, logging_folder,
+            self.workflow_config
         )
+        if self._run_tracker is not None:
+            self._run_tracker.vial_file = vial_file
 
         # Create hardware objects AFTER config reload to use correct simulate flag
         if not self.simulate:
@@ -328,14 +337,33 @@ class Lash_E:
             c8 = NorthC9('D', network=c9.network)
         else:
             from unittest.mock import MagicMock
-            c9 = MagicMock()
+            from scheduler.fault_injection import simulated_c9
+            c9 = simulated_c9()  # a plain stand-in, unless a test asks for a fault (NORTH_SIM_FAULT)
             c8 = MagicMock()
+
+        if initialize_robot and not self.simulate and vial_file:
+            # Live run start: every vial gets a container ID, and a vial a person emptied or
+            # replaced (0 mL, but with history in the transfer log) gets a new one. Never raises.
+            from experiment_tracking.sample_tracking import prepare_vial_file, snapshot
+            prepare_vial_file(vial_file, retire_emptied=True, logger=self.logger)
+            # How things started: the vial file and the stored contents, saved with the run's data.
+            tracker = getattr(self, "_run_tracker", None)
+            if tracker is not None:
+                snapshot(tracker.run_id, "start", vial_file, logger=self.logger)
+
+        if initialize_robot and not self.simulate:
+            # Reservoirs estimated to be running low: a warning only, never a stop.
+            from experiment_tracking.sample_tracking import reservoir_warnings
+            for warning in reservoir_warnings():
+                self.logger.warning(warning)
 
         if initialize_robot:
             self.nr_robot = North_Robot(c9, c8, vial_file,simulate=self.simulate, logger=self.logger,
                                         dispense_recording=self.dispense_recording)
             # Pass log filename to robot for organized mass measurement file storage
             self.nr_robot.log_filename = self.log_filename
+            tracker = getattr(self, "_run_tracker", None)  # run ID stamped on each sample-tracking transfer row
+            self.nr_robot.run_id = tracker.run_id if tracker is not None else None
             self.spinner = North_Spin(c9, c8, simulate=self.simulate, logger=self.logger)
 
         if initialize_biotek:
@@ -362,13 +390,302 @@ class Lash_E:
         else:
             from unittest.mock import MagicMock
             self.photoreactor = MagicMock()
-            self.powder_dispenser = MagicMock()
+            # The real powder code on the simulated controller, so simulation checks the channel,
+            # the carousel move and the capped-vial check. Not started unless asked, as in a live run.
+            self.powder_dispenser = (North_Powder(c9, simulate=True, logger=self.logger)
+                                     if initialize_p2 else None)
             self.temp_controller = MagicMock()
             #self.nr_track = MagicMock(c9)
 
             if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
                 from scheduler.simulation_state import register_coordinator
                 register_coordinator(self)
+
+    @property
+    def run_id(self):
+        """Unique ID of this run (also in experiment_tracking/experiment_runs.csv), or None if not started."""
+        return self._run_tracker.run_id if self._run_tracker is not None else None
+
+    def save_run_info(self, output_folder):
+        """Save this run's config and ID into a workflow's output folder, and record the folder.
+
+        Writes config.yaml (the confirmed workflow config, if any) and run_info.yaml (run_id,
+        workflow name, simulate flag, start time). The folder is added to experiment_runs.csv.
+        Call once, after the workflow creates its output folder.
+        """
+        import yaml
+        os.makedirs(output_folder, exist_ok=True)
+        tracker = self._run_tracker
+        if self.workflow_config is not None:
+            with open(os.path.join(output_folder, "config.yaml"), "w", encoding="utf-8") as f:
+                yaml.safe_dump(dict(self.workflow_config), f, sort_keys=False)
+        run_info = {"run_id": self.run_id, "workflow_name": self.workflow_name, "simulate": self.simulate,
+                    "datetime_started": tracker.datetime_started if tracker is not None else None}
+        with open(os.path.join(output_folder, "run_info.yaml"), "w", encoding="utf-8") as f:
+            yaml.safe_dump(run_info, f, sort_keys=False)
+        if tracker is not None:
+            experiment_run_logger.record_output_folder(tracker, output_folder)
+
+    # ---- Module state readout (see docs/plans/module_state_readout.md) ----
+
+    MODULE_STATE_SETTINGS_FILE = "robot_state/robot_hardware.yaml"
+    # Resources whose state is not saved anywhere yet; reported as unknown placeholders
+    _UNTRACKED_RESOURCES = ("spin_coater", "carousel", "powder_dispenser", "reservoir_pumps", "camera")
+
+    @staticmethod
+    def _resource(status, reasons=(), source="saved", **fields):
+        """One resource entry: common fields first, then the resource's own fields."""
+        return {"status": status, "reasons": list(reasons), "in_use_by": None, "source": source, **fields}
+
+    def _vial_name(self, vial_df, vial_index):
+        if vial_index is None:
+            return None
+        if vial_df is not None and vial_index in vial_df.index:
+            return vial_df.loc[vial_index, "vial_name"]
+        return vial_index
+
+    @staticmethod
+    def _vials_at(vial_df, location):
+        if vial_df is None:
+            return []
+        return list(vial_df.loc[vial_df["location"] == location, "vial_name"])
+
+    @staticmethod
+    def _vials_not_home(vial_df):
+        if vial_df is None:
+            return []
+        def same(a, b):
+            try:
+                return int(a) == int(b)
+            except (TypeError, ValueError):
+                return str(a) == str(b)
+        return [row.vial_name for row in vial_df.itertuples()
+                if row.location != row.home_location or not same(row.location_index, row.home_location_index)]
+
+    def get_module_state(self):
+        """Report the saved state of each Lash-E resource. Read-only: never moves or queries hardware.
+
+        Returns {resource_name: {status, reasons, in_use_by, source, ...resource fields}}.
+        Movers and stations are ready / not_ready; instruments are idle / has_plate / unknown.
+        Resources whose state is not saved yet are reported with status and source unknown /
+        not_tracked. in_use_by is reserved for claiming resources in asynchronous operation.
+        """
+        import yaml
+        with open(self.MODULE_STATE_SETTINGS_FILE, encoding="utf-8") as f:
+            settings = (yaml.safe_load(f) or {})["module_state"]
+        robot = getattr(self, "nr_robot", None)
+        track = getattr(self, "nr_track", None)
+        vial_df = getattr(robot, "VIAL_DF", None) if robot is not None else None
+        state = {}
+
+        # Robot arm (mover)
+        if robot is None:
+            state["robot_arm"] = self._resource("unknown", source="not_initialized")
+        else:
+            holding = robot.GRIPPER_STATUS
+            item = self._vial_name(vial_df, robot.GRIPPER_VIAL_INDEX)
+            not_home = self._vials_not_home(vial_df)
+            reasons = []
+            if holding is not None:
+                reasons.append(f"gripper holding {holding} ({item})")
+            if robot.HELD_PIPET_TYPE is not None:
+                reasons.append(f"tip attached ({robot.HELD_PIPET_TYPE})")
+            if not_home:
+                reasons.append(f"vials not home: {', '.join(map(str, not_home))}")
+            state["robot_arm"] = self._resource(
+                "not_ready" if reasons else "ready", reasons,
+                gripper_holding=holding, gripper_item_id=item,
+                tip_type=robot.HELD_PIPET_TYPE, tip_liquid_mL=robot.PIPET_FLUID_VOLUME,
+                tip_source_vial=self._vial_name(vial_df, robot.PIPET_FLUID_VIAL_INDEX),
+                vials_not_home=not_home)
+
+        # Stations that hold vials
+        for name in ("clamp", "clamp_2"):
+            vials = self._vials_at(vial_df, settings["station_locations"][name])
+            state[name] = self._resource("not_ready" if vials else "ready",
+                                         [f"occupied by {', '.join(map(str, vials))}"] if vials else [],
+                                         source="saved" if vial_df is not None else "not_tracked",
+                                         vial=vials[0] if vials else None)
+
+        # Track (mover) and the Cytation's plate
+        if track is None:
+            state["track"] = self._resource("unknown", source="not_initialized")
+            state["cytation"] = self._resource("unknown", source="not_initialized")
+        else:
+            inventory = track.inventory
+            held = inventory.contents("gripper") if "gripper" in inventory.positions else []
+            pending = inventory.data.get("pending_transfer")
+            location = track.CURRENT_GRIPPER_LOCATION
+            reasons = []
+            if held:
+                reasons.append(f"holding {held[0]}")
+            if pending:
+                reasons.append(f"unfinished move of {pending.get('object_id')}")
+            if location != settings["track_parked_location"]:
+                reasons.append(f"not parked (at {location})")
+            state["track"] = self._resource(
+                "not_ready" if reasons else "ready", reasons,
+                location=location, gripper_plate=held[0] if held else None, pending_transfer=pending,
+                pipetting_area=inventory.contents("pipetting_area"))
+            plate = inventory.contents("cytation_tray")
+            state["cytation"] = self._resource("has_plate" if plate else "idle",
+                                               [f"plate {plate[0]} in tray"] if plate else [],
+                                               plate=plate[0] if plate else None)
+
+        # Instruments that hold vials: contents are saved, running state is not
+        for name in ("heater", "photoreactor"):
+            state[name] = self._resource("unknown", source="partly_saved",
+                                         vials=self._vials_at(vial_df, settings["station_locations"][name]))
+
+        for name in self._UNTRACKED_RESOURCES:
+            state[name] = self._resource("unknown", source="not_tracked")
+        return state
+
+    # ---- Safe stop: the one cleanup used after any error or interrupt ----
+
+    # Instruments safe_stop can't switch off yet (no stop method); reported so an operator checks them
+    _SAFE_STOP_NOT_HANDLED = ("reservoir pumps",)
+
+    def tidy_after_workflow(self):
+        """After a workflow finishes normally: return any vial it left away from home.
+
+        A flow should end with every vial home, so anything found here means the workflow
+        should be fixed: each case is logged as a warning naming the workflow (the scheduler
+        shows warnings without blocking). Nothing found: nothing logged. Never raises.
+        Held tips, gripper contents and plates are left to the scheduler's own end-of-job
+        check, which already blocks the next job.
+        """
+        robot = getattr(self, "nr_robot", None)
+        if robot is None:
+            return [], []
+        name = getattr(self, "workflow_name", None) or "workflow"
+        try:
+            if not robot._vials_available():
+                return [], []
+            returned, left = robot.return_all_vials_home()
+        except Exception as error:
+            self.logger.warning(f"{name} ended; could not check vials are home: {type(error).__name__}: {error}")
+            return [], []
+        if returned:
+            self.logger.warning(f"{name} ended with vials away from home: {', '.join(map(str, returned))}. "
+                                "Returned them home; the workflow should do this itself.")
+        for vial, why in left:
+            self.logger.warning(f"{name} ended with vial {vial} away from home ({why}); left in place.")
+        return returned, left
+
+    def safe_stop(self, reason=""):
+        """Bring Lash-E to a safe state after an error or interrupt, and report what was left.
+
+        Steps, in order (each runs even if an earlier one fails):
+          1. Instruments off: heater and its stirring, photoreactor LEDs and fans, spin coater spin,
+             powder cartridge valves closed (slots from powder_channels.yaml).
+             Heater channels and reactor numbers come from safe_stop in robot_hardware.yaml.
+          2. Track: back to origin, unless it is holding a plate or stopped mid-move. Then it is
+             left alone (its saved state may be wrong and moving could crash it) and reported.
+          3. Robot: return liquid in the tip, drop the tip, recap or return a held vial, arm home.
+          4. Vials: every movable vial that is not home is returned, one by one.
+          5. Report: log and (live runs) Slack what was done and what needs an operator.
+
+        Returns a report dict: done, failed, left_for_operator, vials_returned, not_handled.
+        """
+        import yaml
+        try:
+            with open(self.MODULE_STATE_SETTINGS_FILE, encoding="utf-8") as f:
+                settings = (yaml.safe_load(f) or {}).get("safe_stop", {})
+        except Exception:
+            self.logger.exception("safe_stop could not read its settings; using none")
+            settings = {}
+        report = {"reason": reason, "done": [], "failed": [], "left_for_operator": [],
+                  "vials_returned": [], "not_handled": list(self._SAFE_STOP_NOT_HANDLED)}
+        # The error being handled when safe_stop was called (if any): its code decides the
+        # "what to do" line and whether Slack is told (not for Ctrl+C or an E-stop).
+        cause = sys.exc_info()[1]
+        error = None
+        if cause is not None:
+            try:
+                from experiment_tracking.error_records import classify
+                error = classify(cause)
+                report["error_code"] = error["code"]
+            except Exception:
+                self.logger.exception("safe_stop could not classify the error")
+        tracker = vars(self.logger).get("_experiment_run_tracker")
+        if tracker is not None:
+            tracker.safe_stop_report = report
+
+        def step(label, action):
+            try:
+                action()
+                report["done"].append(label)
+            except (Exception, KeyboardInterrupt):
+                self.logger.exception("Safe stop step failed: %s", label)
+                report["failed"].append(label)
+
+        self.logger.warning(f"Safe stop started{': ' + reason if reason else ''}")
+
+        # 1. Instruments off
+        temp = getattr(self, "temp_controller", None)
+        if temp is not None:
+            for channel in settings.get("heater_channels", []):
+                step(f"heater channel {channel} off", lambda c=channel: temp.turn_off_heating(c))
+            step("heater stirring off", temp.turn_off_stirring)
+        photoreactor = getattr(self, "photoreactor", None)
+        if photoreactor is not None:
+            for reactor in settings.get("photoreactor_reactors", []):
+                step(f"photoreactor {reactor} LED off", lambda r=reactor: photoreactor.turn_off_reactor_led(r))
+                step(f"photoreactor {reactor} fan off", lambda r=reactor: photoreactor.turn_off_reactor_fan(r))
+        spinner = getattr(self, "spinner", None)
+        if spinner is not None:
+            step("spin coater stopped", spinner.stop_spin)
+        powder = getattr(self, "powder_dispenser", None)
+        if powder is not None:
+            step("powder valves closed", powder.close_all_valves)
+
+        # 2. Track
+        track = getattr(self, "nr_track", None)
+        if track is not None:
+            try:
+                inventory = track.inventory
+                held = inventory.positions.get("gripper")
+                pending = inventory.data.get("pending_transfer")
+            except Exception:
+                held, pending = None, None
+            if held or pending:
+                report["left_for_operator"].append(
+                    f"track may be holding a plate ({held}) or stopped mid-move ({pending}); check it by hand")
+            else:
+                step("track to origin", track.reset_after_initialization)
+
+        # 3 and 4. Robot and vials
+        robot = getattr(self, "nr_robot", None)
+        if robot is not None:
+            step("robot cleanup (tip, gripper, arm home)", robot._perform_physical_cleanup)
+
+            def vials_home():
+                returned, left = robot.return_all_vials_home()
+                report["vials_returned"] = returned
+                report["left_for_operator"].extend(f"vial {name} not home ({why})" for name, why in left)
+            step("vials home", vials_home)
+            if robot.GRIPPER_STATUS is not None:
+                report["left_for_operator"].append(f"robot gripper still holding {robot.GRIPPER_STATUS}")
+            if robot.HELD_PIPET_TYPE is not None:
+                report["left_for_operator"].append(f"robot still has a tip ({robot.HELD_PIPET_TYPE})")
+
+        # 5. Report
+        summary = (f"Safe stop{' (' + reason + ')' if reason else ''}: "
+                   f"{len(report['done'])} steps done, {len(report['failed'])} failed"
+                   + (f" ({', '.join(report['failed'])})" if report["failed"] else "")
+                   + (f". Vials returned: {', '.join(map(str, report['vials_returned']))}" if report["vials_returned"] else "")
+                   + (f". Needs an operator: {'; '.join(report['left_for_operator'])}" if report["left_for_operator"] else "")
+                   + f". Not handled automatically: {', '.join(report['not_handled'])}."
+                   + (f" Error {error['code']}: {error['what_to_do']}" if error and error["code"] != "UNKNOWN" else ""))
+        self.logger.warning(summary)
+        if not self.simulate and (error is None or error["slack"]):
+            try:
+                import slack_agent
+                slack_agent.send_slack_message(summary)
+            except Exception:
+                self.logger.exception("safe_stop could not send its Slack summary")
+        return report
 
     def update_simulate_flag(self, new_simulate_value):
         """
@@ -473,12 +790,27 @@ class Lash_E:
             self._workflow_should_continue = True
 
     def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
-        self.logger.info(f"Dispensing into vial: {vial} with mass: {mass_mg:.3f} mg") 
-        self.nr_robot.move_vial_to_location(vial,'clamp',0)
-        self.nr_robot.move_home()
-        self.powder_dispenser.dispense_powder_mg(mass_mg=mass_mg,channel=channel) #Dispense 50 mg of solid into source_vial_a  
+        """Flow: dispense powder into a vial at the clamp. Returns the mass dispensed (mg).
+
+        Like dispense_into_vial_from_reservoir: the vial goes to the clamp, a closed cap is taken
+        off (powder goes through an open cap), and it is recapped after.
+        """
+        if self.powder_dispenser is None:
+            raise RuntimeError("Powder dispenser isn't started: create Lash_E with initialize_p2=True")
+        robot = self.nr_robot
+        self.logger.info(f"Dispensing into vial: {vial} with mass: {mass_mg:.3f} mg")
+        if robot.get_vial_info(vial, 'location') != 'clamp':
+            robot.move_vial_to_location(vial,'clamp',0)
+        if not robot.is_vial_pipetable(vial):  # closed cap; powder goes through an open cap
+            robot.uncap_clamp_vial()
+        robot.move_home()
+        dispensed_mg = self.powder_dispenser.dispense_powder_mg(mass_mg=mass_mg,channel=channel) #Dispense 50 mg of solid into source_vial_a
+        robot.track_powder_dispense(channel, vial, dispensed_mg)  # log row and the vial's stored contents
+        if robot.GRIPPER_STATUS == "Cap":  # this flow took the cap off: put it back
+            robot.recap_clamp_vial()
         if return_home:
-            self.nr_robot.return_vial_home(vial) 
+            robot.return_vial_home(vial)
+        return dispensed_mg
 
     def _resolve_plate(self, location, plate_type=None, use_lid=None, plate_id=None):
         inv = self.nr_track.inventory

@@ -32,6 +32,9 @@ def run_reset(folder, factory=None):
             if fingerprint(job["input_hashes"]) != job["input_hashes"]:
                 raise ValueError("Reset inputs changed after confirmation. Review and try again.")
             state = yaml.safe_load(Path(job["robot_state"]).read_text(encoding="utf-8"))
+            if state.get("gripper_status") == "Vial" and state.get("gripper_vial_index") in (None, "None"):
+                raise ValueError("Gripper status says it holds a vial, but no vial number is saved. "
+                                 "Check the gripper by hand, then correct robot_status.yaml.")
             references = [state.get(key) for key in ("gripper_vial_index", "pipet_fluid_vial_index")]
             references = [str(value) for value in references if value not in (None, "None")]
             if references:

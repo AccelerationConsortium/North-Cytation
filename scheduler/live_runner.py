@@ -9,6 +9,7 @@ import importlib
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 import traceback
 
@@ -120,6 +121,18 @@ def notify(message):
         logger.warning(f"Slack update not sent: {message}")
 
 
+def _tidy_after_workflow():
+    """Return vials the workflow left away from home, with a warning. Never fails the job."""
+    coordinators = sys.modules.get("master_usdl_coordinator")
+    coordinator = getattr(coordinators, "last_coordinator", None)
+    if coordinator is None:
+        return
+    try:
+        coordinator.tidy_after_workflow()
+    except Exception as error:
+        logging.getLogger("my_logger").warning(f"Could not check vials are home after the workflow: {error}")
+
+
 def run_job(folder):
     folder = Path(folder)
     result = {"completed": False, "handoff_ok": False, "records": [], "exception": None, "interrupted": False}
@@ -156,8 +169,12 @@ def run_job(folder):
                 raise ValueError("Live starting state requires review: " + "; ".join(issues))
             module = importlib.import_module(module_name)
             notify(f"North experiment {experiment_id} started | workflow={name}")
+            coordinators = sys.modules.get("master_usdl_coordinator")
+            if coordinators is not None:
+                coordinators.last_coordinator = None
             with watch_for_interrupt(folder):
                 module.execute(config=config, show_gui=False)
+            _tidy_after_workflow()
             issues = live_state_issues(job)
             # This job already ran with the code it imported at start; the next job's
             # pre-run check blocks it until the queue is simulated again.
@@ -178,6 +195,13 @@ def run_job(folder):
         result["exception"] = traceback.format_exc()
         result["records"].append({"level": "ERROR", "message": result["exception"]})
         error_line = traceback.format_exception_only(type(error), error)[-1].strip()
+        try:
+            from experiment_tracking.error_records import classify
+            result["error"] = classify(error)
+            if result["error"]["code"] != "UNKNOWN":
+                error_line += f" [{result['error']['code']}: {result['error']['what_to_do']}]"
+        except Exception:
+            pass
     finally:
         os.environ.pop(EXPERIMENT_ID_ENV, None)
         result["records"] = diagnostics.records + result["records"]
@@ -191,7 +215,8 @@ def run_job(folder):
     if experiment_id is not None:
         if result["completed"]:
             notify(f"North experiment {experiment_id} finished | workflow={name}")
-        elif not result["interrupted"]:
+        elif not result["interrupted"] and result.get("error", {}).get("slack", True):
+            # No message for Ctrl+C or an E-stop: the person who stopped it is there
             notify(f"North experiment {experiment_id} failed | workflow={name} | error={error_line}")
     return result
 

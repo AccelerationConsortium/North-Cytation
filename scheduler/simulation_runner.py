@@ -94,6 +94,12 @@ def run_job(root, job_id):
             coordinator = state._controllers[0]
             if not coordinator._workflow_should_continue:
                 raise RuntimeError("Workflow was cancelled before execution")
+            try:  # warns about (and returns) vials the workflow left out; never fails the job
+                tidy = getattr(coordinator, "tidy_after_workflow", None)
+                if callable(tidy):
+                    tidy()
+            except Exception as error:
+                logging.getLogger("my_logger").warning(f"Could not check vials are home after the workflow: {error}")
             result["log_file"] = str(state.REPO_ROOT / "logs" / coordinator.log_filename)
         result["completed"] = True
         issues = handoff_issues(root)

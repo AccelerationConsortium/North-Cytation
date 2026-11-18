@@ -797,7 +797,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         rows = robot.VIAL_DF
         rows.loc[rows.vial_name == "surfactant", "vial_volume"] = 0.55
         lash.workflow_config = {**self.config, "SIMULATE": True, "TOTAL_VOLUME_UL": 250.0,
-                                "TEST_SOLVENT": False, "SURFACTANT_LIQUID": "water"}
+                                "TEST_SOLVENT": False}
         lash.measure_wellplate.return_value = None
         def transfer(source, destination, volume, **kwargs):
             if destination == "surfactant":
@@ -818,7 +818,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.assertEqual(len(refill), 1)
         self.assertEqual(refill[0].args[:2], ("surfactant_refill", "surfactant"))
         self.assertAlmostEqual(refill[0].args[2], 6.95)
-        self.assertEqual(refill[0].kwargs["liquid"], "water")
+        self.assertEqual(refill[0].kwargs["liquid"], "SDS")
         self.assertAlmostEqual(robot.get_vial_info("surfactant", "vial_volume"), 7.5)
         self.assertAlmostEqual(robot.get_vial_info("surfactant_refill", "vial_volume"), 12.95)
         calls = robot.method_calls
