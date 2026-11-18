@@ -118,11 +118,17 @@ def robot_with_pump(failure):
     return robot
 
 
-def test_dispense_fallback_is_unchanged_but_logs_the_real_error():
-    robot = robot_with_pump(RuntimeError("Cannot move pump to -1"))
+@pytest.mark.parametrize("position, warns", [(1499, False), (1400, True)])
+def test_a_dispense_past_empty_empties_the_pump(position, warns):
+    """The pump-position check that replaced the old catch-all (merged from the lab PC, 2026-11-18):
+    0.5 mL from a 1 mL pump is 1500 counts; one count short is rounding (the '-1' case), more warns."""
+    robot = robot_with_pump(None)
+    robot.simulate = False
+    robot.c9.pumps = {0: {"pos": position, "volume": 1.0}}
     robot.pipet_dispense(0.5)
     robot.c9.move_pump.assert_called_once_with(0, 0)
-    assert "Cannot move pump to -1" in robot.logger.warning.call_args.args[0]
+    robot.c9.dispense_ml.assert_not_called()
+    assert robot.logger.warning.called is warns
 
 
 def test_aspirate_fallback_is_unchanged_but_logs_the_real_error():

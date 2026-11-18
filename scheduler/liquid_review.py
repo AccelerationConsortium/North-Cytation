@@ -152,6 +152,24 @@ def current_parameters(frame, volume):
     return values
 
 
+# Validation only measures the calibration file's own rows (calibration robustness plan,
+# decisions A + G); measurements at any other volume are history from older rules.
+CALIBRATED_VOLUME_TOLERANCE_UL = 0.05
+NOT_CALIBRATED = "Not a calibrated volume (validation now tests calibration rows only)"
+UNSTABLE = "Unstable balance reading"
+IMPOSSIBLE = "Impossible reading (V_M <= 0 or > 2x V_T)"
+
+
+def _calibrated_row(calibration, volume_ul):
+    """(volume_ul, tip) of the calibration row at this volume, or None."""
+    volumes = calibration.volume_target.to_numpy(dtype=float)
+    hits = np.flatnonzero(np.isclose(volumes, volume_ul, rtol=0, atol=CALIBRATED_VOLUME_TOLERANCE_UL))
+    if not len(hits):
+        return None
+    row = calibration.iloc[hits[0]]
+    return float(row.volume_target), (row.tip_type if "tip_type" in calibration else None)
+
+
 def matching_measurements(root, liquid, calibration):
     path = Path(root) / "pipetting_data/master_pipetting_measurements.csv"
     if not path.exists():
@@ -163,13 +181,23 @@ def matching_measurements(root, liquid, calibration):
     if duplicates.any():
         excluded["Exact duplicate measurement"] = int(duplicates.sum())
         data = data.loc[~duplicates]
-    settings = {volume: current_parameters(calibration, volume * 1000)
-                for volume in data.target_volume_ml.unique()}
+    rows = {volume: _calibrated_row(calibration, volume * 1000) for volume in data.target_volume_ml.unique()}
+    # Look settings up at the row itself: 50.000000001 uL must not read as outside a 50 uL top row.
+    settings = {volume: current_parameters(calibration, row[0] if row else volume * 1000)
+                for volume, row in rows.items()}
     for index, row in data.iterrows():
         expected = settings[row.target_volume_ml]
+        calibrated = rows[row.target_volume_ml]
         reason = None
+        recorded_tip = row.get("tip_type")
         if row.validation_type != "vial_to_vial":
             reason = "Different dispensing method"
+        elif calibrated is None:
+            reason = NOT_CALIBRATED
+        elif calibrated[1] and isinstance(recorded_tip, str) and recorded_tip and recorded_tip != calibrated[1]:
+            reason = "Different tip than the calibration row"
+        elif str(row.get("measurement_acceptable")).casefold() == "false":
+            reason = UNSTABLE
         elif expected is None:
             reason = "No current tip-specific calibration"
         else:
@@ -185,11 +213,16 @@ def matching_measurements(root, liquid, calibration):
         if reason is None and not all(np.isfinite(row[k]) for k in
                                      ("target_volume_ml", "measured_volume_ml", "overaspirate_vol")):
             reason = "Invalid measurement"
+        if reason is None and not 0 < row.measured_volume_ml <= 2 * row.target_volume_ml:
+            reason = IMPOSSIBLE
         if reason:
             excluded[reason] = excluded.get(reason, 0) + 1
         else:
             accepted.append(index)
-    return data.loc[accepted].copy(), excluded
+    matched = data.loc[accepted].copy()
+    # Snap to the calibration row so float noise (0.2 vs 0.19999) never splits one volume in two.
+    matched["target_volume_ml"] = [rows[v][0] / 1000 for v in matched.target_volume_ml]
+    return matched, excluded
 
 
 def filter_dates(data, start=None, end=None):

@@ -2356,8 +2356,12 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         return []
 
     logger = lash_e.logger
-    # Safest first: the clamps grip the vial; rack 44 and 43 have had pull-outs.
-    safe_positions = ['clamp', 47, 46, 45, 'clamp_2', 44, 43]
+    # Safest first: clamp grips the vial; rack 44 and 43 have had pull-outs.
+    # heater[2] replaces clamp_2 for now: a missed pickup from clamp_2 caused a
+    # collision (2026-11-16) and the camera cannot yet see vials in clamp_2.
+    safe_positions = [('clamp', 0), ('main_8mL_rack', 47), ('main_8mL_rack', 46),
+                      ('main_8mL_rack', 45), ('heater', 2), ('main_8mL_rack', 44),
+                      ('main_8mL_rack', 43)]
 
     # Get concentration for each vial from the DataFrame
     vial_concentrations = []
@@ -2402,14 +2406,10 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
 
     for i, vial_name in enumerate(by_risk):
         if i < len(safe_positions):
-            position = safe_positions[i]
+            location, location_index = safe_positions[i]
             label = f"    {vial_name} ({concentrations[vial_name]:.2f}mM, risk {risk[vial_name]:.2f})"
-            if position in ('clamp', 'clamp_2'):
-                logger.info(f"{label} -> {position}")
-                lash_e.nr_robot.move_vial_to_location(vial_name, position, 0)
-            else:
-                logger.info(f"{label} -> main_8mL_rack[{position}]")
-                lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', position)
+            logger.info(f"{label} -> {location}[{location_index}]")
+            lash_e.nr_robot.move_vial_to_location(vial_name, location, location_index)
         else:
             logger.warning(f"    {vial_name}: No safe position available (too many vials)")
 
