@@ -281,9 +281,13 @@ def execute(config=None, show_gui=True):
         # Example (flow): one column per source vial, one row per well index, volumes in mL.
         # It stages vials for the small tip, conditions tips where the liquid needs it,
         # groups wells by tip, and ends with no tip held and the vials home.
+        # The plan is checked before anything moves: no missing or negative volumes, and each
+        # well's total must fit the plate (max_volume_per_well in wellplates.yaml).
         # import pandas as pd
-        # plan = pd.DataFrame({"target_vial": [dispense_volume] * c["PARAM2"]}, index=well_indices)
-        # lash_e.nr_robot.dispense_from_vials_into_wellplate(plan, liquid="water")
+        # plan = pd.DataFrame({"target_vial": [dispense_volume] * c["PARAM2"],
+        #                      "water": [0.05] * c["PARAM2"]}, index=well_indices)
+        # lash_e.nr_robot.dispense_from_vials_into_wellplate(
+        #     plan, liquid={"target_vial": "SDS", "water": "water"})  # one liquids.yaml name per vial
         # Each well's contents and ± are recorded as it is filled (see the module docstring).
 
         # === STEP 6: MEASUREMENTS ===

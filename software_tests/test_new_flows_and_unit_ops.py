@@ -139,6 +139,8 @@ def plate_robot(robot):
     robot.PIPET_TIPS = {'small_tip': {'volume': 0.25}, 'large_tip': {'volume': 1.0}}
     robot.HELD_PIPET_TYPE = 'large_tip'
     robot._resolve_pipetting_plate = MagicMock(return_value='96 WELL PLATE')
+    from pathlib import Path
+    robot.WELLPLATES = yaml.safe_load((Path(__file__).resolve().parents[1] / 'robot_state' / 'wellplates.yaml').read_text())
     robot.resolve_pipetting_setup = MagicMock(
         side_effect=lambda volume, liquid, params: (f'params_{volume}', 'small_tip' if volume < 0.05 else 'large_tip'))
     robot.is_vial_movable = MagicMock(return_value=True)
@@ -162,7 +164,8 @@ def test_wellplate_flow_groups_by_tip_and_uses_fresh_tip_per_vial(plate_robot):
 
 def test_wellplate_flow_stages_emptiest_small_tip_vial_first_and_returns_home(plate_robot):
     plate_robot.vials['source']['vial_volume'] = 1.0   # Will be emptiest after dispensing
-    plate = pd.DataFrame({'stock': [0.02], 'source': [0.03], 'dest': [0.5]}, index=[0])
+    # dest goes into its own well: a 96-well plate holds 0.3 mL per well
+    plate = pd.DataFrame({'stock': [0.02, 0.0], 'source': [0.03, 0.0], 'dest': [0.0, 0.25]}, index=[0, 1])
     plate_robot.vials['dest']['vial_volume'] = 5.0
     def move(vial, location, index):
         plate_robot.vials[vial].update(location=location, location_index=index)
@@ -190,6 +193,33 @@ def test_wellplate_flow_conditions_once_per_tip_group_for_flagged_liquid(plate_r
     assert plate_robot.condition_tip.call_args_list == [
         call('stock', volume_per_cycle_mL=0.04, specified_tip='small_tip'),
         call('stock', volume_per_cycle_mL=0.3, specified_tip='large_tip')]
+
+
+def test_wellplate_flow_takes_a_liquid_per_vial(plate_robot):
+    plate = pd.DataFrame({'stock': [0.1, 0.0], 'source': [0.0, 0.2]}, index=[0, 1])
+    plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'glycerol', 'source': 'water'})
+    used = [(c.args[0], c.kwargs['liquid']) for c in plate_robot.aspirate_from_vial.call_args_list]
+    assert used == [('stock', 'glycerol'), ('source', 'water')]
+    plate_robot.condition_tip.assert_called_once()  # only glycerol conditions its tip
+    with pytest.raises(ValueError, match="No liquid given for vial"):
+        plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'glycerol'})
+
+
+@pytest.mark.parametrize('value, message', [(float('nan'), 'volume missing'), (-0.1, 'negative volume'),
+                                            ('lots', 'is not a volume in mL')])
+def test_wellplate_flow_refuses_bad_volumes_before_moving(plate_robot, value, message):
+    plate = pd.DataFrame({'stock': [0.1, value]}, index=[0, 1], dtype=object)
+    with pytest.raises(ValueError, match=message):
+        plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
+    plate_robot.aspirate_from_vial.assert_not_called()
+
+
+def test_wellplate_flow_refuses_an_overfull_well_before_moving(plate_robot):
+    # 96-well plates hold 0.3 mL per well (wellplates.yaml); 0.2 + 0.15 into well 1 is too much
+    plate = pd.DataFrame({'stock': [0.1, 0.2], 'source': [0.0, 0.15]}, index=[0, 1])
+    with pytest.raises(ValueError, match=r"well 1: 0.35 mL planned"):
+        plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
+    plate_robot.aspirate_from_vial.assert_not_called()
 
 
 def test_wellplate_flow_has_no_strategy_argument(plate_robot):

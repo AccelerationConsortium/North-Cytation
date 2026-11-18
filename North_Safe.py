@@ -3445,25 +3445,36 @@ class North_Robot(North_Base):
                a group. Each vial gets a fresh tip, because vials may hold different contents.
             4. Remove the tip after each vial, and return staged and moved vials home.
 
-        Future option (needs sample-contents metadata): when several vials hold the same solute in the
-        same solvent, optionally reuse one tip across them, dispensing from the most dilute to the most
-        concentrated and conditioning only once. Off by default; without metadata every vial gets a
-        fresh tip.
+        Future option (now possible with the stored sample contents, not built): when several vials
+        hold the same solute in the same solvent, optionally reuse one tip across them, dispensing from
+        the most dilute to the most concentrated and conditioning only once. Off by default.
+
+        Checked before anything moves (ValueError naming the vial and well):
+            - every volume is a number in mL, not missing and not negative (0 means skip that well);
+            - every well index fits the plate in the pipetting area;
+            - each well's total (this table plus what is already recorded in it) fits the plate's
+              max_volume_per_well (wellplates.yaml);
+            - every vial has a liquid name when liquid is given per vial;
+            - each dose fits a tip (no tip can take it -> error), and each vial holds enough.
 
         Args:
-            well_plate_df (DataFrame): Columns are vial names, index is well index, values are volumes (mL)
+            well_plate_df (DataFrame): Columns are vial names, index is well index, values are volumes in mL
             parameters (PipettingParameters, optional): Manual parameter overrides
-            liquid (str, optional): Liquid type for calibrated parameters and the condition_tip setting
+            liquid (str or dict, optional): liquids.yaml name for calibrated parameters, the condition_tip
+                setting and the ± uncertainty. One name for all vials, or {vial name: liquid name}.
             well_plate_type (str): Type of wellplate for positioning
 
         Example:
             well_plate_df = pd.DataFrame({
-                "vial_A": [0.1, 0.2, 0.0, 0.1],  # volumes for wells 0-3
-                "vial_B": [0.0, 0.1, 0.3, 0.0],
+                "sds_stock": [0.1, 0.2, 0.0, 0.1],  # mL into wells 0-3
+                "water": [0.0, 0.1, 0.3, 0.0],
             })
+            robot.dispense_from_vials_into_wellplate(well_plate_df, liquid={"sds_stock": "SDS", "water": "water"})
         """
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, well_plate_df.index)
         vial_names = well_plate_df.columns.tolist()
+        liquids = self._wellplate_plan_liquids(vial_names, liquid)
+        well_plate_df = self._checked_wellplate_plan(well_plate_df, well_plate_type)
         self.logger.info(f"Dispensing from vials {vial_names} into wellplate")
 
         # Check there is enough liquid in each vial
@@ -3480,7 +3491,7 @@ class North_Robot(North_Base):
             groups = {}
             for well_idx, volume in well_plate_df[vial_name].items():
                 if volume > 1e-6:
-                    resolved_params, resolved_tip = self.resolve_pipetting_setup(volume, liquid, parameters)
+                    resolved_params, resolved_tip = self.resolve_pipetting_setup(volume, liquids[vial_name], parameters)
                     groups.setdefault(resolved_tip, []).append((well_idx, volume, resolved_params))
             if groups:
                 for doses in groups.values():
@@ -3501,8 +3512,9 @@ class North_Robot(North_Base):
                 to_stage.append((current - vols_required[vial_name], current, vial_name))
         staged = self.stage_vials([name for _, _, name in sorted(to_stage)]) if to_stage else {}
 
-        conditioning = liquid_conditions_tip(liquid)
         for vial_name, tip_groups in plans.items():
+            vial_liquid = liquids[vial_name]
+            conditioning = liquid_conditions_tip(vial_liquid)
             for tip, doses in tip_groups:
                 # 2. Condition once per tip group, at the group's largest dose
                 if conditioning:
@@ -3510,8 +3522,8 @@ class North_Robot(North_Base):
                 # 3. Dispense with the tip locked for this group
                 for well_idx, volume, resolved_params in doses:
                     self.aspirate_from_vial(vial_name, volume, parameters=resolved_params,
-                                            liquid=liquid, specified_tip=tip)
-                    self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=liquid,
+                                            liquid=vial_liquid, specified_tip=tip)
+                    self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=vial_liquid,
                                                  well_plate_type=well_plate_type)
             # 4. Fresh tip for the next vial; return the vial home unless it was staged
             if self.HELD_PIPET_TYPE is not None:
@@ -3522,6 +3534,53 @@ class North_Robot(North_Base):
         self.return_staged_vials(staged.keys())
         self.logger.info("Wellplate dispensing completed")
         return True
+
+    @staticmethod
+    def _wellplate_plan_liquids(vial_names, liquid):
+        """{vial: liquid name or None} from one name (or None) or a {vial: liquid} table."""
+        if isinstance(liquid, dict):
+            missing = [name for name in vial_names if name not in liquid]
+            if missing:
+                raise ValueError(f"No liquid given for vial(s) {missing}; liquid= needs an entry for every vial")
+            return {name: liquid[name] for name in vial_names}
+        return {name: liquid for name in vial_names}
+
+    def _checked_wellplate_plan(self, well_plate_df, well_plate_type):
+        """Reject a wellplate plan before anything moves: volumes must be numbers in mL, not missing
+        or negative, and each well's total (plus what is already recorded in it) must fit the plate."""
+        problems = []
+        clean = {}
+        for vial_name in well_plate_df.columns:
+            column = {}
+            for well_idx, value in well_plate_df[vial_name].items():
+                try:
+                    volume = float(value)
+                except (TypeError, ValueError):
+                    problems.append(f"{vial_name} → well {well_idx}: {value!r} is not a volume in mL")
+                    continue
+                if not math.isfinite(volume):
+                    problems.append(f"{vial_name} → well {well_idx}: volume missing")
+                elif volume < 0:
+                    problems.append(f"{vial_name} → well {well_idx}: negative volume {volume:g} mL")
+                column[well_idx] = volume
+            clean[vial_name] = column
+        if problems:
+            raise ValueError("Wellplate plan refused before moving: " + "; ".join(problems))
+        checked = pd.DataFrame(clean, index=well_plate_df.index).fillna(0.0)
+        limit = ((getattr(self, "WELLPLATES", None) or {}).get(well_plate_type) or {}).get("max_volume_per_well")
+        if limit is not None:
+            store = self._contents_store()
+            for well_idx, planned in checked.sum(axis=1).items():
+                existing = 0.0
+                if store is not None:
+                    record = store.get(self._well_container_id(well_idx))
+                    existing = record["volume_mL"] if record else 0.0
+                if planned + existing > float(limit) + 1e-9:
+                    problems.append(f"well {well_idx}: {planned:g} mL planned + {existing:g} mL already in it "
+                                    f"> {float(limit):g} mL per well ({well_plate_type})")
+            if problems:
+                raise ValueError("Wellplate plan refused before moving: " + "; ".join(problems))
+        return checked
 
     # ====================================================================
     # RESERVOIR SYSTEM
