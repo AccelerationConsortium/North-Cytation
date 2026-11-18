@@ -66,13 +66,16 @@ TEST_SOLVENT = True
 SURFACTANT_NAME = "SDS"
 SURFACTANT_CONCENTRATION_MM = None
 SURFACTANT_CMC_MM = None
-SURFACTANT_LIQUID = "SDS"
 VORTEX_SECONDS = 5
 PROTOCOL_FILE = None
 RAW_CHANNELS = None
 SHAKE_BEFORE_MEASUREMENT = False
 SHAKE_PROTOCOL_FILE = r"C:\Protocols\shake_5.prt"
 TWO_RUNS_PER_PLATE = False
+
+# Pipetting calibration liquid for surfactant transfers. Deliberately NOT a
+# setting: the leading underscore keeps presets from overriding it.
+_SURFACTANT_LIQUID = "SDS"
 
 # Names of the constants above; used to snapshot them into a plain config dict.
 _CONFIG_KEYS = [
@@ -85,7 +88,7 @@ _CONFIG_KEYS = [
     "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "VOLUME_SCALE_BY_PLATE", "DISPENSE_ORDER",
     "TEST_WATER", "TEST_SURFACTANT", "TEST_SOLVENT",
     "SURFACTANT_NAME", "SURFACTANT_CONCENTRATION_MM", "SURFACTANT_CMC_MM",
-    "SURFACTANT_LIQUID", "VORTEX_SECONDS", "PROTOCOL_FILE", "RAW_CHANNELS",
+    "VORTEX_SECONDS", "PROTOCOL_FILE", "RAW_CHANNELS",
     "SHAKE_BEFORE_MEASUREMENT", "SHAKE_PROTOCOL_FILE",
     "TWO_RUNS_PER_PLATE",
 ]
@@ -178,8 +181,6 @@ _CONFIG_DOCS = {
                                     "unit": "mM", "affects": []},
     "SURFACTANT_CMC_MM": {"description": "Surfactant CMC; the final concentration must stay above it.",
                           "unit": "mM", "affects": []},
-    "SURFACTANT_LIQUID": {"description": "Pipetting calibration liquid name for the surfactant solution.",
-                          "unit": None, "affects": []},
     "VORTEX_SECONDS": {"description": "Vortex time for each newly prepared substock.",
                        "unit": "s", "affects": ["duration"],
                        "effect": "once per substock actually prepared"},
@@ -737,7 +738,7 @@ def execute(config=None, show_gui=True):
                 if c["TEST_WATER"]:
                     validation_sources.append(("water", "water", plan.loc[plan.medium == "water", "medium_volume_ul"]))
                 if c["TEST_SURFACTANT"]:
-                    validation_sources.append(("surfactant", c["SURFACTANT_LIQUID"],
+                    validation_sources.append(("surfactant", _SURFACTANT_LIQUID,
                                                plan.loc[plan.medium == "surfactant", "medium_volume_ul"]))
         if c["TEST_WATER"]:
             water_fill = 8.0 - lash.nr_robot.get_vial_info("water", "vial_volume")
@@ -748,7 +749,7 @@ def execute(config=None, show_gui=True):
         if surfactant_fill > 0.1:
             lash.logger.info(f"Refilling surfactant to 7.5 mL (adding {surfactant_fill:.3f} mL)")
             dispense_vial_to_vial(lash, "surfactant_refill", "surfactant", surfactant_fill,
-                                 liquid=c["SURFACTANT_LIQUID"])
+                                 liquid=_SURFACTANT_LIQUID)
         if working_fill > 0:
             dispense_solvent(lash, solvent_sources, working_vial, working_fill, solvent, reserve)
         if validation_enabled:
@@ -808,7 +809,7 @@ def execute(config=None, show_gui=True):
                 for source, subset in wells.groupby(source_column):
                     vial_source = working_vial if component == "medium" and source == "solvent" else source
                     liquid = (solvent if component == "dye" or source == "solvent"
-                              else c["SURFACTANT_LIQUID"] if source == "surfactant" else "water")
+                              else _SURFACTANT_LIQUID if source == "surfactant" else "water")
                     volumes = pd.DataFrame({vial_source: subset.set_index("well_index")[volume_column] / 1000})
                     if inventory.loc[vial_source, "vial_type"] == "8_mL":
                         lash.nr_robot.remove_pipet()

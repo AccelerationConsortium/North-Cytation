@@ -1,5 +1,31 @@
 # Changelog
 
+## [2026-11-16] - Liquid Review Shows Calibration Rows Only
+
+- Past Validation, Overvolume Changes and Environmental Analysis now use only
+  measurements at the calibration file's own rows (per tip), matching the rule
+  that validation tests calibration rows only. Off-grid historical volumes
+  (e.g. water 26.67 / 150.17 µL, DMSO 400 / 666.67 / 750 µL) are listed as excluded.
+- Exclude unstable balance readings (`measurement_acceptable=False`) and
+  impossible readings (V_M <= 0 or > 2x V_T) from every tab. Eight unstable
+  check readings from 2026-11-04 to 11-16 had produced V_OA estimates from
+  -784 to +681 µL.
+- A volume with float noise (0.19999 vs 0.2 mL) is no longer split into two rows.
+- Workflow recommendations name the calibration row validation will test.
+
+## [2026-11-16] - Surfactant clamp_2 Staging Restored
+
+- Restore `clamp_2` as the fifth safest staging position for movement testing;
+  vials are still returned to their recorded home positions after dispensing.
+
+## [2026-11-16] - Surfactant Safe Position Order
+
+- Replaced `clamp_2` with `heater[2]` in the surfactant safe position list (now
+  clamp, 47, 46, 45, heater[2], 44, 43) after a missed pickup from clamp_2 led
+  to a collision when the next vial was placed there, and the deck camera
+  cannot yet see vials in clamp_2. Safe positions are now (location, index)
+  pairs, so the log reads e.g. `-> main_8mL_rack[47]` / `-> heater[2]`.
+
 ## [2026-11-13] - Pipette Dispense Limit Rounding
 
 - Clamp a one-step dispense overrun without warning, retain the warning for

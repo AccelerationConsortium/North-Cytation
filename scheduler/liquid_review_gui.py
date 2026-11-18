@@ -134,9 +134,15 @@ class LiquidTab(QWidget):
                 self.build_past_validation(matched, excluded)
                 data = self.build_validation(frame, matched, excluded)
                 self.build_environment(matched, frame)
-                for volume in sorted({e.volume_ul for e in self.events if e.method == "pipette"}):
-                    if data.empty or not np.isclose(data.target_volume_ml * 1000, volume).any():
-                        recommendations.add(f"Run embedded validation at {volume:g} µL to test and adjust current settings.")
+                # Validation tests the nearest calibration row of the tip in use (plan decision G).
+                for event in {(e.volume_ul, e.tip) for e in self.events if e.method == "pipette"}:
+                    volume, tip = event
+                    rows = frame if not tip or "tip_type" not in frame else frame[frame.tip_type == tip]
+                    if rows.empty:
+                        continue
+                    row = float(rows.volume_target.iloc[(rows.volume_target - volume).abs().argmin()])
+                    if data.empty or not np.isclose(data.target_volume_ml * 1000, row).any():
+                        recommendations.add(f"Run embedded validation for {volume:g} µL (tests calibration row {row:g} µL).")
             else:
                 self.pages.addTab(QLabel("Select a current calibration file to review as-dispensed validation results."), "Past Validation Results")
             self.build_recommendations(recommendations)
