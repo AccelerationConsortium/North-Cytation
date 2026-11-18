@@ -8,9 +8,22 @@ Automation: execute(config=complete_config, show_gui=False) uses exactly that
 configuration, without opening the GUI or reading/writing workflow YAML.
 Supplying config does not mean simulation: its SIMULATE value selects the mode.
 execute(show_gui=False) uses saved YAML without operator review.
-The example enables temperature control but not powder dispensing. If adding
-photoreactor steps, list the reactors under safe_stop in robot_hardware.yaml so
-cleanup (lash_e.safe_stop) turns them off.
+Build experiments from the flows in docs/platform/automation_catalog.md (e.g.
+create_substock, refill_vial, dispense_from_vial_into_vial,
+dispense_from_vials_into_wellplate, vortex_vial, measure_wellplate). A flow
+leaves the parts it uses ready again (no tip held, vials home), so steps can be
+reordered or repeated; prefer them to low-level aspirate/dispense calls.
+The example enables temperature control. If adding photoreactor steps, list the
+reactors under safe_stop in robot_hardware.yaml so cleanup (lash_e.safe_stop)
+turns them off.
+Sample tracking is automatic in live runs: every vial and well records what's
+in it (materials, concentrations, ± uncertainty, source stocks) at each transfer.
+For it to know what's in a stock vial, give the vial a stock_id (Stocks tab and
+the vial dialog in the scheduler). Pass liquid= (the liquids.yaml name) to every
+dispense: it picks the calibrated parameters and gives the ± uncertainty; without
+it the ± is blank. Call lash_e.save_run_info(output_dir) once the output folder
+exists, so the run's config, ID and sample-tracking files (start/end contents,
+well_contents.csv) are saved next to its data.
 For liquid dispensing, replace validation_sources with the real source vials,
 registry liquid names, and volumes from the final dispense plan. Set
 VALIDATE_LIQUIDS=True to run embedded gravimetric checks before the experiment,
@@ -198,6 +211,8 @@ def execute(config=None, show_gui=True):
         run_name = f"{timestamp}_{mode_tag}_wells-{c['PARAM2']}"
         output_dir = Path(__file__).resolve().parents[1] / "output" / _WORKFLOW_NAME / run_name
         output_dir.mkdir(parents=True, exist_ok=False)
+        # Config, run ID and (live runs) the sample-tracking files are saved with the data.
+        lash_e.save_run_info(output_dir)
         logger.info(f"Run output directory: {output_dir}")
         # Save experiment artifacts here, e.g. data.to_csv(output_dir / "measurements.csv").
         logger.info(f"Starting {_WORKFLOW_NAME} workflow")
@@ -218,25 +233,26 @@ def execute(config=None, show_gui=True):
         # === STEP 2: SAMPLE PREPARATION ===
         logger.info("Step 2: Sample preparation")
 
-        # [REPLACE] Add your sample preparation steps here
-        # Examples:
-        # lash_e.mass_dispense_into_vial('source_vial', mass_mg=20, return_home=False)
-        # lash_e.nr_robot.dispense_into_vial_from_reservoir(
-        #     reservoir_index=0,
-        #     vial_index='source_vial',
-        #     volume=5.0
-        # )
-        # lash_e.nr_robot.vortex_vial(vial_name='source_vial', vortex_time=c["VORTEX_TIME"])
+        # [REPLACE] Add your sample preparation steps here, using flows. Examples:
+        # Make a substock or dilution: reservoir additions first, then pipetted ones; then vortex.
+        # lash_e.nr_robot.create_substock('target_vial', [
+        #     {'reservoir': 1, 'volume_mL': 4.0, 'liquid': 'water'},          # pump 1 = water reservoir
+        #     {'source_vial': 'source_vial_a', 'volume_mL': c["PARAM1"], 'liquid': 'water'},
+        # ], vortex_time=c["VORTEX_TIME"])
+        # Top a vial up to a target volume (skips it if less than min_addition_mL is needed):
+        # lash_e.nr_robot.refill_vial('source_vial_a', target_volume_mL=6.0, reservoir=1, liquid='water',
+        #                             min_addition_mL=0.5)
+        # lash_e.nr_robot.vortex_vial('target_vial', c["VORTEX_TIME"])
 
         # === STEP 3: LIQUID HANDLING ===
         logger.info("Step 3: Liquid handling operations")
 
-        # [REPLACE] Add your liquid handling steps here
-        # Examples:
+        # [REPLACE] Add your liquid handling steps here. Example (flow):
         # lash_e.nr_robot.dispense_from_vial_into_vial(
         #     source_vial_name='source_vial_a',
         #     dest_vial_name='target_vial',
-        #     volume=c["PARAM1"]
+        #     volume=c["PARAM1"],
+        #     liquid='water',  # liquids.yaml name: calibrated parameters and the ± uncertainty
         # )
 
         # === STEP 4: REACTIONS (if applicable) ===
@@ -244,7 +260,7 @@ def execute(config=None, show_gui=True):
 
         # [REPLACE] Add reaction steps if needed
         # Examples:
-        # REACTOR_NUM = 1
+        # REACTOR_NUM = 0  # only reactor 0 is installed (safe_stop in robot_hardware.yaml)
         # lash_e.nr_robot.move_vial_to_location('target_vial', 'photoreactor_array', 0)
         # lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100)
         # lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600)
@@ -262,13 +278,13 @@ def execute(config=None, show_gui=True):
         well_indices = list(range(c["PARAM2"]))  # Use PARAM2 as number of wells
         # dispense_volume = c["PARAM1"] / c["PARAM2"]   # Example calculation
 
-        # Example dispensing:
-        # lash_e.nr_robot.aspirate_from_vial('target_vial', total_volume)
-        # lash_e.nr_robot.dispense_into_wellplate(
-        #     dest_wp_num_array=well_indices,
-        #     amount_mL_array=[dispense_volume] * c["PARAM2"]
-        # )
-        # lash_e.nr_robot.remove_pipet()
+        # Example (flow): one column per source vial, one row per well index, volumes in mL.
+        # It stages vials for the small tip, conditions tips where the liquid needs it,
+        # groups wells by tip, and ends with no tip held and the vials home.
+        # import pandas as pd
+        # plan = pd.DataFrame({"target_vial": [dispense_volume] * c["PARAM2"]}, index=well_indices)
+        # lash_e.nr_robot.dispense_from_vials_into_wellplate(plan, liquid="water")
+        # Each well's contents and ± are recorded as it is filled (see the module docstring).
 
         # === STEP 6: MEASUREMENTS ===
         logger.info("Step 6: Measurements")
@@ -289,9 +305,9 @@ def execute(config=None, show_gui=True):
         # === STEP 7: CLEANUP ===
         logger.info("Step 7: Cleanup")
 
-        # Return vials to home positions
-        # [REPLACE] Add your vials here
-        # lash_e.nr_robot.return_vial_home('source_vial')
+        # Flows already return their vials home. Only vials you moved yourself (e.g. with
+        # move_vial_to_location) need returning; the scheduler's end-of-workflow tidy also
+        # returns any vial left away from home and warns about it.
         # lash_e.nr_robot.return_vial_home('target_vial')
 
         # Turn off equipment

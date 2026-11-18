@@ -11,6 +11,14 @@ This is a self-driving laboratory (SDL) system integrating:
 
 The system runs **closed-loop optimization workflows** where Bayesian optimizers (BayBe/Ax) suggest experimental conditions, robots execute experiments, analyzers process results, and recommenders suggest the next round.
 
+## Writing a New Workflow - Start Here
+
+1. **Copy `workflows/workflow_template.py`.** It shows the config pattern (`_CONFIG_KEYS`, `_CONFIG_DOCS`, `_PRODUCT_VIALS`), validation, output folder, Slack and cleanup.
+2. **Build the experiment from the flows in `docs/platform/automation_catalog.md`** (`create_substock`, `refill_vial`, `dispense_from_vial_into_vial`, `dispense_from_vials_into_wellplate`, `vortex_vial`, `measure_wellplate`, `mass_dispense_into_vial`). A flow leaves what it uses ready again (no tip held, vials home). Use unit operations only where no flow fits, and avoid low-level `aspirate_from_vial` / `dispense_into_wellplate` / `pipet_*` calls in workflows.
+3. **Sample tracking is automatic, but every workflow must:** pass `liquid=` (a `robot_state/liquids.yaml` name) to every dispense, so the ± uncertainty is recorded; use stock vials that have a `stock_id` in the vial file; and call `lash_e.save_run_info(output_dir)` once the output folder exists, so the run's config, ID and sample-tracking files land next to its data.
+4. **Don't hard-code positions, volumes or device settings**; read them from `robot_state/*.yaml`.
+5. **Simulate first** (below), and run `python -m pytest software_tests/test_config_docs.py` to check `_CONFIG_DOCS`.
+
 ## Core Development Patterns
 
 ### 1. Data Handling - CRITICAL Anti-Bug Rule

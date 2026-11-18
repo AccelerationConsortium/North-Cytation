@@ -6,6 +6,18 @@ This catalog sorts Lash-E's automation methods into **primitives**, **unit opera
 - **Unit operation:** a combination of primitives that accomplishes one well-defined task, with clear inputs, outputs, and a clear success or failure result. It does not need to leave the module ready for its next task.
 - **Flow:** a combination of unit operations (and primitives where needed) that completes a procedure and is state-preserving. When it finishes, the parts of the module it uses are back in a known, ready state, or, if something goes wrong, stopped safely.
 
+**Writing a new workflow:** start from `workflows/workflow_template.py` and build it from the [flows](#flows) below; use unit operations only where no flow fits. See [Sample tracking](#sample-tracking-what-a-workflow-needs-to-do) for the three things every workflow should do.
+
+## Sample tracking: what a workflow needs to do
+
+In live runs every vial, well, reservoir load and powder cartridge load records what it holds at each transfer: materials, concentrations, a ± uncertainty (from the pipetting validation history, split by run) and the stocks it came from. The pipette tip carries it from source to destination. This is automatic; a workflow only needs to:
+
+1. **Pass `liquid=`** (the name in `robot_state/liquids.yaml`) to every dispense. It selects the calibrated parameters and gives the ±; without it the ± is blank.
+2. **Use vials that hold a stock** (`stock_id` in the vial file, set in the scheduler's Stocks tab and vial dialog, or by the agent). A vial with no stock and no record contributes volume but unknown contents.
+3. **Call `lash_e.save_run_info(output_dir)`** once the run's output folder exists, so the config, run ID and sample-tracking files are saved next to its data.
+
+Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files and contents, and `well_contents.csv`), and a copy in the workflow's output folder when it was recorded. Live records: `status/container_contents.csv` (not in git); history: `status/transfers.csv`; stocks: `status/stocks.csv`; reservoir and cartridge loads: `status/sources.csv`. The code is in `experiment_tracking/sample_tracking.py` and `experiment_tracking/sample_contents.py`.
+
 ## Primitives
 
 ### North_Robot (`North_Safe.py`)
@@ -58,7 +70,7 @@ This catalog sorts Lash-E's automation methods into **primitives**, **unit opera
 | `shake` | Shake the powder cartridge |
 | `set_opening` | Set the cartridge opening angle |
 
-### North_Spin (centrifuge; currently unused)
+### North_Spin (spin coater; currently unused)
 
 | Primitive | What it does |
 |---|---|
@@ -143,7 +155,7 @@ This catalog sorts Lash-E's automation methods into **primitives**, **unit opera
 
 | Unit operation | Class | What it does | State after |
 |---|---|---|---|
-| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder | Powder dispensed |
+| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder (shake and weigh until reached; settings in `powder_settings.yaml`). Refuses a channel not listed in `powder_channels.yaml` before moving | Powder dispensed; returns the mass dispensed |
 | `run_plate` | Biotek_Wrapper | Read a plate that is already loaded in the Cytation | Data produced; plate still inside |
 | `move_wellplate_to_cytation` | Lash_E | Move a plate from the deck into the Cytation | Plate inside the Cytation |
 | `move_wellplate_back_from_cytation` | Lash_E | Move a plate from the Cytation back to the deck | Plate on the deck |
@@ -173,11 +185,11 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |
-| `mass_dispense_into_vial` | Lash_E | move vial > robot home > dispense powder > return vial | Vial home |
+| `mass_dispense_into_vial` | Lash_E | vial to clamp (if not there) > take off a closed cap (powder goes through an open cap) > robot home > dispense powder > put the cap back > return vial. Needs `initialize_p2=True`; returns the mass dispensed | Vial home, capped as before |
 | `run_photoreactor` | Lash_E | move vial > run reactor > return vial | Vial home |
 
 Notes:
-- `refill_vial` and `create_substock` are new and take their sources as arguments. Later they may pick sources from sample-contents metadata (for example, find a vial with matching contents); that is not implemented, and `refill_vial` raises `NotImplementedError` if no source is given.
+- `refill_vial` and `create_substock` take their sources as arguments. Each container's contents are now stored (see [Sample tracking](#sample-tracking-what-a-workflow-needs-to-do)), so picking a source automatically (for example, a vial with matching contents) is possible but not built yet; `refill_vial` raises `NotImplementedError` if no source is given.
 - `create_substock` returns the vial home after each addition. Keeping the vial on the clamp to weigh every addition is a possible improvement.
 - `vortex_vial` now returns the vial home by default. Previously it returned the vial to where it was picked up.
 - `refill_vial`'s reservoir path depends on `dispense_into_vial_from_reservoir`, and the vial-to-vial flows depend on `aspirate_from_vial` and `dispense_into_vial` (see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later)).
@@ -213,6 +225,6 @@ Flows condition a fresh tip when the liquid has `condition_tip: true` in `robot_
 This flow took over what `dispense_component_to_wellplate` (in `surfactant_grid_adaptive_concentrations.py`) did: staging, conditioning, and grouping doses by tip. The batched strategy and the `strategy=` argument were removed because batching is not compatible with the liquids in use.
 - **Staging:** only vials that will use the small tip, are movable, and are not already in a small-tip-safe position. The vial that will be emptiest after dispensing gets the safest position; ties go to the lowest starting volume.
 - **Tips:** within a vial, doses are grouped by resolved tip (smallest tip first, largest dose first) and the tip is locked per group. Each vial gets a fresh tip, because vials may hold different contents.
-- **Future option (needs sample-contents metadata):** for vials holding the same solute in the same solvent, optionally reuse one tip from most dilute to most concentrated, conditioning only once. Off by default.
+- **Future option (now possible with the stored contents, not built):** for vials holding the same solute in the same solvent, optionally reuse one tip from most dilute to most concentrated, conditioning only once. Off by default.
 
 `dispense_component_to_wellplate` and the workflows that call it are unchanged; new workflows should use the North_Safe flow and keep only the recipe-to-volumes preparation in the workflow.

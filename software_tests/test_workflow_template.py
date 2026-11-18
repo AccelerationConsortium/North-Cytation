@@ -31,6 +31,7 @@ class WorkflowTemplateTests(unittest.TestCase):
             measure_wellplate=Mock(return_value=None),
             discard_used_wellplate=Mock(),
             safe_stop=Mock(),
+            save_run_info=Mock(),
         )
         def initialize(*args, **kwargs):
             self.lash.workflow_config = ConfigManager.resolve_workflow_config(
@@ -50,6 +51,9 @@ class WorkflowTemplateTests(unittest.TestCase):
 
     def test_explicit_config_runs_complete_simulated_body_without_yaml(self):
         self.execute(self.config, show_gui=False)
+        # The output folder is recorded so the run's config, ID and sample tracking land with its data
+        (output_dir,), _ = self.lash.save_run_info.call_args
+        self.assertTrue(Path(output_dir).is_dir())
         kwargs = self.constructor.call_args.kwargs
         self.assertIs(kwargs["workflow_globals"], self.execute.__globals__)
         self.assertEqual(kwargs["config"], self.config)
