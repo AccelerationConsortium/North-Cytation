@@ -943,11 +943,29 @@ class North_Powder(North_Base):
 
         return meas_mass
 
-    def dispense_powder_mg(self, mass_mg, channel=0):
+    def check_powder_dispense(self, mass_mg, channel=0):
+        """ValueError before moving unless mass_mg is > 0 and at most max_mg (powder_limits in
+        robot_hardware.yaml) and the channel is listed in powder_channels.yaml."""
+        try:
+            positive = float(mass_mg) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Powder dispense refused before moving: mass_mg must be > 0, got {mass_mg!r}")
+        max_mg = _hardware_limits(self, 'powder_limits')['max_mg']
+        if float(mass_mg) > max_mg:
+            raise ValueError(f"Powder dispense refused before moving: mass_mg {mass_mg!r} is above {max_mg} mg "
+                             f"(powder_limits in robot_hardware.yaml)")
         channels = self.powder_channels()
         if channel not in channels:
             raise ValueError(f"Powder channel {channel} isn't listed in {self.POWDER_CHANNELS_PATH} "
                              f"(listed: {sorted(channels) or 'none'}); add the slot there first")
+
+    def dispense_powder_mg(self, mass_mg, channel=0):
+        """Dispense mass_mg of powder (mg, > 0 and at most 1000: powder_limits in robot_hardware.yaml) from
+        channel (listed in powder_channels.yaml) at the carousel. Refused before moving (ValueError)
+        otherwise. Returns the mass dispensed (mg; the target in simulation)."""
+        self.check_powder_dispense(mass_mg, channel)
         self.logger.info(f"Dispensing {mass_mg} mg on channel {channel}")
 
         self.activate_powder_channel(channel)
