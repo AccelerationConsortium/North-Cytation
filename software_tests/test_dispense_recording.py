@@ -478,3 +478,33 @@ def test_aspirate_from_open_vial_refuses_a_closed_vial_or_wrong_tip(robot):
         robot.aspirate_from_open_vial('source', .1)
     robot.c9.aspirate_ml.assert_not_called()
     robot.c9.goto_xy_safe.assert_not_called()
+
+
+# ---- dispense_into_open_vial: the slim dispense unit operation ----
+
+def test_dispense_into_open_vial_dispenses_without_getting_ready_or_recording(robot):
+    robot._ensure_vial_accessible_for_pipetting = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.get_tip_dependent_aspirate_speed = MagicMock(return_value=7)
+    robot._track_dispense = MagicMock()
+    assert robot.dispense_into_open_vial('dest', .1, liquid='water') == []
+    robot.pipet_dispense.assert_called_once()
+    assert robot.VIAL_DF.at[1, 'vial_volume'] == pytest.approx(.1)
+    assert robot.PIPET_FLUID_VOLUME == pytest.approx(9.9)
+    assert not recording.MASTER_MEASUREMENTS.exists()  # no dispense-recording row
+    robot.c9.read_scale.assert_not_called()
+
+
+def test_dispense_into_open_vial_refuses_closed_vial_no_tip_or_overfill(robot):
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open for pipetting'):
+        robot.dispense_into_open_vial('dest', .1)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.HELD_PIPET_TYPE = None
+    with pytest.raises(ValueError, match='no tip held'):
+        robot.dispense_into_open_vial('dest', .1)
+    robot.HELD_PIPET_TYPE = 'small_tip'
+    robot.get_config_parameter = lambda config, key, field, **kw: 8.0 if field == 'vial_volume' else None
+    with pytest.raises(ValueError, match='would exceed capacity'):
+        robot.dispense_into_open_vial('dest', 8.5)
+    robot.pipet_dispense.assert_not_called()
+    robot.c9.goto_xy_safe.assert_not_called()

@@ -127,8 +127,10 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `prime_reservoir_line` | Prime a reservoir line | Line primed |
 | `aspirate_from_open_vial` | Aspirate from a vial that is already open, with the right tip held. Refuses (before moving) a closed vial or the wrong tip; does not get a tip or move the vial. Can record the scale (`start_scale_recording`); returns the readings | Tip full |
 | `aspirate_from_vial` | Combined unit operation: get the right tip, make the vial accessible (move to the clamp and uncap if needed), then `aspirate_from_open_vial`; with scale recording, analyze the mass (mass analyzer). Same arguments and behaviour as before the split | Tip full; vial may be left in the clamp, uncapped |
+| `dispense_into_open_vial` | Dispense from the held tip into a vial that is already open. Refuses (before moving) a closed vial, no tip, or a vial without room (`vial_volume` in `vial_positions.yaml`); does not move the vial or write a dispense-recording row. Can record the scale; returns the readings | Tip empty (still attached) |
+| `dispense_into_vial` | Combined unit operation: make the vial accessible (move to the clamp and uncap if needed), check it has room, then `dispense_into_open_vial`. Around it: optional before/after weighing, scale recording with mass analysis, and the dispense-recording row. Same arguments and behaviour as before the split | Tip empty; vial may be left in the clamp, uncapped |
 
-`dispense_into_vial`, `dispense_into_vial_from_reservoir` and `mix_vial` are not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
+`dispense_into_vial_from_reservoir` and `mix_vial` are not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
 
 ### North_Robot: tip conditioning and staging
 
@@ -171,11 +173,10 @@ These methods mix the task itself with flow-level sequencing and with data analy
 
 | Method | Why it is neither |
 |---|---|
-| `dispense_into_vial` | Can move and uncap the vial, and includes the same scale monitoring, analysis, saving and plotting. |
 | `dispense_into_vial_from_reservoir` | Moves the vial, homes the robot and analyzes the mass within one method. |
-| `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
+| `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` (now combined unit operations) and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
 
-Done: the mass analysis and the scale recording are now shared (Mass analyzer and `start_scale_recording` above). `aspirate_from_vial` is now split (`aspirate_from_open_vial` above). Still to do: the same for `dispense_into_vial`. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
+Done: the mass analysis and the scale recording are now shared (Mass analyzer and `start_scale_recording` above). `aspirate_from_vial` and `dispense_into_vial` are now split (`aspirate_from_open_vial`, `dispense_into_open_vial` above). Still to do: `dispense_into_vial_from_reservoir` and `mix_vial`. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
 
 ## Flows
 

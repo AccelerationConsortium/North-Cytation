@@ -2827,7 +2827,12 @@ class North_Robot(North_Base):
                           initial_move=True, measure_weight=False, continuous_mass_monitoring=False,
                           save_mass_data=False, move_speed=None, record_measurement=True):
         """
-        Dispense liquid into a vial.
+        Dispense liquid into a vial, getting ready first (combined unit operation).
+
+        Makes the vial accessible (moves it to the clamp and uncaps it if needed), checks it has
+        room, then runs the liquid step (dispense_into_open_vial). Around it: optional before/after
+        weighing, scale recording with mass analysis (pipetting_data/mass_analysis.py), and the
+        dispense-recording row when dispense_recording is 'auto'.
 
         Args:
             dest_vial_name: Name of destination vial
@@ -2842,16 +2847,6 @@ class North_Robot(North_Base):
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
 
-        # Extract liquid handling values from parameters
-        wait_time = parameters.dispense_wait_time
-        blowout_vol = parameters.blowout_vol
-
-        # Calculate overdispense volume from constituent parts
-        overdispense_vol = (amount_mL +
-                           parameters.overaspirate_vol +
-                           parameters.pre_asp_air_vol +
-                           parameters.post_asp_air_vol)
-
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
         # Ensure vial is accessible for pipetting (no use_safe_location for dispense)
@@ -2865,20 +2860,12 @@ class North_Robot(North_Base):
         self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
 
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
-        dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
 
         # Check if dispensing would exceed vial capacity
-        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
-        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
-
-        if max_vial_volume is not None:
-            post_dispense_volume = dest_vial_volume + amount_mL
-            if (post_dispense_volume > max_vial_volume
-                    and not math.isclose(post_dispense_volume, max_vial_volume,
-                                         rel_tol=0.0, abs_tol=1e-9)):
-                self.pause_after_error(f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
-                                     f"would exceed capacity ({post_dispense_volume:.6f} mL > {max_vial_volume:.6f} mL max)")
-                return
+        too_full = self._vial_overfill_message(dest_vial_num, amount_mL)
+        if too_full:
+            self.pause_after_error(too_full)
+            return
 
         # Recording opts into the existing weighing path; it never prepares a vial.
         original_result = (measured_mass, stability_info.copy())
@@ -2903,43 +2890,10 @@ class North_Robot(North_Base):
         else:
             initial_mass = None  # Will be handled by continuous monitoring if needed
 
-        # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
-        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
-
-        self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
-
-        #Where is the vial?
-        location= self.get_vial_location(dest_vial_num,True)
-
-        #What height do we need to go to?
-        height = self.get_height_at_location(location) #baseline z-height
-        height = self.adjust_height_based_on_pipet_held(height)
-
-        #Move to the location if told to (Could change this to an auto-check)
-        if initial_move:
-            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
-
-        #Pipet into the vial
-        if initial_move:
-            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
-
-        # Scale recording: only with the vial in the clamp; nothing in simulation
-        scale = self.start_scale_recording(measure_weight and continuous_mass_monitoring and dest_vial_clamped,
-                                           'dispensing')
-
-        scale.mark_start()
-        
-        # Perform the actual dispensing
-        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
-        
-        scale.mark_end()
-        continuous_mass_data = scale.stop()
-
-         #Track the added volume in the dataframe
-        self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
-        self.PIPET_FLUID_VOLUME -= amount_mL
-        self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
-        self.save_robot_status()
+        # The liquid step (same as dispense_into_open_vial, with the parameters already resolved)
+        continuous_mass_data, dispense_speed = self._dispense_open_vial(
+            dest_vial_num, amount_mL, parameters, liquid, initial_move, move_speed,
+            measure_weight and continuous_mass_monitoring and dest_vial_clamped)
 
         # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
         if measure_weight and continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
@@ -2974,6 +2928,105 @@ class North_Robot(North_Base):
         if routine_only:
             return original_result
         return measured_mass, stability_info
+
+    def dispense_into_open_vial(self, vial_name, amount_mL, parameters=None, liquid=None,
+                                initial_move=True, move_speed=None, record_scale=False):
+        """
+        Unit operation: dispense amount_mL from the held tip into a vial that is already open and
+        reachable. Does not move or uncap the vial (dispense_into_vial does that) and does not write
+        a dispense-recording row.
+
+        Args:
+            vial_name (str or int): vial to dispense into; must be pipetable (open, or uncapped in the clamp)
+            amount_mL (float): mL to dispense; the vial must have room (vial_volume in vial_positions.yaml)
+            parameters (PipettingParameters, optional): overrides (None: calibrated for liquid, else defaults)
+            liquid (str, optional): liquids.yaml name for calibrated parameters and the +/- uncertainty
+            initial_move (bool): move to the vial first (default True)
+            move_speed (float, optional): speed for that move (None: standard speeds)
+            record_scale (bool): record the balance around the dispense (vial in the clamp only)
+
+        Refused before moving (ValueError): vial not pipetable, no tip held, or not enough room.
+        Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
+        """
+        parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
+        vial_num = self.normalize_vial_index(vial_name)
+        if not self.is_vial_pipetable(vial_num):
+            raise ValueError(f"Dispense refused before moving: vial {vial_name} is not open for pipetting "
+                             f"(use dispense_into_vial to uncap it first)")
+        if self.HELD_PIPET_TYPE is None:
+            raise ValueError("Dispense refused before moving: no tip held")
+        too_full = self._vial_overfill_message(vial_num, amount_mL)
+        if too_full:
+            raise ValueError(f"Dispense refused before moving: {too_full}")
+        clamped = self.get_vial_info(vial_num, 'location') == 'clamp'
+        readings, _ = self._dispense_open_vial(vial_num, amount_mL, parameters, liquid, initial_move, move_speed,
+                                               record_scale and clamped)
+        return readings
+
+    def _vial_overfill_message(self, dest_vial_num, amount_mL):
+        """Why amount_mL would overfill the vial (its location's vial_volume), or None if it fits."""
+        dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
+        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + amount_mL
+            if (post_dispense_volume > max_vial_volume
+                    and not math.isclose(post_dispense_volume, max_vial_volume,
+                                         rel_tol=0.0, abs_tol=1e-9)):
+                return (f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
+                        f"would exceed capacity ({post_dispense_volume:.6f} mL > {max_vial_volume:.6f} mL max)")
+        return None
+
+    def _dispense_open_vial(self, dest_vial_num, amount_mL, parameters, liquid, initial_move, move_speed, record_scale):
+        """The liquid step of a dispense into a vial, with parameters resolved and the vial ready.
+        Returns (scale readings, dispense speed used)."""
+        wait_time = parameters.dispense_wait_time
+        blowout_vol = parameters.blowout_vol
+        # Calculate overdispense volume from constituent parts
+        overdispense_vol = (amount_mL +
+                           parameters.overaspirate_vol +
+                           parameters.pre_asp_air_vol +
+                           parameters.post_asp_air_vol)
+
+        # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
+        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+
+        self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
+
+        #Where is the vial?
+        location= self.get_vial_location(dest_vial_num,True)
+
+        #What height do we need to go to?
+        height = self.get_height_at_location(location) #baseline z-height
+        height = self.adjust_height_based_on_pipet_held(height)
+
+        #Move to the location if told to (Could change this to an auto-check)
+        if initial_move:
+            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
+
+        #Pipet into the vial
+        if initial_move:
+            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
+
+        # Scale recording: only with the vial in the clamp; nothing in simulation
+        scale = self.start_scale_recording(record_scale, 'dispensing')
+
+        scale.mark_start()
+        
+        # Perform the actual dispensing
+        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+        
+        scale.mark_end()
+        readings = scale.stop()
+
+         #Track the added volume in the dataframe
+        self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
+        self.PIPET_FLUID_VOLUME -= amount_mL
+        self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
+        self.save_robot_status()
+
+        return readings, dispense_speed
 
     def _analyze_mass_readings(self, readings, operation, vial_label, target_mL, stability_info,
                                save, file_prefix, file_stem):
