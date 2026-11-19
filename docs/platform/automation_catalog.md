@@ -35,6 +35,8 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `open_vial_gripper` / `close_vial_gripper` | Open / close the vial gripper (output set in `robot_hardware.yaml`) |
 | `open_clamp` / `close_clamp` | Open / close the vial clamp |
 
+Liquid-handling parameters (speeds, waits, air and blowout volumes, cycles) are checked against `parameter_limits` in `robot_hardware.yaml` when they are resolved (defaults, calibration and overrides combined), before any aspirate, dispense or reservoir move. `retract_speed` is an arm velocity (1-100 percent).
+
 ### Shared by all North classes (`North_Base`)
 
 | Primitive | What it does |
@@ -203,7 +205,7 @@ Existing workflows have not been changed; new workflows should use the North_Saf
 
 ### To do
 
-- **Staging for moving vials while a tip is held:** done 2026-11-18. `stage_vials` puts closed vials in rack 0-5 and both flows call it, so `create_substock` and `refill_vial` work with closed vials anywhere. Still to do: remove the old workarounds that temporarily rehome vials (`safe_pipet` in `Degradation_serena.py`, rack 4/5; `dispense_vial_to_vial` in `fluorescence_calibration_workflow.py`, rack 0/1), and move the hard-coded 0-5 limit (`is_location_safe_for_vial_movement_with_pipet`) into YAML.
+- **Staging for moving vials while a tip is held:** done 2026-11-18. `stage_vials` puts closed vials in rack 0-5 and both flows call it, so `create_substock` and `refill_vial` work with closed vials anywhere. Still to do: remove the old workarounds that temporarily rehome vials (`safe_pipet` in `Degradation_serena.py`, rack 4/5; `dispense_vial_to_vial` in `fluorescence_calibration_workflow.py`, rack 0/1). The 0-5 limit is now `tip_held_move_indices` in `vial_positions.yaml` (2026-11-19).
 - **Embedded validation.** `validate_pipetting_accuracy` and `validate_reservoir_accuracy` (`pipetting_data/embedded_calibration_validation.py`) are flows, but they also contain analysis, plotting, CSV saving and parameter updates. Separate the flow from the analysis and improve them.
 - **`measure_wellplate_async`** (Lash_E) has not been used yet. Examine it later. It looks like a flow split into two halves: the start moves the plate in and begins the read, and `MeasurementHandle.complete()` returns the plate.
 
