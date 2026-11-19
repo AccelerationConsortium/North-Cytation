@@ -133,3 +133,45 @@ def test_out_of_range_configured_speeds_are_refused_before_moving(speed):
         _track({'default_x': speed}).get_speed('default_x')
     with pytest.raises(ValueError, match=r"Move refused before moving: speed 'retract'.*movement_speeds"):
         _robot({'retract': speed}).get_speed('retract')
+
+
+# ---- move speeds passed by callers (move_speed / vel): None or 1-100 percent ----
+
+SPEED_METHODS = [('dispense_from_vial_into_vial', ('a', 'b', 0.1)), ('dispense_into_vial', ('a', 0.1)),
+                 ('dispense_into_open_vial', ('a', 0.1)), ('return_vial_home', ('a',)),
+                 ('drop_off_vial', ('a', 'main_8mL_rack', 0)), ('grab_vial', ('a',)),
+                 ('move_vial_to_location', ('a', 'clamp', 0)), ('uncap_clamp_vial', ()),
+                 ('recap_clamp_vial', ()), ('goto_location_if_not_there', ('clamp',))]
+
+
+def _bare_robot():
+    from North_Safe import North_Robot
+    robot = object.__new__(North_Robot)
+    robot.logger = logging.getLogger(__name__)
+    robot.ROBOT_HARDWARE = HARDWARE
+    robot.c9 = MagicMock()
+    return robot
+
+
+@pytest.mark.parametrize('method, args', SPEED_METHODS)
+@pytest.mark.parametrize('speed', [0, 101, 5000, float('nan'), 'fast'])
+def test_caller_move_speeds_are_refused_before_moving(method, args, speed):
+    robot = _bare_robot()
+    with pytest.raises(ValueError, match=f'{method} refused before moving: move_speed'):
+        getattr(robot, method)(*args, move_speed=speed)
+    assert robot.c9.mock_calls == []
+
+
+@pytest.mark.parametrize('speed', [0, 101, 'fast'])
+def test_move_rel_xyz_refuses_bad_vel_before_moving(speed):
+    robot = _bare_robot()
+    with pytest.raises(ValueError, match='move_rel_xyz refused before moving: vel'):
+        robot.move_rel_xyz(z_distance=10, vel=speed)
+    assert robot.c9.mock_calls == []
+
+
+def test_good_and_default_move_speeds_pass_the_check():
+    from North_Safe import _check_optional_speed
+    robot = _bare_robot()
+    for speed in [None, 1, 10, 100, 7.5]:
+        _check_optional_speed(robot, 'x', 'move_speed', speed)

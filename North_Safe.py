@@ -44,6 +44,15 @@ def _hardware_limits(owner, section):
     return hardware[section]
 
 
+def _check_optional_speed(owner, action, name, speed):
+    """A move speed given by the caller (None: the default) must be a percent of max velocity within
+    speed_limits (robot_hardware.yaml); the C9 reads 0-100 as percent and larger values as counts/s."""
+    if speed is not None:
+        limits = _hardware_limits(owner, 'speed_limits')
+        _check_in_range(action, name, speed, limits['min_percent'], limits['max_percent'], '%',
+                        'speed_limits')
+
+
 def _check_speed_percent(owner, action, speed_name, speed, source):
     """A configured move speed must be a percent of max velocity within speed_limits (robot_hardware.yaml);
     the C9 reads 0-100 as percent and larger values as counts/s."""
@@ -2685,6 +2694,7 @@ class North_Robot(North_Base):
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
             compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
         """
+        _check_optional_speed(self, 'dispense_from_vial_into_vial', 'move_speed', move_speed)
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
         source_vial_index = self.normalize_vial_index(source_vial_name)
@@ -2944,6 +2954,7 @@ class North_Robot(North_Base):
             continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
             save_mass_data (bool): Whether to save continuous mass data to file (default: False)
         """
+        _check_optional_speed(self, 'dispense_into_vial', 'move_speed', move_speed)
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
 
@@ -3049,6 +3060,7 @@ class North_Robot(North_Base):
         Returns the scale readings (empty unless recorded); analyze them with
         pipetting_data/mass_analysis.py.
         """
+        _check_optional_speed(self, 'dispense_into_open_vial', 'move_speed', move_speed)
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
         vial_num = self.normalize_vial_index(vial_name)
         if not self.is_vial_pipetable(vial_num):
@@ -3768,6 +3780,7 @@ class North_Robot(North_Base):
         """
         
 
+        _check_optional_speed(self, 'return_vial_home', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         home_location = self.get_vial_info(vial_index,'home_location')
         home_location_index = self.get_vial_info(vial_index,'home_location_index')
@@ -3781,6 +3794,7 @@ class North_Robot(North_Base):
 
     #Drop off a vial at a location that you already have
     def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
+        _check_optional_speed(self, 'drop_off_vial', 'move_speed', move_speed)
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
@@ -3820,6 +3834,7 @@ class North_Robot(North_Base):
 
     def grab_vial(self,vial_name, move_speed=None):
         
+        _check_optional_speed(self, 'grab_vial', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         
         self.logger.debug(f"Grabbing vial {vial_name} with index {vial_index}")
@@ -3862,6 +3877,7 @@ class North_Robot(North_Base):
             location_index (int): Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
          """
         
+        _check_optional_speed(self, 'move_vial_to_location', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
         # Safety check: If holding a pipet, ensure the movement path is safe
@@ -3892,6 +3908,7 @@ class North_Robot(North_Base):
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self, revs=3.0, move_speed=None):
+        _check_optional_speed(self, 'uncap_clamp_vial', 'move_speed', move_speed)
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3934,6 +3951,7 @@ class North_Robot(North_Base):
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
     def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
+        _check_optional_speed(self, 'recap_clamp_vial', 'move_speed', move_speed)
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3966,6 +3984,7 @@ class North_Robot(North_Base):
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location, move_speed=None):
+        _check_optional_speed(self, 'goto_location_if_not_there', 'move_speed', move_speed)
         difference_threshold = 50
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
             self.c9.goto_safe(location, vel=move_speed if move_speed is not None else self.get_speed('fast_approach'))
@@ -4435,6 +4454,7 @@ class North_Robot(North_Base):
         self.c9.close_clamp()
 
     def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
+        _check_optional_speed(self, 'move_rel_xyz', 'vel', vel)
         if vel is None:
             vel = self.get_speed('standard_xy')
         self.logger.debug(f"Moving robot relative to current position by x: {x_distance}, y: {y_distance}, z: {z_distance} mm, vel: {vel}")
