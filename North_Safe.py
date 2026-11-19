@@ -388,6 +388,7 @@ class North_Track(North_Base):
         )
 
     def get_track_status(self):
+        """Reload the plate inventory and track pose from track_status.yaml."""
         loaded = PlateInventory.load(self.TRACK_STATUS_FILE, self.WELLPLATES, self.TRACK_POSITIONS)
         if getattr(self, "_inventory", None) is None:
             self._inventory = loaded
@@ -403,18 +404,22 @@ class North_Track(North_Base):
 
     @property
     def inventory(self):
+        """The PlateInventory (shared with North_Robot)."""
         return self._inventory
 
     @property
     def NUM_SOURCE(self):
+        """Number of plates in the source stack."""
         return len(self.inventory.contents("source_stack"))
 
     @property
     def NUM_WASTE(self):
+        """Number of plates in the waste stack."""
         return len(self.inventory.contents("waste_stack"))
 
     @property
     def CURRENT_WP_TYPE(self):
+        """The one plate type on the deck; ValueError if there are several."""
         types = {obj["type"] for obj in self.inventory.objects.values() if obj["kind"] == "plate"}
         if len(types) != 1:
             raise ValueError("No single global plate type; select a plate by position or ID")
@@ -422,6 +427,7 @@ class North_Track(North_Base):
 
     @property
     def ACTIVE_WELLPLATE_POSITION(self):
+        """The one position (not a stack) holding a plate, or None; ValueError if several."""
         locations = [location for location in self.inventory.positions
                      if location not in ("source_stack", "waste_stack")
                      and any(self.inventory.objects[item]["kind"] == "plate"
@@ -431,6 +437,7 @@ class North_Track(North_Base):
         return locations[0] if locations else None
 
     def save_track_status(self):
+        """Save the inventory and track pose to track_status.yaml (not in simulation, unless the scheduler allows it)."""
         self.inventory.data["track_pose"] = {
             "location": self.CURRENT_GRIPPER_LOCATION, **self.CURRENT_GRIPPER_POSITION,
         }
@@ -442,6 +449,7 @@ class North_Track(North_Base):
             self.inventory.save(self.TRACK_STATUS_FILE)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
+        """Deprecated: prints a notice and waits for Enter. Use the Lash_E start-up GUI."""
         print("\n" + "="*60)
         print("DEPRECATION WARNING: check_input_file()")
         print("="*60)
@@ -529,6 +537,7 @@ class North_Track(North_Base):
         #     input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
+        """Move the track to its origin, unless a held plate or unfinished transfer is recorded."""
         if self.inventory.positions["gripper"] or self.inventory.data.get("pending_transfer"):
             self.logger.info("Preserving recorded gripper/transfer state; no automatic recovery motion.")
             return
@@ -546,6 +555,7 @@ class North_Track(North_Base):
     
     # === WELLPLATE POSITION TRACKING ===
     def set_wellplate_position(self, position):
+        """Removed: always raises ValueError. Use inventory transfers."""
         raise ValueError("Use inventory transfers; a single active-plate position cannot describe this state")
     
     def update_gripper_location(self, location_name, x=None, z=None):
@@ -631,28 +641,31 @@ class North_Track(North_Base):
 
     # === 3. BASIC MOVEMENT & GRIPPER PRIMITIVES ===
     def set_horizontal_speed(self,vel):
-        """No effect: nothing reads c9.DEFAULT_X_SPEED. Track moves use the speeds in track_positions.yaml."""
+        """No effect (vel is ignored): nothing reads c9.DEFAULT_X_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting horizontal speed to %d", vel)
         self.c9.DEFAULT_X_SPEED = vel
 
     def set_vertical_speed(self,vel):
-        """No effect: nothing reads c9.DEFAULT_Y_SPEED. Track moves use the speeds in track_positions.yaml."""
+        """No effect (vel is ignored): nothing reads c9.DEFAULT_Y_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting vertical speed to %d", vel)
         self.c9.DEFAULT_Y_SPEED = vel    
 
     def open_gripper(self):
+        """Open the track gripper (outputs in robot_hardware.yaml; waits gripper_delay s)."""
         self.logger.debug("Opening gripper")
         self.c9.set_output(self.get_axis('gripper_open'), True)  
         self.c9.set_output(self.get_axis('gripper_close'), False)
         self.c9.delay(self.get_timing('gripper_delay'))
     
     def close_gripper(self):
+        """Close the track gripper (outputs in robot_hardware.yaml; waits gripper_delay s)."""
         self.logger.debug("Closing gripper")
         self.c9.set_output(self.get_axis('gripper_close'), True)  #gripper close
         self.c9.set_output(self.get_axis('gripper_open'), False)
         self.c9.delay(self.get_timing('gripper_delay'))
 
     def origin(self):
+        """Raise the track to max_safe_height, then move to x = 0 (counts; track_positions.yaml)."""
         self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z')) #max_height
         self.c9.move_axis(self.get_axis('x_axis'), 0, vel=self.get_speed('default_x'))
         self.logger.debug("Moving North Track to home position")
@@ -715,6 +728,14 @@ class North_Track(North_Base):
             self.save_track_status()
 
     def grab_wellplate_from_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None, object_kind=None):
+        """Pick up the top plate or lid at location_name (track_positions.yaml).
+
+        wellplate_type: expected type (wellplates.yaml), or a lid alias; ValueError if it differs
+        waypoint_locations: named waypoints for the approach
+        z_override: grab height in track counts instead of the stack height
+        object_kind: 'plate' or 'lid' to require one
+        Refused before moving (ValueError) if the gripper is full or the object does not match.
+        Returns the object id."""
         if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
             self.check_reader_motion()
         inv = self.inventory
@@ -755,9 +776,16 @@ class North_Track(North_Base):
         return source_id
 
     def grab_lid_from_location(self, location_name, **kwargs):
+        """Pick up the lid at location_name (grab_wellplate_from_location with object_kind='lid')."""
         return self.grab_wellplate_from_location(location_name, object_kind="lid", **kwargs)
 
     def release_wellplate_in_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None):
+        """Put the held plate or lid down at location_name (track_positions.yaml).
+
+        wellplate_type: expected type; ValueError if the held object differs
+        waypoint_locations: named waypoints for the approach
+        z_override: release height in track counts instead of the stack height
+        Refused before moving (ValueError) if the destination cannot take it. Returns the object id."""
         if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
             self.check_reader_motion()
         inv = self.inventory
@@ -793,6 +821,8 @@ class North_Track(North_Base):
         return self.inventory.stack_z(stack_name, operation)
 
     def move_wellplate(self, source, destination, expected_type=None, move_home_afterwards=True):
+        """Move the plate at source to destination (track position names), checking both ends
+        before picking up. expected_type: plate type (wellplates.yaml). Returns the plate id."""
         inv = self.inventory
         plate_id = inv.plate_at(source, expected_type)
         inv.check_destination(plate_id, destination)
@@ -814,13 +844,16 @@ class North_Track(North_Base):
         return plate_id
 
     def get_new_wellplate(self, move_home_afterwards=True):
+        """Move a new plate from the source stack to the pipetting area. Returns the plate id."""
         return self.move_wellplate("source_stack", "pipetting_area", move_home_afterwards=move_home_afterwards)
 
     def discard_wellplate(self, move_home_afterwards=True, pickup_location='pipetting_area', discard_location='waste_stack'):
+        """Move the plate at pickup_location to discard_location (default: waste stack). Returns the plate id."""
         return self.move_wellplate(pickup_location, discard_location, move_home_afterwards=move_home_afterwards)
 
     # === 7. UTILITIES ===        
     def get_ordinal(self,n): #convert n into an ordinal number (ex. 1st, 2nd, 4th)  -- from chatgpt
+        """n as an ordinal string (1 -> '1st')."""
         if 10 <= n % 100 <= 20:
             suffix = 'th'
         else:
@@ -855,20 +888,27 @@ class North_Powder(North_Base):
             self.set_opening(channel, 0)
 
     def activate_powder_channel(self, channel=0):
+        """Select powder channel (listed in powder_channels.yaml) and home its stepper."""
         self.logger.debug(f"Activating powder channel: {channel}")
         self.p2.activate_powder_channel(channel)
         self.p2.home_OL_stepper(0, 300)
 
     # shake the cartridge for t ms, with frequency f [40, 180] hz, amplitude [60, 100] %
     def shake(self,t, f=80, a=80, wait=True):
+        """Shake the cartridge for t ms at frequency f (Hz, default 80) and amplitude a (%, default 80)."""
         self.logger.debug("Shaking dispenser cartridge...")
         return self.p2.amc_pwm(int(f), int(t), int(a), wait=wait)
     
     def set_opening(self, channel, deg):
+        """Set the valve opening of channel to deg degrees (0 closed; protocols use up to 90)."""
         self.logger.debug(f"Setting opening for channel {channel} to {deg} degrees")
         self.p2.move_axis(channel, deg*(1000/360.0))
 
     def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
+        """Closed-loop powder dispense: shake and weigh until mg_target (mg) is within the protocol's
+        tol (mg) or max_tries shakes are used. protocol: a powder_settings.yaml protocol (None: default).
+        zero_scale: zero the balance first. Returns the mass dispensed (mg). Use dispense_powder_mg,
+        which checks the mass and channel first."""
         from robot_state import powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
@@ -1028,9 +1068,11 @@ class North_Temp:
         self.t8.enable_channel(channel)
     
     def get_temp(self,channel=0):
+        """Temperature of heater channel (0-7), in C."""
         return self.t8.get_temp(channel)
 
     def turn_off_heating(self,channel=0):
+        """Turn off heater channel (0-7)."""
         self.logger.debug(f"Turning off heating for channel {channel}")
         self.t8.disable_channel(channel)
 
@@ -1044,6 +1086,7 @@ class North_Temp:
         self.c8.spin_axis(1, speed)
 
     def turn_off_stirring(self):
+        """Stop the stirrer (speed 0)."""
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
 
@@ -1067,24 +1110,29 @@ class North_Spin(North_Base):
         self.c8.spin_axis(2, speed)
 
     def stop_spin(self):
+        """Stop the centrifuge (speed 0)."""
         self.logger.debug("Stopping centrifuge spin")
         self.c8.spin_axis(2,0)
 
     #NOTE: Port 3 is the extender port. 
 
     def open_lid(self):
+        """Open the centrifuge lid (output centrifuge_pneumatics.lid in robot_hardware.yaml)."""
         self.logger.debug("Opening centrifuge lid")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), True)  # Open lid pneumatic
 
     def close_lid(self):
+        """Close the centrifuge lid (output centrifuge_pneumatics.lid in robot_hardware.yaml)."""
         self.logger.debug("Closing centrifuge lid")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), False)  # Close lid pneumatic
 
     def turn_on_vacuum(self):
+        """Turn on the centrifuge vacuum (output centrifuge_pneumatics.vacuum in robot_hardware.yaml)."""
         self.logger.debug("Turning on centrifuge vacuum")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), True)  # Turn on vacuum pneumatic
 
     def turn_off_vacuum(self):
+        """Turn off the centrifuge vacuum (output centrifuge_pneumatics.vacuum in robot_hardware.yaml)."""
         self.logger.debug("Turning off centrifuge vacuum")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), False)  # Turn off vacuum pneumatic
 
@@ -1246,6 +1294,7 @@ class North_Robot(North_Base):
 
     #Load the pumps and set volumes from YAML configuration
     def load_pumps(self):
+        """Set each pump's volume (mL) and default speed code (0-40) from syringe_pumps.yaml."""
         self.logger.debug("Loading pumps from YAML configuration...")
         
         if not self.PUMP_CONFIG:
@@ -1517,6 +1566,7 @@ class North_Robot(North_Base):
 
     #Save the status of the robot to memory
     def save_robot_status(self):
+        """Save the vial table and robot status (tip, gripper, tip contents) to file (not in simulation, unless the scheduler allows it)."""
         #self.logger.debug("Saving robot status to file: %s", self.ROBOT_STATUS_FILE)
         # Robot status data - ensure all values are Python native types to avoid YAML serialization issues
         robot_status = {
@@ -1543,6 +1593,7 @@ class North_Robot(North_Base):
 
     #Update the status of the robot from memory
     def get_robot_status(self):
+        """Load the vial table and robot state files."""
         self.logger.debug("Getting robot status from file: %s", self.ROBOT_STATUS_FILE)
         
         # Get the vial dataframe
@@ -1722,7 +1773,7 @@ class North_Robot(North_Base):
             self.logger.warning(f"Sample tracking: could not record the reservoir dispense: {error}")
 
     def track_powder_dispense(self, channel, vial, mass_mg):
-        """Powder into a vial: logged, and the vial's record updated with mg of that powder."""
+        """Powder into a vial: logged, and the vial's record updated with mass_mg (mg) of that powder."""
         try:
             source = sample_tracking.source_container(sample_tracking.cartridge_slot(channel))
             destination = self._vial_container_id(vial)
@@ -1740,6 +1791,7 @@ class North_Robot(North_Base):
 
     #Remove the pipet tip
     def remove_pipet(self):
+        """Drop the held tip at its removal location (pipet_tips.yaml); does nothing if no tip is held."""
         self._dispense_aspiration_settings = None
         self._dispense_aspiration_source = None
         if self.HELD_PIPET_TYPE is None:
@@ -1935,6 +1987,8 @@ class North_Robot(North_Base):
         pass
  
     def adjust_pump_speed(self, pump, pump_speed):
+        """Set pump's speed code (1-40; lower is faster). A non-integer is rounded with a warning;
+        outside 1-40 pauses with an error (logged as an error in simulation)."""
         self.logger.debug(f"Adjusting pump {pump} speed to {pump_speed}")
         
         # Ensure pump_speed is a native Python int and round if needed
@@ -2287,6 +2341,8 @@ class North_Robot(North_Base):
 
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
     def check_if_aspiration_volume_unacceptable(self, amount_mL):
+        """Pause with an error if amount_mL (mL) is above the held tip's volume or below its
+        min_suggested_volume (pipet_tips.yaml). Returns True if there was an issue."""
         if self.HELD_PIPET_TYPE is None:
             return False  # No tip held, no volume restrictions
             
@@ -2326,6 +2382,9 @@ class North_Robot(North_Base):
 
     #Get adjust the aspiration height based on how much is there
     def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=1.0):
+        """Aspirate height (mm) for amount_mL (mL) from the vial: the location's min_pipetting_height,
+        raised by height_volume_constant (mm per mL, vial_positions.yaml) for the liquid left minus buffer (mL)
+        when track_height. Never below the minimum."""
 
         #Get required information
         base_height = self.get_min_pipetting_height(source_vial_num)
@@ -2650,6 +2709,7 @@ class North_Robot(North_Base):
 
     #Adjust height based on the currently held pipet tip - now extensible to all tip types
     def adjust_height_based_on_pipet_held(self, height):
+        """height (mm) plus the held tip's delta_z_to_tip_bottom (mm, pipet_tips.yaml)."""
         height_shift_pipet = 0
         
         if self.HELD_PIPET_TYPE is not None:
@@ -2711,6 +2771,7 @@ class North_Robot(North_Base):
             liquid (str, optional): Liquid type for calibrated parameter optimization
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
             compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
+            move_speed (float, optional): speed of the vial moves and dispense approach, percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
         """
         _check_optional_speed(self, 'dispense_from_vial_into_vial', 'move_speed', move_speed)
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
@@ -2971,6 +3032,7 @@ class North_Robot(North_Base):
             measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
             continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
             save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+            move_speed (float, optional): speed of the move to the vial, percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
         """
         _check_optional_speed(self, 'dispense_into_vial', 'move_speed', move_speed)
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
@@ -3291,6 +3353,7 @@ class North_Robot(North_Base):
         return plate_type
 
     def select_wellplate_grid(self, well_plate_type=None):
+        """The Locator grid for well_plate_type (wellplates.yaml; None: the plate on the deck)."""
         well_plate_type = self._resolve_pipetting_plate(well_plate_type)
         return getattr(Locator, self.WELLPLATES[well_plate_type]["name_in_Locator"])
 
@@ -3812,6 +3875,8 @@ class North_Robot(North_Base):
 
     #Drop off a vial at a location that you already have
     def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
+        """Put the held vial down at location / location_index (vial_positions.yaml).
+        Pauses with an error if the spot holds another vial. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'drop_off_vial', 'move_speed', move_speed)
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
@@ -3851,6 +3916,8 @@ class North_Robot(North_Base):
         self.save_robot_status() #Update in memory
 
     def grab_vial(self,vial_name, move_speed=None):
+        """Pick up the vial (recapping it first if its cap is held). Pauses with an error if the gripper
+        is full or the vial cannot be moved (not capped or not 8 mL). move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         
         _check_optional_speed(self, 'grab_vial', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
@@ -3893,6 +3960,7 @@ class North_Robot(North_Base):
             vial_name (str): Name of the vial to move
             location (str): Description of the location to move to (e.g., 'clamp', 'photoreactor_array', 'main_8mL_rack', 'heater')
             location_index (int): Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
+            move_speed (float, optional): percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
          """
         
         _check_optional_speed(self, 'move_vial_to_location', 'move_speed', move_speed)
@@ -3915,6 +3983,7 @@ class North_Robot(North_Base):
         self.drop_off_vial(vial_index,location,location_index, move_speed=move_speed) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):
+        """Index of the vial at location_name / location_index, or None."""
         # Filter rows where both conditions match
         mask = (self.VIAL_DF['location'] == location_name) & (self.VIAL_DF['location_index'] == location_index)
         
@@ -3926,6 +3995,8 @@ class North_Robot(North_Base):
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self, revs=3.0, move_speed=None):
+        """Take the cap off the vial in the clamp (revs: unscrewing turns, default 3.0) and hold it.
+        Pauses with an error if the gripper is full, the clamp is empty or the vial is open. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'uncap_clamp_vial', 'move_speed', move_speed)
         self.logger.debug("Removing cap from clamped vial")
 
@@ -3969,6 +4040,9 @@ class North_Robot(North_Base):
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
     def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
+        """Screw the held cap onto the vial in the clamp (revs: turns, default 1.8; torque_thresh: C9
+        torque limit, default 550). Pauses with an error if no cap is held, the clamp is empty or the vial
+        is capped. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'recap_clamp_vial', 'move_speed', move_speed)
         self.logger.debug("Recapping clamped vial")
         
@@ -4002,6 +4076,7 @@ class North_Robot(North_Base):
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location, move_speed=None):
+        """Move to location (Locator position) unless already within 50 counts. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'goto_location_if_not_there', 'move_speed', move_speed)
         difference_threshold = 50
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
@@ -4009,6 +4084,7 @@ class North_Robot(North_Base):
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
+        """Sum of the axis differences (counts) between two Locator positions; 0 in simulation."""
         if self.simulate:
             return 0
         difference = np.sum(np.absolute(np.array(loc_2)[1:4] - np.array(loc_1)[1:4]))
@@ -4371,6 +4447,8 @@ class North_Robot(North_Base):
     #This may end up deprecated
     #Error check list is as follows error_check[0] is the value, error_check[1] is the target value, error_check[2] is the error message
     def check_for_errors(self, error_check_list, stop_after_error=False):
+        """For each [value, expected, message], log a warning if value != expected, and pause with
+        the message if stop_after_error. Returns True if any check failed."""
         error_occured = False
         for error_check in error_check_list:
             if error_check[0] != error_check[1]:
@@ -4386,6 +4464,7 @@ class North_Robot(North_Base):
 
    #Check to see if we can move the vial         
     def is_vial_movable(self, vial_name):
+        """True if the vial is capped and an 8 mL vial (the gripper can move it)."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if neede
 
@@ -4395,6 +4474,7 @@ class North_Robot(North_Base):
     
     #Check to see if the pipet can have liquids added/removed
     def is_vial_pipetable(self, vial_name):
+        """True if the vial is uncapped or has an open cap."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
@@ -4472,6 +4552,8 @@ class North_Robot(North_Base):
         self.c9.close_clamp()
 
     def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
+        """Move the arm by x, y, z distances (mm) from where it is. vel: percent of max velocity, 1-100
+        (None: standard_xy). Refused before moving (ValueError) outside that range."""
         _check_optional_speed(self, 'move_rel_xyz', 'vel', vel)
         if vel is None:
             vel = self.get_speed('standard_xy')
@@ -4495,6 +4577,7 @@ class North_Robot(North_Base):
 
     #Move the robot to the home position    
     def move_home(self):
+        """Move the arm and the carousel home."""
         self.logger.info("Moving robot to home position")
         self.c9.goto_safe(home)
         self.move_carousel_to('home')
@@ -4510,6 +4593,7 @@ class North_Robot(North_Base):
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
     def get_vial_info(self,vial_name,column_name):
+        """The value of column_name (vial table) for the vial, or None."""
         
         # Check if vial data is available
         if not self._vials_available():
@@ -4525,6 +4609,7 @@ class North_Robot(North_Base):
             return None  # Handle case where no match is found    
 
     def get_vial_index_from_name(self,vial_name):
+        """Index of the vial called vial_name, or None."""
         # Check if vial data is available
         if not self._vials_available():
             self.logger.warning(f"Cannot get vial index for '{vial_name}' - no vial data loaded")
@@ -4538,6 +4623,7 @@ class North_Robot(North_Base):
 
     #Physical method that get's hard-coded minimum heights for pipetting    
     def get_min_pipetting_height(self,vial_name):
+        """Lowest pipetting height (mm) at the vial's location (min_pipetting_height, vial_positions.yaml)."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         #The height at which the pipet touches the ground for the 1 mL pipet
@@ -4552,6 +4638,7 @@ class North_Robot(North_Base):
 
     #Get the position of a vial right now
     def get_vial_location(self,vial_name,use_pipet):
+        """Locator position of the vial (pipetting position if use_pipet, else gripping position)."""
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         location_name = self.get_vial_info(vial_index,'location')
         location_index = self.get_vial_info(vial_index,'location_index')
@@ -4559,6 +4646,8 @@ class North_Robot(North_Base):
 
     #Translate the location names and indexes to hard-coded locations for pipets or gripping vials
     def get_location(self, use_pipet, location_name, location_index):
+        """Locator position for location_name / location_index (vial_positions.yaml): the pipetting
+        position if use_pipet, else the gripping position. Pauses with an error for an unknown location or index."""
         # Get the appropriate position source from YAML configuration
         param_key = 'pipetting_positions_in_Locator' if use_pipet else 'vial_positions_in_Locator'
         position_source = self.get_config_parameter('vial_positions', location_name, param_key, error_on_missing=True)
