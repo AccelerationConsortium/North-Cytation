@@ -429,3 +429,30 @@ def test_vortex_refuses_bad_time_or_speed_before_moving(robot, time_s, speed, me
         robot.vortex_vial('stock', time_s, vortex_speed=speed)
     robot.grab_vial.assert_not_called()
     robot.c9.move_axis.assert_not_called()
+
+
+# ---- pipet_from_wellplate / mix_well_in_wellplate: volume and repeats checked before moving ----
+
+@pytest.mark.parametrize('volume', [0, -0.1, float('nan'), 'a', None])
+@pytest.mark.parametrize('aspirate', [True, False])
+def test_pipet_from_wellplate_refuses_bad_volume_before_moving(robot, volume, aspirate):
+    robot._resolve_pipetting_plate = MagicMock()
+    with pytest.raises(ValueError, match='refused before moving: volume must be > 0 mL'):
+        robot.pipet_from_wellplate(0, volume, aspirate=aspirate)
+    robot._resolve_pipetting_plate.assert_not_called()
+
+
+def test_mix_well_runs_the_same_cycles(robot):
+    robot.pipet_from_wellplate = MagicMock()
+    robot.mix_well_in_wellplate(4, 0.1, repeats=2, well_plate_type='quartz')
+    aspirates = [c.kwargs.get('aspirate', True) for c in robot.pipet_from_wellplate.call_args_list]
+    assert aspirates == [True, False, True, False]
+    assert [c.kwargs['move_to_aspirate'] for c in robot.pipet_from_wellplate.call_args_list[1:]] == [False] * 3
+
+
+@pytest.mark.parametrize('volume, repeats', [(0, 2), (float('nan'), 2), (0.1, 0), (0.1, 1.5), (0.1, 'x')])
+def test_mix_well_refuses_bad_inputs_before_moving(robot, volume, repeats):
+    robot.pipet_from_wellplate = MagicMock()
+    with pytest.raises(ValueError, match='Mix refused before moving'):
+        robot.mix_well_in_wellplate(4, volume, repeats=repeats)
+    robot.pipet_from_wellplate.assert_not_called()

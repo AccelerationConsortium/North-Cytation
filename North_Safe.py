@@ -2788,7 +2788,16 @@ class North_Robot(North_Base):
             aspirate (bool): True for aspirate, False for dispense (default: True)
             move_to_aspirate (bool): Whether to move to location (default: True)
             well_plate_type (str): Type of well plate (default: "96 WELL PLATE")
+
+        volume must be a number > 0 mL (ValueError before moving).
         """
+        try:
+            positive = float(volume) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Wellplate {'aspirate' if aspirate else 'dispense'} refused before moving: "
+                             f"volume must be > 0 mL, got {volume!r}")
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, [wp_index])
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(volume, liquid, parameters)
@@ -2850,6 +2859,17 @@ class North_Robot(North_Base):
         self.save_robot_status()  # keeps the tip's tracked contents across a restart
 
     #Mix the well
+    def _check_mix_inputs(self, volume, repeats):
+        """ValueError before moving unless volume is > 0 mL and repeats a whole number >= 1; returns int(repeats)."""
+        try:
+            ok = float(volume) > 0 and float(repeats) >= 1 and float(repeats) == int(repeats)
+        except (TypeError, ValueError, OverflowError):
+            ok = False
+        if not ok:  # also refuses NaN
+            raise ValueError(f"Mix refused before moving: need volume > 0 mL and a whole number of repeats >= 1, "
+                             f"got volume={volume!r}, repeats={repeats!r}")
+        return int(repeats)
+
     def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type=None, parameters=None, liquid=None):
         """
         Mix a well in a wellplate by aspirating and dispensing repeatedly.
@@ -2861,7 +2881,10 @@ class North_Robot(North_Base):
             well_plate_type: Type of well plate (default: "96 WELL PLATE")
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
             liquid (str, optional): Liquid type for calibrated parameter optimization
+
+        volume must be > 0 mL and repeats a whole number >= 1 (ValueError before moving).
         """
+        repeats = self._check_mix_inputs(volume, repeats)
         self.logger.info(f"Mixing well {wp_index} in well plate of type {well_plate_type} with volume {volume:.3f} mL for {repeats} repeats")
         self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
         self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, aspirate=False, move_to_aspirate=False, well_plate_type=well_plate_type)
@@ -2889,14 +2912,7 @@ class North_Robot(North_Base):
         Refused before moving (ValueError): volume not > 0, or repeats not a whole number >= 1.
         State after: tip still attached (empty); vial open where it was mixed (may be the clamp).
         """
-        try:
-            ok = float(volume) > 0 and float(repeats) >= 1 and float(repeats) == int(repeats)
-        except (TypeError, ValueError, OverflowError):
-            ok = False
-        if not ok:  # also refuses NaN
-            raise ValueError(f"Mix refused before moving: need volume > 0 mL and a whole number of repeats >= 1, "
-                             f"got volume={volume!r}, repeats={repeats!r}")
-        repeats = int(repeats)
+        repeats = self._check_mix_inputs(volume, repeats)
         self.logger.info(f"Mixing vial {vial_name} with volume {volume:.3f} mL for {repeats} repeats")
         vial_index = self.normalize_vial_index(vial_name)
         self.aspirate_from_vial(vial_index, volume, parameters=parameters, liquid=liquid, move_up=False, track_height=False)
