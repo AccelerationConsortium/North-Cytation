@@ -6,7 +6,7 @@ records live in `scheduler/state/deck_checks/` rather than `deck_check_<timestam
 ## Goal
 
 Before a live run, photograph the north deck, read it with the Labaware service
-([API](../platform/labaware_api.md), client `tools/labaware_client.py`) and check
+([API](../../platform/labaware_api.md), client `tools/labaware_client.py`) and check
 that every vial the queue's vial files expect is physically there with the right
 cap, and nothing unexpected is. Flag differences, suggest fixes, and keep a record
 of every check, especially mismatches.

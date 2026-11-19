@@ -426,7 +426,7 @@ class Lash_E:
         if tracker is not None:
             experiment_run_logger.record_output_folder(tracker, output_folder)
 
-    # ---- Module state readout (see docs/plans/module_state_readout.md) ----
+    # ---- Module state readout (see docs/plans/archive/module_state_readout.md) ----
 
     MODULE_STATE_SETTINGS_FILE = "robot_state/robot_hardware.yaml"
     # Resources whose state is not saved anywhere yet; reported as unknown placeholders

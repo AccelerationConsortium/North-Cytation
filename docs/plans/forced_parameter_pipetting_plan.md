@@ -265,3 +265,23 @@ and Slack at start, never a block or `input()` prompt.
    `param_set_id`?
 3. Does "conditioning" need to be configurable per liquid (cycles, volume,
    parameters) in `liquids.yaml`, or keep the calibration's fixed routine?
+
+## Implementation notes (current syntax, checked 2026-11-18)
+
+`robot` = `lash_e.nr_robot`. Volumes are mL (convert from the file's uL). No flow fits this
+workflow, so it uses unit operations directly.
+
+| Step | Call |
+|---|---|
+| Parameters | `PipettingParameters(aspirate_speed=..., dispense_speed=..., retract_speed=..., blowout_speed=..., aspirate_wait_time=..., dispense_wait_time=..., post_retract_wait_time=..., overaspirate_vol=..., pre_asp_air_vol=..., post_asp_air_vol=..., blowout_vol=..., asp_disp_cycles=...)` (`pipetting_data/pipetting_parameters.py`). Set every field: `blowout_speed` defaults to `None` |
+| Tip choice + echo check | `params_used, tip = robot.resolve_pipetting_setup(volume_mL, None, p)`; pass `tip` as `specified_tip` from then on; compare `params_used` with `p` |
+| Vial to clamp | `robot.move_vial_to_location(vial, "clamp", 0)`, `robot.uncap_clamp_vial()`; at the end `robot.recap_clamp_vial()`, `robot.return_vial_home(vial)` |
+| Tips | `robot.get_pipet(tip)`, `robot.remove_pipet()` |
+| Conditioning | `robot.condition_tip(vial, volume_per_cycle_mL=..., cycles=4, specified_tip=tip)`. **This now exists in North_Safe**, so the "shared helper" step in this plan is done |
+| Measure | `robot.aspirate_from_vial(vial, v, parameters=p, liquid=None, specified_tip=tip)` then `robot.dispense_into_vial(vial, v, parameters=p, liquid=None, measure_weight=True, continuous_mass_monitoring=True, save_mass_data=True, record_measurement=False)`; returns `(mass_g, stability_info)` |
+| Liquid info | `liquid_registry.get_liquid(name)` gives `density` and `refill_pipets` (the flows use `condition_tip`) |
+| Stop / crash | `cleanup_after_keyboard_interrupt(lash_e)` |
+| Output folder | `lash_e.save_run_info(output_dir)` |
+
+- `liquid=None` keeps calibration out, but sample tracking then has no ±. That's acceptable for this data-gathering run.
+- Check whether `dispense_into_vial` still turns weighing on by itself when a density is known (`routine_only` near `North_Safe.py:2937`).

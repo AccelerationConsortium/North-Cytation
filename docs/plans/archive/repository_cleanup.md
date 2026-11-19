@@ -137,6 +137,6 @@ delays are tolerable. No implementation is needed until this is explicitly resum
 - Prefer deletion of confirmed obsolete code over creating new archive clutter;
   preserve uncertain scientific evidence until explicitly approved otherwise.
 
-The [organization assessment](../repository_organization.md) contains the detailed
+The [organization assessment](../../repository_organization.md) contains the detailed
 retention decisions, historical paths and validation results. This roadmap is
 the short future-facing summary, not another copy of that audit.

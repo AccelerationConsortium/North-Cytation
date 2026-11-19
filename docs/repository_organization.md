@@ -3,7 +3,7 @@
 Date: 2026-11-02
 
 Current state and remaining priorities are summarized in
-[the cleanup roadmap](plans/repository_cleanup.md). The status-folder rename
+[the cleanup roadmap](plans/archive/repository_cleanup.md). The status-folder rename
 is deferred; this assessment's older proposals are historical, not authorization
 for additional changes.
 

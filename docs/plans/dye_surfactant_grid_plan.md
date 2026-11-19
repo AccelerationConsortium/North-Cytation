@@ -115,5 +115,27 @@ Combines the useful parts of `workflows/surfactant_grid_ailsa.py` and
 
 ## Next
 
-- Fix the vial-to-vial / clamp issues in North_Safe.
+- Done 2026-11-18: staging fix in North_Safe (risk 4 above; see Staging rules). Check with a
+  simulation of a closed -> closed substock prep (no "Would pause" lines in the log).
+- Answer the open decisions above.
 - Then: `_CONFIG_KEYS` / `_CONFIG_DOCS` list and `build_plan` spec.
+
+## Implementation notes (current syntax, checked 2026-11-18)
+
+`lash_e` = `Lash_E` (`master_usdl_coordinator.py`); `robot` = `lash_e.nr_robot` (`North_Safe.py`).
+Volumes are mL.
+
+| Step | Call |
+|---|---|
+| Output folder | `lash_e.save_run_info(output_dir)` |
+| New plate | `lash_e.grab_new_wellplate()` |
+| Top up water / surfactant | `robot.refill_vial(vial, target_volume_mL, reservoir=1)` or `source_vial="surfactant_refill", liquid="SDS"`; returns mL added |
+| Substock | `robot.create_substock(dest, [{"volume_mL": v, "reservoir": 1}, {"volume_mL": v, "source_vial": "SDS_stock", "liquid": "SDS"}], vortex_time=10)` |
+| Dispense (per component in `DISPENSE_ORDER`) | `robot.dispense_from_vials_into_wellplate(df, liquid={vial: liquid})`; `df`: columns = vial names, index = well index, values = mL. It checks the plan before moving and does staging, conditioning, tip grouping and returning vials home |
+| Read | `lash_e.measure_wellplate([fluor_protocol, abs_protocol], wells, plate_type=..., use_lid=...)` |
+| Timepoints | `mark_clock_start(lash_e.logger, clock_id)` / `mark_wait_until(lash_e.logger, clock_id, seconds)` from `workflows/helpers/_planning_markers.py`. These only log for planning; the workflow still sleeps (`fluorescence_calibration_workflow.py:826-832` pattern) |
+| End | `lash_e.discard_used_wellplate()` |
+| Stop / crash | `cleanup_after_keyboard_interrupt(lash_e)` (`workflows/helpers/interrupt_cleanup.py`) |
+
+- Stock concentrations: `sample_tracking.load_stocks()` reads `status/stocks.csv` (the file doesn't exist yet). It's looked up from the vial's `stock_id`.
+- No direct calls to `stage_vials`, `condition_tip` or `dispense_into_wellplate`: the flows cover them.

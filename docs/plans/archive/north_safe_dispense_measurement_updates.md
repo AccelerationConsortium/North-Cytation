@@ -14,15 +14,15 @@ deferred to the separate alignment plan. No hardware run has been performed.
 Current weighing control flow and error handling are preserved. New exception
 handling is confined to recording metadata and persistence helpers; thread-start
 or analysis errors retain their existing behavior. See the local
-[reduced patch review](../../output/recording_patch_review/REVIEW.md) for the exact
+[reduced patch review](../../../output/recording_patch_review/REVIEW.md) for the exact
 recording-only controller diff and verification details.
 
 The implemented scope is the existing pipette weighing path plus optional recording
 to the unified CSV, with existing mass calculations and return contracts preserved.
 The broader reservoir proposals below are design history, not implemented behavior.
-See [the recording documentation](../platform/dispense_recording.md) for current usage.
+See [the recording documentation](../../platform/dispense_recording.md) for current usage.
 
-Reservoir follow-up: [Align reservoir transfers and calibration with pipetting](reservoir_calibration_alignment.md)
+Reservoir follow-up: [Align reservoir transfers and calibration with pipetting](../reservoir_calibration_alignment.md)
 now owns the deeper changes to reservoir splitting, per-stroke calibration,
 compensation, measurement timing, and aggregation. Reservoir proposals below remain
 subject to that separate review; do not implement those execution changes as an

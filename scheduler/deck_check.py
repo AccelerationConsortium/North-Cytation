@@ -1,7 +1,7 @@
 """Pre-run deck check: photograph the north deck, read it with Labaware, compare
 with the queue's vial files. No Qt here, so it can be tested and reused.
 
-Plan: docs/plans/scheduler_deck_check_plan.md. Never raises for camera or server
+Plan: docs/plans/archive/scheduler_deck_check_plan.md. Never raises for camera or server
 problems; those become a ``comms_failure`` outcome the operator can continue past.
 """
 import csv

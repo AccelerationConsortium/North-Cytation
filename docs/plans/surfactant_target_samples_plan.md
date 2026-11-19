@@ -231,3 +231,21 @@ Plus a simulated run of the workflow on a small target file.
 4. **Infeasible samples**: drop + report and run the rest (plan), or stop and ask?
 5. **Plate/well**: plate type, well volume, controls, and replicate layout
    (randomised or not) — same defaults as multidim?
+
+## Implementation notes (current syntax, checked 2026-11-18)
+
+`robot` = `lash_e.nr_robot`. Volumes are mL. Making substocks and samples is now mostly
+flow calls. Most of the work is the planner (pure code).
+
+| Step | Call |
+|---|---|
+| Inventory | `ContentsStore().get(container_id)` (`experiment_tracking/sample_contents.py`) for what a vial holds; `sample_tracking.load_stocks()` for stock concentrations. The sample tracking that now exists may serve as the "sample metadata system" this plan waits for. **Decide this first.** |
+| Comparing contents | `sample_contents.same_contents(a, b)` |
+| New stock records | `sample_tracking.add_stock(components)` / `next_stock_id(material, stocks)` |
+| Refills | `robot.refill_vial(vial, target_volume_mL, reservoir=... or source_vial=..., liquid=...)` (you must give the source; there's no automatic choice yet) |
+| Make substock | `robot.create_substock(dest, [{"volume_mL", "reservoir"/"source_vial", "liquid"}], vortex_time=...)`; contents are recorded automatically in live runs |
+| Make samples | `robot.dispense_from_vials_into_wellplate(df, liquid={vial: liquid})` per component; replaces `execute_dispensing_nd` |
+| Plate / reads | `lash_e.grab_new_wellplate()`, `lash_e.measure_wellplate(protocols, wells)`, `lash_e.discard_used_wellplate()` |
+| Output folder | `lash_e.save_run_info(output_dir)` |
+
+- Refilling in chunks (Ailsa style) isn't in a flow. Simplest: check volumes before each `dispense_from_vials_into_wellplate` call, then `refill_vial`. The flow already refuses a vial that doesn't hold enough.

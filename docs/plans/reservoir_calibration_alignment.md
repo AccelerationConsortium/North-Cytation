@@ -14,7 +14,7 @@ dispenses, even when requested through one method call.
 Use the pipetting approach as the reference for planning and calibration. Keep
 reservoir-specific valve and pump behavior. This document plans a deeper reservoir
 revision; it is separate from the measurement-only integration in
-[the routine recording plan](north_safe_dispense_measurement_updates.md).
+[the routine recording plan](archive/north_safe_dispense_measurement_updates.md).
 Creating this plan does not implement changes or authorize hardware runs.
 
 ## Multiple liquids, pump positions, and capacities
