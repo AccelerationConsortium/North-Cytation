@@ -3505,9 +3505,29 @@ class North_Robot(North_Base):
 
     #Prime the line from the reservoir to the vial. In theory this could happen automatically. Probably good to do it if you are using a reservoir. 
     def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=0.5):
+        """Prime the reservoir line by dispensing volume (mL, > 0; default 0.5) into overflow_vial
+        (dispense_into_vial_from_reservoir). Refused before moving like that method."""
+        self._check_reservoir_inputs(reservoir_index, volume)
         overflow_vial = self.normalize_vial_index(overflow_vial) #Convert to int if needed
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
+
+    def _reservoir_carousel_position(self, reservoir_index):
+        """(carousel_angle, carousel_height) for the reservoir from syringe_pumps.yaml; None for a missing one."""
+        return (self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False),
+                self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False))
+
+    def _check_reservoir_inputs(self, reservoir_index, volume):
+        """ValueError before moving unless volume is a number > 0 mL and the reservoir has carousel settings."""
+        try:
+            positive = float(volume) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Reservoir dispense refused before moving: volume must be > 0 mL, got {volume!r}")
+        if None in self._reservoir_carousel_position(reservoir_index):
+            raise ValueError(f"Reservoir dispense refused before moving: reservoir {reservoir_index!r} has no "
+                             f"carousel_angle and carousel_height in syringe_pumps.yaml (pump 0 is the pipetting pump)")
 
     def dispense_from_reservoir_into_clamp_vial(self, reservoir_index, vial_name, volume, reservoir_params=None,
                                                 liquid=None, record_scale=False):
@@ -3524,10 +3544,12 @@ class North_Robot(North_Base):
             liquid (str, optional): liquids.yaml name (recorded with the transfer)
             record_scale (bool): record the balance around the pump strokes
 
-        Refused before moving (ValueError): vial not in the clamp, not open, or without room.
+        Refused before moving (ValueError): volume not > 0 mL, a reservoir without carousel settings in
+        syringe_pumps.yaml, or a vial not in the clamp, not open, or without room.
         Returns the scale readings (empty unless recorded); analyze them with
         pipetting_data/mass_analysis.py.
         """
+        self._check_reservoir_inputs(reservoir_index, volume)
         vial_index = self.normalize_vial_index(vial_name)
         reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
         if self.get_vial_info(vial_index, 'location') != 'clamp':
@@ -3548,14 +3570,9 @@ class North_Robot(North_Base):
         """The liquid step of a reservoir dispense, with parameters resolved and the vial open in the clamp.
         Returns the scale readings."""
         #Step 2: move the carousel to reservoir position
-        carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
-        carousel_height = self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False)
-        
-        if carousel_angle is not None and carousel_height is not None:
-            self.c9.move_carousel(carousel_angle, carousel_height)
-        else:
-            self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
-            
+        carousel_angle, carousel_height = self._reservoir_carousel_position(reservoir_index)  # checked by callers
+        self.c9.move_carousel(carousel_angle, carousel_height)
+
         #Step 3: aspirate and dispense from the reservoir
         max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
 
@@ -3641,7 +3658,11 @@ class North_Robot(North_Base):
             measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
             continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
             save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+
+        Refused before moving (ValueError): volume not > 0 mL, or a reservoir without carousel_angle and
+        carousel_height in syringe_pumps.yaml (e.g. pump 0, the pipetting pump).
         """
+        self._check_reservoir_inputs(reservoir_index, volume)
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
         
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides

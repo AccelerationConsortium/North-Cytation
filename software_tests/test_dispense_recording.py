@@ -38,7 +38,8 @@ def robot(monkeypatch, tmp_path):
     robot._get_optimized_parameters = lambda volume, liquid, params: params or PipettingParameters()
     robot._get_optimized_reservoir_parameters = lambda volume, liquid, params=None: params or ReservoirParameters()
     robot._ensure_vial_accessible_for_pipetting = MagicMock(return_value=True)
-    robot.get_config_parameter = lambda config, key, field, **kw: 2.5 if config == 'pumps' and field == 'volume' else None
+    pump = {'volume': 2.5, 'carousel_angle': 45, 'carousel_height': 70}
+    robot.get_config_parameter = lambda config, key, field, **kw: pump.get(field) if config == 'pumps' else None
     robot.get_vial_location = MagicMock(return_value=[0, 0, 0, 0])
     robot.get_height_at_location = MagicMock(return_value=0)
     robot.adjust_height_based_on_pipet_held = lambda height: height
@@ -565,3 +566,29 @@ def test_reservoir_unit_op_refuses_vial_not_ready_or_overfill(robot):
         robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 8.5)
     robot.c9.dispense_ml.assert_not_called()
     robot.c9.move_carousel.assert_not_called()
+
+
+@pytest.mark.parametrize('volume', [0, -1., float('nan'), 'a', None])
+def test_reservoir_refuses_bad_volume_before_moving(robot, volume):
+    robot.move_vial_to_location = MagicMock()
+    for call_it in [lambda: robot.dispense_into_vial_from_reservoir(1, 'dest', volume),
+                    lambda: robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', volume),
+                    lambda: robot.prime_reservoir_line(1, 'dest', volume)]:
+        with pytest.raises(ValueError, match='refused before moving: volume must be > 0 mL'):
+            call_it()
+    robot.move_vial_to_location.assert_not_called()
+    robot.c9.move_carousel.assert_not_called()
+    robot.c9.dispense_ml.assert_not_called()
+
+
+def test_reservoir_refuses_pump_without_carousel_settings_before_moving(robot):
+    robot.get_config_parameter = lambda config, key, field, **kw: (
+        {0: {'volume': 1.0, 'carousel_angle': None, 'carousel_height': None}}.get(key, {}).get(field)
+        if config == 'pumps' else None)
+    for reservoir in [0, 5]:
+        with pytest.raises(ValueError, match=f'reservoir {reservoir} has no carousel_angle'):
+            robot.dispense_into_vial_from_reservoir(reservoir, 'dest', 1.)
+        with pytest.raises(ValueError, match=f'reservoir {reservoir} has no carousel_angle'):
+            robot.dispense_from_reservoir_into_clamp_vial(reservoir, 'dest', 1.)
+    robot.c9.move_carousel.assert_not_called()
+    robot.c9.dispense_ml.assert_not_called()
