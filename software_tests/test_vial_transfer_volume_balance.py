@@ -29,6 +29,7 @@ def make_robot():
     robot.plan_vial_transfer = lambda volume, *args: (volume, 1, params, 'small_tip')
     robot._ensure_vial_accessible_for_pipetting = Mock(return_value=True)
     robot.is_vial_pipetable = Mock(return_value=True)
+    robot._needs_staging = lambda *args: False  # Staging is tested in test_new_flows_and_unit_ops.py
     for method in ('get_tip_if_needed', 'check_if_aspiration_volume_unacceptable',
                    'adjust_pump_speed', 'save_robot_status', 'pipet_aspirate',
                    'pipet_dispense'):

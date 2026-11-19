@@ -27,7 +27,8 @@ vial types. Other file formats are not converted by this workflow.
 
 Only capped `8_mL` vials participate. Other vials remain fixed and block their
 occupied positions. Random destinations include all available positions in
-`main_8mL_rack`, `heater`, `photoreactor_array`, and `clamp`. They must be present
+`main_8mL_rack`, `heater`, `clamp` and `clamp_2` (`photoreactor_array` is left out:
+its taught position is off). They must be present
 and movable in the robot's configuration. Equipment is used only for placement;
 the workflow does not enable heating, illumination or stirring. Off-rack counts
 include participating vials only. If fewer vials are available than the move

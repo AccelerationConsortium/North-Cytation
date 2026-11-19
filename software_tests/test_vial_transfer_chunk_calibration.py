@@ -56,6 +56,9 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
             North_Robot, 'dispense_into_vial', autospec=True, return_value=None))
         self.stack.enter_context(patch.object(
             North_Robot, 'get_vial_in_location', autospec=True, return_value=None))
+        # Staging is tested in test_new_flows_and_unit_ops.py; these tests cover chunking only
+        self.stack.enter_context(patch.object(
+            North_Robot, '_needs_staging', autospec=True, return_value=False))
 
     def transfer(self, volume, **kwargs):
         return self.robot.dispense_from_vial_into_vial(

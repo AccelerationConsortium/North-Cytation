@@ -5,7 +5,8 @@ This helper is shared by the vial-capture workflow and its software checks.
 import random
 
 RACK = "main_8mL_rack"
-DESTINATIONS = (RACK, "heater", "photoreactor_array", "clamp")
+# photoreactor_array left out on purpose: its taught position is off (2026-11-18).
+DESTINATIONS = (RACK, "heater", "clamp", "clamp_2")
 
 
 def positions(frame):

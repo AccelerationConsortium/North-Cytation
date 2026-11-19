@@ -2210,8 +2210,8 @@ class North_Robot(North_Base):
                 clamp_vial_index = self.get_vial_in_location('clamp', 0)
                 vial_index = self.get_vial_index_from_name(vial_name)
                 if clamp_vial_index is not None and clamp_vial_index != vial_index:
-                    self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
-                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
+                    self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, moving it out first")
+                    self._return_from_clamp(clamp_vial_index, move_speed=move_speed)
                 
                 # Move vial to clamp and uncap only if it has a closed cap
                 self.move_vial_to_location(vial_num, location='clamp', location_index=0, move_speed=move_speed)
@@ -2676,6 +2676,18 @@ class North_Robot(North_Base):
             self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit transfer limits")
         volume = sub_volume
 
+        # Stage before a tip is picked up: closed vials to rack 0-5, so they can swap through the clamp
+        # with a tip held (a staged vial leaving the clamp goes back to its staged spot); an open
+        # small-tip source to a small-tip-safe position.
+        to_stage = [vial for vial, uses_small_tip in ((source_vial_name, resolved_tip == 'small_tip'),
+                                                      (dest_vial_name, False))
+                    if self._needs_staging(vial, uses_small_tip)]
+        staged = {}
+        if to_stage:
+            if self.HELD_PIPET_TYPE is not None:
+                self.remove_pipet()
+            staged = self.stage_vials(to_stage)
+
         # Condition a fresh tip first if this liquid needs it (condition_tip in liquids.yaml)
         if liquid_conditions_tip(liquid) and self.HELD_PIPET_TYPE != resolved_tip:
             self.condition_tip(source_vial_index, volume_per_cycle_mL=volume, specified_tip=resolved_tip)
@@ -2732,6 +2744,8 @@ class North_Robot(North_Base):
                     # If vial is already capped, skip recapping
                     
                     self.return_vial_home(clamp_vial_index)  # Use default speed for returning vial
+                if staged and return_vial_home:
+                    self.return_staged_vials(staged.keys())
 
 
         return total_mass, stability_info
@@ -3435,19 +3449,20 @@ class North_Robot(North_Base):
         Flow: dispense from one or more vials into wellplate wells. Ends with no tip held and the vials home.
 
         Steps:
-            1. Stage vials if needed: vials that will use the small tip, are movable, and are not already
-               in a small-tip-safe position are moved to one (stage_vials). The vial that will be
-               emptiest after dispensing gets the safest position; ties go to the lowest starting volume.
+            1. Stage vials if needed, with no tip held (stage_vials): closed vials go to a position
+               safe to move with a tip (rack 0-5), since they are uncapped and used in the clamp;
+               open vials that will use the small tip go to a small-tip-safe position. The vial that
+               will be emptiest after dispensing goes first; ties go to the lowest starting volume.
             2. Condition the tip if the liquid has condition_tip: true in liquids.yaml, once per tip
                group, at that group's largest dose.
             3. Dispense with as few tip switches as possible: per vial, wells are grouped by resolved
                tip (smallest tip first, largest dose first within a group) and the tip is locked within
                a group. Each vial gets a fresh tip, because vials may hold different contents.
-            4. Remove the tip after each vial, and return staged and moved vials home.
+            4. Remove the tip after each vial and return that vial home.
 
-        Future option (now possible with the stored sample contents, not built): when several vials
-        hold the same solute in the same solvent, optionally reuse one tip across them, dispensing from
-        the most dilute to the most concentrated and conditioning only once. Off by default.
+        Future option (now possible with the stored sample contents, not built; not needed yet): when
+        several vials hold the same solute in the same solvent, optionally reuse one tip across them,
+        dispensing from the most dilute to the most concentrated and conditioning only once. Off by default.
 
         Checked before anything moves (ValueError naming the vial and well):
             - every volume is a number in mL, not missing and not negative (0 means skip that well);
@@ -3499,18 +3514,19 @@ class North_Robot(North_Base):
                 plans[vial_name] = [(tip, groups[tip]) for tip in
                                     sorted(groups, key=lambda tip: self.PIPET_TIPS[tip]['volume'])]
 
-        # 1. Stage vials that will use the small tip and are not already in a safe position
+        # 1. Stage (no tip held): closed vials and open small-tip vials that are not already in place.
+        #    The vial that will be emptiest after dispensing goes first (safest position).
         to_stage = []
         for vial_name, tip_groups in plans.items():
-            vial_index = self.normalize_vial_index(vial_name)
-            location = self.get_vial_info(vial_index, 'location')
-            location_index = int(self.get_vial_info(vial_index, 'location_index'))
             uses_small_tip = any(tip == 'small_tip' for tip, _ in tip_groups)
-            already_safe = location_index in self.get_small_tip_safe_indices(location)
-            if uses_small_tip and not already_safe and self.is_vial_movable(vial_index):
-                current = float(self.get_vial_info(vial_index, 'vial_volume'))
+            if self._needs_staging(vial_name, uses_small_tip):
+                current = float(self.get_vial_info(self.normalize_vial_index(vial_name), 'vial_volume'))
                 to_stage.append((current - vols_required[vial_name], current, vial_name))
-        staged = self.stage_vials([name for _, _, name in sorted(to_stage)]) if to_stage else {}
+        staged = {}
+        if to_stage:
+            if self.HELD_PIPET_TYPE is not None:
+                self.remove_pipet()
+            staged = self.stage_vials([name for _, _, name in sorted(to_stage)])
 
         for vial_name, tip_groups in plans.items():
             vial_liquid = liquids[vial_name]
@@ -3525,10 +3541,12 @@ class North_Robot(North_Base):
                                             liquid=vial_liquid, specified_tip=tip)
                     self.dispense_into_wellplate([well_idx], [volume], parameters=resolved_params, liquid=vial_liquid,
                                                  well_plate_type=well_plate_type)
-            # 4. Fresh tip for the next vial; return the vial home unless it was staged
+            # 4. Fresh tip for the next vial; return the vial home (frees the clamp and its staging spot)
             if self.HELD_PIPET_TYPE is not None:
                 self.remove_pipet()
-            if vial_name not in staged:
+            if vial_name in staged:
+                self.return_staged_vials([vial_name])
+            else:
                 self.return_vial_home(vial_name)
 
         self.return_staged_vials(staged.keys())
@@ -4249,33 +4267,77 @@ class North_Robot(North_Base):
                                     specified_tip=specified_tip)
             self.dispense_into_vial(vial_name, volume_per_cycle_mL, parameters=conditioning_params)
 
+    def get_pipet_safe_move_positions(self):
+        """Rack positions a vial can be moved from or to while a tip is held (rack 0-5),
+        safest first. Same rule as is_location_safe_for_vial_movement_with_pipet."""
+        rack = self._present_vial_locations().get('main_8mL_rack') or {}
+        return [('main_8mL_rack', index) for index in range(int(rack.get('rack_size') or 0))
+                if self.is_location_safe_for_vial_movement_with_pipet('main_8mL_rack', index)]
+
+    def _is_closed_vial(self, vial_index):
+        """A movable vial that must be uncapped in the clamp before pipetting."""
+        return self.is_vial_movable(vial_index) and not self.is_vial_pipetable(vial_index)
+
+    def _needs_staging(self, vial_name, uses_small_tip):
+        """True if stage_vials should move this vial before pipetting: a closed vial that is not
+        where it can be moved with a tip held, or an open small-tip vial not in a small-tip-safe position."""
+        if not self.is_vial_movable(vial_name):
+            return False
+        vial_index = self.normalize_vial_index(vial_name)
+        location = self.get_vial_info(vial_index, 'location')
+        location_index = int(self.get_vial_info(vial_index, 'location_index'))
+        if self._is_closed_vial(vial_name):
+            return not self.is_location_safe_for_vial_movement_with_pipet(location, location_index)
+        return uses_small_tip and location_index not in self.get_small_tip_safe_indices(location)
+
     def stage_vials(self, vial_names, safe_positions=None):
         """
-        Unit operation: move vials into small-tip-safe positions before small-volume pipetting.
-        Staging targets and their order come from small_tip_staging_rank in vial_positions.yaml.
+        Unit operation: move vials to staging positions before pipetting. Call it with no tip held.
         This is a deliberate state change; undo it with return_staged_vials().
 
-        Vials are placed in priority order: the first vial gets the safest free position.
-        Choosing the order (e.g. highest pull-out risk first) is left to the caller,
-        for example with workflows/helpers/vial_risk_analyzer.py.
+        Where a vial goes depends on its cap:
+            - closed: a rack position safe to move from with a tip held (rack 0-5). A closed vial is
+              uncapped and used in the clamp, and the tip is picked up before it moves there, so it
+              must start somewhere it can leave with a tip on.
+            - open: a small-tip-safe position (small_tip_staging_rank in vial_positions.yaml,
+              safest first), where it is pipetted in place.
+        Vials already in such a position stay put. Within each group, vials are placed in the order
+        given: the first gets the safest free position. Choosing the order (e.g. highest pull-out
+        risk first) is left to the caller, for example with workflows/helpers/vial_risk_analyzer.py.
+
+        The staged position is remembered: a staged vial leaving the clamp goes back there, not home.
 
         Args:
             vial_names (list): Vial names in priority order (highest priority first)
-            safe_positions (list, optional): (location, index) pairs, safest first.
-                Defaults to small_tip_staging_rank in vial_positions.yaml.
+            safe_positions (list, optional): (location, index) pairs, safest first, used for every
+                vial instead of the cap-based positions.
 
         Returns:
             dict: {vial_name: (location, index)} for each vial that was staged.
-                Vials that could not be staged (no free safe position) stay where they are.
+                Vials that could not be staged (no free position) stay where they are.
         """
-        positions = list(safe_positions if safe_positions is not None else self.get_small_tip_staging_positions())
+        if safe_positions is not None:
+            shared = list(safe_positions)
+            pools = {True: shared, False: shared}
+        else:
+            pools = {True: self.get_pipet_safe_move_positions(), False: self.get_small_tip_staging_positions()}
+        remembered = getattr(self, 'STAGED_POSITIONS', None)
+        if remembered is None:
+            remembered = self.STAGED_POSITIONS = {}
         staged = {}
         for vial_name in vial_names:
             vial_index = self.normalize_vial_index(vial_name)
+            closed = self._is_closed_vial(vial_name)
+            positions = pools[closed]
             current = (self.get_vial_info(vial_index, 'location'), self.get_vial_info(vial_index, 'location_index'))
-            if current in positions:  # Already in a safe position
-                positions.remove(current)
+            already_safe = current in positions or (
+                closed and safe_positions is None
+                and self.is_location_safe_for_vial_movement_with_pipet(current[0], current[1]))
+            if already_safe:
+                if current in positions:
+                    positions.remove(current)
                 staged[vial_name] = current
+                remembered[vial_index] = current
                 continue
             target = None
             while positions:
@@ -4285,11 +4347,13 @@ class North_Robot(North_Base):
                     target = candidate
                     break
             if target is None:
-                self.logger.warning(f"No free small-tip-safe position for {vial_name}; leaving it in place")
+                kind = "position safe to move with a tip" if closed else "small-tip-safe position"
+                self.logger.warning(f"No free {kind} for {vial_name}; leaving it in place")
                 continue
             self.logger.info(f"Staging {vial_name} -> {target[0]}[{target[1]}]")
             self.move_vial_to_location(vial_index, target[0], target[1])
             staged[vial_name] = target
+            remembered[vial_index] = target
         return staged
 
     def return_staged_vials(self, vial_names):
@@ -4300,12 +4364,25 @@ class North_Robot(North_Base):
         Args:
             vial_names (iterable): Vial names to return (e.g. the keys returned by stage_vials)
         """
+        remembered = getattr(self, 'STAGED_POSITIONS', None) or {}
         for vial_name in vial_names:
             vial_index = self.normalize_vial_index(vial_name)
+            remembered.pop(vial_index, None)
             at_home = (self.get_vial_info(vial_index, 'location') == self.get_vial_info(vial_index, 'home_location')
                        and self.get_vial_info(vial_index, 'location_index') == self.get_vial_info(vial_index, 'home_location_index'))
             if not at_home:
                 self.return_vial_home(vial_index)
+
+    def _return_from_clamp(self, vial_index, move_speed=None):
+        """Move a vial out of the clamp: back to its staged position if stage_vials placed it
+        (so it can be moved again with a tip held), otherwise home."""
+        staged_at = (getattr(self, 'STAGED_POSITIONS', None) or {}).get(vial_index)
+        if staged_at is None:
+            self.return_vial_home(vial_index, move_speed=move_speed)
+            return
+        if self.GRIPPER_STATUS == "Cap":
+            self.recap_clamp_vial(move_speed=move_speed)
+        self.move_vial_to_location(vial_index, staged_at[0], staged_at[1], move_speed=move_speed)
 
     def return_all_vials_home(self):
         """

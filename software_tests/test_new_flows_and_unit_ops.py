@@ -12,10 +12,10 @@ def test_small_tip_positions_come_from_vial_positions_yaml():
     robot = object.__new__(North_Robot)
     robot.VIAL_POSITIONS = yaml.safe_load(open('robot_state/vial_positions.yaml', encoding='utf-8'))
     assert robot.get_small_tip_staging_positions() == [
-        ('clamp', 0), ('main_8mL_rack', 47), ('main_8mL_rack', 46), ('main_8mL_rack', 45),
-        ('clamp_2', 0), ('main_8mL_rack', 44), ('main_8mL_rack', 43)]
+        ('main_8mL_rack', 47), ('main_8mL_rack', 46), ('main_8mL_rack', 45),
+        ('heater', 2), ('heater', 5), ('heater', 8), ('main_8mL_rack', 44), ('main_8mL_rack', 43)]
     assert robot.get_small_tip_safe_indices('main_8mL_rack') == [43, 44, 45, 46, 47]
-    assert robot.get_small_tip_safe_indices('heater') == [2]
+    assert robot.get_small_tip_safe_indices('heater') == [2, 5, 8]
     assert robot.get_small_tip_safe_indices('large_vial_rack') == []
 
 
@@ -26,13 +26,14 @@ def robot():
     robot.logger = logging.getLogger(__name__)
     robot.simulate = True
     robot.c9 = MagicMock()
+    open_8mL = dict(capped=True, cap_type='open', vial_type='8_mL')
     robot.vials = {
         'stock': dict(vial_name='stock', vial_volume=6.0, location='main_8mL_rack', location_index=5,
-                      home_location='main_8mL_rack', home_location_index=5),
+                      home_location='main_8mL_rack', home_location_index=5, **open_8mL),
         'source': dict(vial_volume=3.0, location='main_8mL_rack', location_index=6,
-                       home_location='main_8mL_rack', home_location_index=6),
+                       home_location='main_8mL_rack', home_location_index=6, **open_8mL),
         'dest': dict(vial_volume=0.0, location='main_8mL_rack', location_index=7,
-                     home_location='main_8mL_rack', home_location_index=7),
+                     home_location='main_8mL_rack', home_location_index=7, **open_8mL),
     }
     robot.normalize_vial_index = lambda name: name
     robot.get_vial_info = lambda vial, field: robot.vials[vial][field]
@@ -144,10 +145,13 @@ def plate_robot(robot):
     robot.resolve_pipetting_setup = MagicMock(
         side_effect=lambda volume, liquid, params: (f'params_{volume}', 'small_tip' if volume < 0.05 else 'large_tip'))
     robot.is_vial_movable = MagicMock(return_value=True)
+    robot.is_vial_pipetable = MagicMock(return_value=True)  # Open vials unless a test says otherwise
     robot.dispense_into_wellplate = MagicMock()
     robot.remove_pipet = MagicMock()
     robot.condition_tip = MagicMock()
     robot.pause_after_error = MagicMock(side_effect=AssertionError('paused'))
+    robot.return_vial_home.side_effect = lambda vial, **kw: robot.vials[vial].update(
+        location=robot.vials[vial]['home_location'], location_index=robot.vials[vial]['home_location_index'])
     return robot
 
 
@@ -158,7 +162,7 @@ def test_wellplate_flow_groups_by_tip_and_uses_fresh_tip_per_vial(plate_robot):
     # stock: small tip group first (largest dose first), then large tip group; then source
     assert doses == [('stock', 0.02, 'small_tip'), ('stock', 0.01, 'small_tip'),
                      ('stock', 0.3, 'large_tip'), ('stock', 0.2, 'large_tip'), ('source', 0.1, 'large_tip')]
-    assert plate_robot.remove_pipet.call_count == 2  # Fresh tip for each vial
+    assert plate_robot.remove_pipet.call_count == 3  # Held tip dropped before staging, then one per vial
     plate_robot.condition_tip.assert_not_called()   # water has condition_tip: false
 
 
@@ -171,11 +175,11 @@ def test_wellplate_flow_stages_emptiest_small_tip_vial_first_and_returns_home(pl
         plate_robot.vials[vial].update(location=location, location_index=index)
     plate_robot.move_vial_to_location.side_effect = move
     plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
-    # Only small-tip vials are staged; the emptiest-after-dispensing one gets the safest position (clamp)
+    # Only small-tip vials are staged; the emptiest-after-dispensing one gets the safest position
     assert plate_robot.move_vial_to_location.call_args_list == [
-        call('source', 'clamp', 0), call('stock', 'main_8mL_rack', 47)]
-    # Unstaged vial goes home after its dispense; staged vials are returned at the end
-    assert [c.args[0] for c in plate_robot.return_vial_home.call_args_list] == ['dest', 'source', 'stock']
+        call('source', 'main_8mL_rack', 47), call('stock', 'main_8mL_rack', 46)]
+    # Every vial goes home right after its own dispense, in plan order
+    assert [c.args[0] for c in plate_robot.return_vial_home.call_args_list] == ['stock', 'source', 'dest']
 
 
 def test_wellplate_flow_skips_staging_for_vials_already_safe_or_immovable(plate_robot):
@@ -184,6 +188,94 @@ def test_wellplate_flow_skips_staging_for_vials_already_safe_or_immovable(plate_
     plate = pd.DataFrame({'stock': [0.02], 'source': [0.03]}, index=[0])
     plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
     plate_robot.move_vial_to_location.assert_not_called()
+
+
+def test_wellplate_flow_stages_closed_vial_to_rack_0_5_and_open_vial_to_small_tip_spot(plate_robot):
+    # 'stock' is closed (any tip) -> rack 0-5; 'source' is open with the small tip -> 47. No tip held.
+    plate_robot.is_vial_pipetable = MagicMock(side_effect=lambda vial: vial != 'stock')
+    plate_robot.vials['stock']['location_index'] = 30
+    events = []
+    def move(vial, location, index):
+        events.append((vial, location, index, plate_robot.HELD_PIPET_TYPE))
+        plate_robot.vials[vial].update(location=location, location_index=index)
+    plate_robot.move_vial_to_location.side_effect = move
+    plate_robot.remove_pipet.side_effect = lambda: setattr(plate_robot, 'HELD_PIPET_TYPE', None)
+    plate = pd.DataFrame({'stock': [0.2], 'source': [0.03]}, index=[0])
+    plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
+    assert sorted(events) == [('source', 'main_8mL_rack', 47, None), ('stock', 'main_8mL_rack', 0, None)]
+    assert [c.args[0] for c in plate_robot.return_vial_home.call_args_list] == ['stock', 'source']
+    assert plate_robot.STAGED_POSITIONS == {}  # Cleared once the vials are home
+
+
+def test_wellplate_flow_leaves_closed_vial_in_rack_0_5_where_it_is(plate_robot):
+    plate_robot.is_vial_pipetable = MagicMock(return_value=False)  # stock is closed, at rack 5
+    plate = pd.DataFrame({'stock': [0.3]}, index=[0])
+    plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
+    plate_robot.move_vial_to_location.assert_not_called()
+
+
+# ---- stage_vials memory and the clamp swap ----
+
+def test_staged_vial_leaving_clamp_goes_back_to_its_staged_spot(robot):
+    robot.STAGED_POSITIONS = {'source': ('main_8mL_rack', 2)}
+    robot.GRIPPER_STATUS = 'Cap'
+    robot._return_from_clamp('source')
+    robot.recap_clamp_vial.assert_called_once()
+    robot.move_vial_to_location.assert_called_once_with('source', 'main_8mL_rack', 2, move_speed=None)
+    robot.return_vial_home.assert_not_called()
+
+
+def test_unstaged_vial_leaving_clamp_goes_home(robot):
+    robot._return_from_clamp('dest')
+    robot.return_vial_home.assert_called_once_with('dest', move_speed=None)
+
+
+def test_pipet_safe_move_positions_are_rack_0_to_5(robot):
+    assert robot.get_pipet_safe_move_positions() == [('main_8mL_rack', i) for i in range(6)]
+
+
+# ---- dispense_from_vial_into_vial (flow): staging ----
+
+@pytest.fixture
+def v2v_robot(robot):
+    del robot.dispense_from_vial_into_vial  # Use the real flow
+    robot.HELD_PIPET_TYPE = None
+    robot.plan_vial_transfer = MagicMock(return_value=(0.5, 1, 'params', 'large_tip'))
+    robot.dispense_into_vial = MagicMock(return_value=(0.0, None))
+    robot.remove_pipet = MagicMock()
+    def move(vial, location, index, **kwargs):
+        robot.vials[vial].update(location=location, location_index=index)
+    robot.move_vial_to_location.side_effect = move
+    robot.return_vial_home.side_effect = lambda vial, **kw: robot.vials[vial].update(
+        location=robot.vials[vial]['home_location'], location_index=robot.vials[vial]['home_location_index'])
+    for name in ('source', 'dest'):
+        robot.vials[name].update(cap_type='closed', location_index=30 + len(name),
+                                 home_location_index=30 + len(name))
+    return robot
+
+
+def test_v2v_closed_to_closed_stages_both_to_rack_0_5_then_returns_them(v2v_robot):
+    v2v_robot.dispense_from_vial_into_vial('source', 'dest', 0.5, liquid='water')
+    assert v2v_robot.move_vial_to_location.call_args_list[:2] == [
+        call('source', 'main_8mL_rack', 0), call('dest', 'main_8mL_rack', 1)]
+    assert {c.args[0] for c in v2v_robot.return_vial_home.call_args_list} == {'source', 'dest'}
+    assert v2v_robot.STAGED_POSITIONS == {}
+
+
+def test_v2v_open_small_tip_source_goes_to_small_tip_spot_and_open_dest_stays(v2v_robot):
+    v2v_robot.plan_vial_transfer.return_value = (0.05, 1, 'params', 'small_tip')
+    for name in ('source', 'dest'):
+        v2v_robot.vials[name]['cap_type'] = 'open'
+    v2v_robot.dispense_from_vial_into_vial('source', 'dest', 0.05, liquid='water')
+    assert v2v_robot.move_vial_to_location.call_args_list[0] == call('source', 'main_8mL_rack', 47)
+    assert all(c.args[0] != 'dest' for c in v2v_robot.move_vial_to_location.call_args_list)
+
+
+def test_v2v_vials_already_in_place_are_not_moved(v2v_robot):
+    v2v_robot.vials['source'].update(location_index=3, home_location_index=3)
+    v2v_robot.vials['dest'].update(location_index=4, home_location_index=4)
+    v2v_robot.dispense_from_vial_into_vial('source', 'dest', 0.5, liquid='water')
+    v2v_robot.move_vial_to_location.assert_not_called()
 
 
 def test_wellplate_flow_conditions_once_per_tip_group_for_flagged_liquid(plate_robot):

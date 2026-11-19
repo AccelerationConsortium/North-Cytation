@@ -133,7 +133,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | Unit operation | What it does | State after |
 |---|---|---|
 | `condition_tip` | Aspirate from and dispense back into a vial several times (moved here from `surfactant_grid_adaptive_concentrations.py`) | Wet tip attached |
-| `stage_vials` | Move vials into small-tip-safe positions (`small_tip_staging_rank` in `vial_positions.yaml`), highest priority first; the caller decides the order (e.g. with `workflows/helpers/vial_risk_analyzer.py`) | Vials staged (deliberate state change) |
+| `stage_vials` | Move vials to staging positions before pipetting, with no tip held. Closed vials go to rack 0-5 (safe to move with a tip held, so they can go to the clamp and swap through it); open vials go to small-tip-safe positions (`small_tip_staging_rank` in `vial_positions.yaml`: rack 47, 46, 45, heater 2, 5, 8, rack 44, 43). Highest priority first; the caller decides the order (e.g. with `workflows/helpers/vial_risk_analyzer.py`). Remembers each staged spot: a staged vial leaving the clamp goes back there, not home. Both flows (`dispense_from_vial_into_vial`, `dispense_from_vials_into_wellplate`) call it | Vials staged (deliberate state change) |
 | `return_staged_vials` | Return staged vials home; the reset for `stage_vials` | Vials home |
 
 ### North_Robot: measurement
@@ -208,7 +208,7 @@ Existing workflows have not been changed; new workflows should use the North_Saf
 
 ### To do
 
-- **Staging for moving vials while a tip is held.** With closed caps, the clamp exchange moves vials while a tip is attached, and only rack positions 0-5 and the clamp are reachable that way (`is_location_safe_for_vial_movement_with_pipet`). `safe_pipet` (`Degradation_serena.py`, rack 4/5) and `dispense_vial_to_vial` (`fluorescence_calibration_workflow.py`, rack 0/1) temporarily rehome vials to work around this. Fold this into `dispense_from_vial_into_vial`, and move the hard-coded 0-5 limit into YAML.
+- **Staging for moving vials while a tip is held:** done 2026-11-18. `stage_vials` puts closed vials in rack 0-5 and both flows call it, so `create_substock` and `refill_vial` work with closed vials anywhere. Still to do: remove the old workarounds that temporarily rehome vials (`safe_pipet` in `Degradation_serena.py`, rack 4/5; `dispense_vial_to_vial` in `fluorescence_calibration_workflow.py`, rack 0/1), and move the hard-coded 0-5 limit (`is_location_safe_for_vial_movement_with_pipet`) into YAML.
 - **Embedded validation.** `validate_pipetting_accuracy` and `validate_reservoir_accuracy` (`pipetting_data/embedded_calibration_validation.py`) are flows, but they also contain analysis, plotting, CSV saving and parameter updates. Separate the flow from the analysis and improve them.
 - **`measure_wellplate_async`** (Lash_E) has not been used yet. Examine it later. It looks like a flow split into two halves: the start moves the plate in and begins the read, and `MeasurementHandle.complete()` returns the plate.
 
@@ -225,6 +225,7 @@ Flows condition a fresh tip when the liquid has `condition_tip: true` in `robot_
 This flow took over what `dispense_component_to_wellplate` (in `surfactant_grid_adaptive_concentrations.py`) did: staging, conditioning, and grouping doses by tip. The batched strategy and the `strategy=` argument were removed because batching is not compatible with the liquids in use.
 - **Staging:** only vials that will use the small tip, are movable, and are not already in a small-tip-safe position. The vial that will be emptiest after dispensing gets the safest position; ties go to the lowest starting volume.
 - **Tips:** within a vial, doses are grouped by resolved tip (smallest tip first, largest dose first) and the tip is locked per group. Each vial gets a fresh tip, because vials may hold different contents.
-- **Future option (now possible with the stored contents, not built):** for vials holding the same solute in the same solvent, optionally reuse one tip from most dilute to most concentrated, conditioning only once. Off by default.
+- **Staging:** `stage_vials` before the first tip: closed vials to rack 0-5 (they are uncapped and used in the clamp), open small-tip vials to small-tip-safe positions. The clamp is never a staging spot. Each vial goes home right after its own dispense.
+- **Future option (now possible with the stored contents, not built; not needed yet, tip use is low):** for vials holding the same solute in the same solvent, optionally reuse one tip from most dilute to most concentrated, conditioning only once (as `dispense_surfactant_component` in `surfactant_grid_ailsa.py` does). Off by default. Reuse means a tip is held when the next closed vial moves to the clamp; staging already puts closed vials in rack 0-5, so that is safe.
 
 `dispense_component_to_wellplate` and the workflows that call it are unchanged; new workflows should use the North_Safe flow and keep only the recipe-to-volumes preparation in the workflow.

@@ -40,9 +40,16 @@ def transfer_setup():
         iter(rows.loc[(rows.location == location) & (rows.location_index == slot), "vial_index"]), None)
     for name in ("is_vial_movable", "is_vial_pipetable", "return_vial_home",
                  "plan_vial_transfer", "resolve_pipetting_setup",
-                 "is_vial_movement_safe_with_pipet", "is_location_safe_for_vial_movement_with_pipet"):
+                 "is_vial_movement_safe_with_pipet", "is_location_safe_for_vial_movement_with_pipet",
+                 "_needs_staging", "_is_closed_vial", "stage_vials", "return_staged_vials",
+                 "_return_from_clamp", "get_pipet_safe_move_positions", "get_small_tip_staging_positions",
+                 "get_small_tip_safe_indices", "_present_vial_locations"):
         method = getattr(North_Robot, name)
         getattr(robot, name).side_effect = lambda *args, _method=method, **kw: _method(robot, *args, **kw)
+    import yaml
+    robot.VIAL_POSITIONS = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "robot_state" / "vial_positions.yaml").read_text(encoding="utf-8"))
+    robot.STAGED_POSITIONS = {}
     robot.GRIPPER_STATUS = None
     robot.HELD_PIPET_TYPE = None
 
