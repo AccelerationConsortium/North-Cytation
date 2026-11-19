@@ -3425,9 +3425,128 @@ class North_Robot(North_Base):
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
+    def dispense_from_reservoir_into_clamp_vial(self, reservoir_index, vial_name, volume, reservoir_params=None,
+                                                liquid=None, record_scale=False):
+        """
+        Unit operation: dispense volume (mL) from a reservoir into the open vial already in the clamp.
+        Moves the carousel to the reservoir, runs the pump strokes, and moves the carousel home.
+        Does not move, uncap or recap the vial (dispense_into_vial_from_reservoir does that).
+
+        Args:
+            reservoir_index (int): pump in syringe_pumps.yaml
+            vial_name (str or int): the vial in the clamp; must be open
+            volume (float): mL to dispense; the vial must have room (vial_volume in vial_positions.yaml)
+            reservoir_params (ReservoirParameters or dict, optional): overrides of the defaults
+            liquid (str, optional): liquids.yaml name (recorded with the transfer)
+            record_scale (bool): record the balance around the pump strokes
+
+        Refused before moving (ValueError): vial not in the clamp, not open, or without room.
+        Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
+        """
+        vial_index = self.normalize_vial_index(vial_name)
+        reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
+        if self.get_vial_info(vial_index, 'location') != 'clamp':
+            raise ValueError(f"Reservoir dispense refused before moving: vial {vial_name} is not in the clamp "
+                             f"(use dispense_into_vial_from_reservoir to move it there)")
+        if not self.is_vial_pipetable(vial_index):
+            raise ValueError(f"Reservoir dispense refused before moving: vial {vial_name} is not open "
+                             f"(use dispense_into_vial_from_reservoir to uncap it)")
+        max_vial_volume = self.get_config_parameter('vial_positions', 'clamp', 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None and self.get_vial_info(vial_index, 'vial_volume') + volume > max_vial_volume:
+            raise ValueError(f"Reservoir dispense refused before moving: {volume:.3f} mL would overfill vial "
+                             f"{vial_name} ({max_vial_volume:.3f} mL max)")
+        return self._dispense_from_reservoir_into_clamp_vial(reservoir_index, vial_index, volume, reservoir_params,
+                                                             liquid, record_scale)
+
+    def _dispense_from_reservoir_into_clamp_vial(self, reservoir_index, vial_index, volume, reservoir_params,
+                                                 liquid, record_scale):
+        """The liquid step of a reservoir dispense, with parameters resolved and the vial open in the clamp.
+        Returns the scale readings."""
+        #Step 2: move the carousel to reservoir position
+        carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
+        carousel_height = self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False)
+        
+        if carousel_angle is not None and carousel_height is not None:
+            self.c9.move_carousel(carousel_angle, carousel_height)
+        else:
+            self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
+            
+        #Step 3: aspirate and dispense from the reservoir
+        max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
+
+        # Scale recording (the vial is in the clamp); nothing in simulation
+        scale = self.start_scale_recording(record_scale, 'dispensing', settle=False)
+
+        scale.mark_start()
+        
+        # Perform actual dispensing with parameterized control
+        total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
+        num_dispenses = math.ceil(total_volume_to_aspirate/max_volume)
+        dispense_vol = total_volume_to_aspirate/num_dispenses
+        actual_dispense_vol = dispense_vol  # Dispense everything we aspirate each cycle
+        
+        self.logger.info(f"DISPENSING DEBUG: simulate={self.simulate}, volume={volume:.3f}mL, overaspirate={reservoir_params.overaspirate_vol:.3f}mL")
+        self.logger.info(f"DISPENSING DEBUG: total_vol={total_volume_to_aspirate:.3f}mL, num_dispenses={num_dispenses}, dispense_vol={dispense_vol:.3f}mL, actual_dispense={actual_dispense_vol:.3f}mL")
+        self.logger.debug(f"Dispensing {actual_dispense_vol:.3f} mL (with {reservoir_params.overaspirate_vol:.3f} mL overaspirate) {num_dispenses} times")
+        
+        for i in range(0, num_dispenses):        
+            self.logger.info(f"DISPENSING LOOP {i+1}/{num_dispenses}: simulate={self.simulate}")
+            
+            # Aspirate from reservoir with speed control
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_LEFT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.aspirate_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.aspirate_speed)
+            self.logger.info(f"ASPIRATING: {dispense_vol:.3f}mL from reservoir {reservoir_index}")
+            self.c9.aspirate_ml(reservoir_index, dispense_vol)
+            
+            if reservoir_params.aspirate_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.aspirate_wait_time)
+                
+            # Dispense into vial with speed control  
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_RIGHT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.dispense_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.dispense_speed)
+            self.logger.info(f"DISPENSING: {actual_dispense_vol:.3f}mL into vial {vial_index}")
+            self.c9.dispense_ml(reservoir_index, actual_dispense_vol)
+            
+            if reservoir_params.dispense_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.dispense_wait_time)
+        
+        if not self.simulate:
+            time.sleep(1)
+        
+        scale.mark_end()
+        readings = scale.stop()
+
+        vial_volume = self.get_vial_info(vial_index,'vial_volume')
+        self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
+        self.save_robot_status()
+        self._track_reservoir_dispense(reservoir_index, vial_index, volume, liquid)
+
+        #Step 4: Return the vial back to home
+        self.move_carousel_to('home')
+
+        return readings
+
     def dispense_into_vial_from_reservoir(self, reservoir_index, vial_index, volume, reservoir_params=None, liquid=None, measure_weight=False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
         """
-        Dispense liquid from reservoir into a vial.
+        Flow: dispense liquid from a reservoir into a vial, getting the vial ready and putting it back.
+
+        Checks the vial has room, moves it to the clamp and uncaps it if needed, homes the arm,
+        optionally weighs it, runs the liquid step (dispense_from_reservoir_into_clamp_vial),
+        analyzes the mass if recorded, recaps the vial and (return_home=True) returns it home.
+        With return_home=False the vial is left capped in the clamp.
         
         Args:
             reservoir_index: Index of the reservoir to dispense from
@@ -3483,79 +3602,10 @@ class North_Robot(North_Base):
             else:
                 initial_mass = 0.0
 
-        #Step 2: move the carousel to reservoir position
-        carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
-        carousel_height = self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False)
-        
-        if carousel_angle is not None and carousel_height is not None:
-            self.c9.move_carousel(carousel_angle, carousel_height)
-        else:
-            self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
-            
-        #Step 3: aspirate and dispense from the reservoir
-        max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
+        # The liquid step (same as dispense_from_reservoir_into_clamp_vial, parameters already resolved)
+        continuous_mass_data = self._dispense_from_reservoir_into_clamp_vial(
+            reservoir_index, vial_index, volume, reservoir_params, liquid, continuous_mass_monitoring)
 
-        # Scale recording (the vial is in the clamp); nothing in simulation
-        scale = self.start_scale_recording(continuous_mass_monitoring, 'dispensing', settle=False)
-
-        scale.mark_start()
-        
-        # Perform actual dispensing with parameterized control
-        total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
-        num_dispenses = math.ceil(total_volume_to_aspirate/max_volume)
-        dispense_vol = total_volume_to_aspirate/num_dispenses
-        actual_dispense_vol = dispense_vol  # Dispense everything we aspirate each cycle
-        
-        self.logger.info(f"DISPENSING DEBUG: simulate={self.simulate}, volume={volume:.3f}mL, overaspirate={reservoir_params.overaspirate_vol:.3f}mL")
-        self.logger.info(f"DISPENSING DEBUG: total_vol={total_volume_to_aspirate:.3f}mL, num_dispenses={num_dispenses}, dispense_vol={dispense_vol:.3f}mL, actual_dispense={actual_dispense_vol:.3f}mL")
-        self.logger.debug(f"Dispensing {actual_dispense_vol:.3f} mL (with {reservoir_params.overaspirate_vol:.3f} mL overaspirate) {num_dispenses} times")
-        
-        for i in range(0, num_dispenses):        
-            self.logger.info(f"DISPENSING LOOP {i+1}/{num_dispenses}: simulate={self.simulate}")
-            
-            # Aspirate from reservoir with speed control
-            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_LEFT)
-            if reservoir_params.valve_switch_delay > 0:
-                if not self.simulate:
-                    time.sleep(reservoir_params.valve_switch_delay)
-                
-            if reservoir_params.aspirate_speed is not None:
-                self.c9.set_pump_speed(reservoir_index, reservoir_params.aspirate_speed)
-            self.logger.info(f"ASPIRATING: {dispense_vol:.3f}mL from reservoir {reservoir_index}")
-            self.c9.aspirate_ml(reservoir_index, dispense_vol)
-            
-            if reservoir_params.aspirate_wait_time > 0:
-                if not self.simulate:
-                    time.sleep(reservoir_params.aspirate_wait_time)
-                
-            # Dispense into vial with speed control  
-            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_RIGHT)
-            if reservoir_params.valve_switch_delay > 0:
-                if not self.simulate:
-                    time.sleep(reservoir_params.valve_switch_delay)
-                
-            if reservoir_params.dispense_speed is not None:
-                self.c9.set_pump_speed(reservoir_index, reservoir_params.dispense_speed)
-            self.logger.info(f"DISPENSING: {actual_dispense_vol:.3f}mL into vial {vial_index}")
-            self.c9.dispense_ml(reservoir_index, actual_dispense_vol)
-            
-            if reservoir_params.dispense_wait_time > 0:
-                if not self.simulate:
-                    time.sleep(reservoir_params.dispense_wait_time)
-        
-        if not self.simulate:
-            time.sleep(1)
-        
-        scale.mark_end()
-        continuous_mass_data = scale.stop()
-
-        vial_volume = self.get_vial_info(vial_index,'vial_volume')
-        self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
-        self.save_robot_status()
-        self._track_reservoir_dispense(reservoir_index, vial_index, volume, liquid)
-
-        #Step 4: Return the vial back to home
-        self.move_carousel_to('home')
 
         # Analyze continuous monitoring data or do traditional measurement
         if continuous_mass_monitoring and continuous_mass_data:  # pipetting_data/mass_analysis.py

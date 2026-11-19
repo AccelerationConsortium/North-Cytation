@@ -129,8 +129,9 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `aspirate_from_vial` | Combined unit operation: get the right tip, make the vial accessible (move to the clamp and uncap if needed), then `aspirate_from_open_vial`; with scale recording, analyze the mass (mass analyzer). Same arguments and behaviour as before the split | Tip full; vial may be left in the clamp, uncapped |
 | `dispense_into_open_vial` | Dispense from the held tip into a vial that is already open. Refuses (before moving) a closed vial, no tip, or a vial without room (`vial_volume` in `vial_positions.yaml`); does not move the vial or write a dispense-recording row. Can record the scale; returns the readings | Tip empty (still attached) |
 | `dispense_into_vial` | Combined unit operation: make the vial accessible (move to the clamp and uncap if needed), check it has room, then `dispense_into_open_vial`. Around it: optional before/after weighing, scale recording with mass analysis, and the dispense-recording row. Same arguments and behaviour as before the split | Tip empty; vial may be left in the clamp, uncapped |
+| `dispense_from_reservoir_into_clamp_vial` | Dispense from a reservoir into the open vial already in the clamp: carousel to the reservoir, pump strokes, carousel home. Refuses (before moving) a vial not in the clamp, not open, or without room; does not move, uncap or recap the vial. Can record the scale; returns the readings. Uses default reservoir settings unless given (calibration not connected yet: `docs/plans/reservoir_calibration_alignment.md`) | Vial filled, still open in the clamp; carousel home |
 
-`dispense_into_vial_from_reservoir` and `mix_vial` are not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
+`mix_vial` is not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
 
 ### North_Robot: tip conditioning and staging
 
@@ -173,10 +174,9 @@ These methods mix the task itself with flow-level sequencing and with data analy
 
 | Method | Why it is neither |
 |---|---|
-| `dispense_into_vial_from_reservoir` | Moves the vial, homes the robot and analyzes the mass within one method. |
 | `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` (now combined unit operations) and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
 
-Done: the mass analysis and the scale recording are now shared (Mass analyzer and `start_scale_recording` above). `aspirate_from_vial` and `dispense_into_vial` are now split (`aspirate_from_open_vial`, `dispense_into_open_vial` above). Still to do: `dispense_into_vial_from_reservoir` and `mix_vial`. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
+Done: the mass analysis and the scale recording are now shared (Mass analyzer and `start_scale_recording` above). `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` are now split (`aspirate_from_open_vial`, `dispense_into_open_vial`, `dispense_from_reservoir_into_clamp_vial` above). Still to do: `mix_vial`. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
 
 ## Flows
 
@@ -187,6 +187,7 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 | `dispense_from_vial_into_vial` | North_Robot | (condition fresh tip if the liquid needs it) > aspirate > dispense > remove tip > recap > return vial | No tip, vials home |
 | `dispense_from_vials_into_wellplate` | North_Robot | Input: a table (columns = source vials, rows = well indices, values = mL) and `liquid=` as one name or `{vial: liquid}`. Checked before moving: no missing or negative volumes, each well's total within the plate's `max_volume_per_well`, a liquid for every vial, a tip for every dose. Then: stage small-tip vials if needed > per vial and tip group: condition if needed, dispense > fresh tip per vial > return vials home | No tip, vials home |
 | `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override). Refuses a time or speed outside `vortex_limits` (`robot_hardware.yaml`: 1-60 s, speed 1-99) before moving; logs the time and speed used | Vial home |
+| `dispense_into_vial_from_reservoir` | North_Robot | Check room > vial to clamp, uncap if needed > home arm > (weigh) > `dispense_from_reservoir_into_clamp_vial` > (analyze mass) > recap > return vial home. `return_home=False` leaves the vial capped in the clamp (then it is a unit operation) | Vial home, capped; carousel home |
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |
@@ -197,7 +198,7 @@ Notes:
 - `refill_vial` and `create_substock` take their sources as arguments. Each container's contents are now stored (see [Sample tracking](#sample-tracking-what-a-workflow-needs-to-do)), so picking a source automatically (for example, a vial with matching contents) is possible but not built yet; `refill_vial` raises `NotImplementedError` if no source is given.
 - `create_substock` returns the vial home after each addition. Keeping the vial on the clamp to weigh every addition is a possible improvement.
 - `vortex_vial` now returns the vial home by default. Previously it returned the vial to where it was picked up.
-- `refill_vial`'s reservoir path depends on `dispense_into_vial_from_reservoir`, and the vial-to-vial flows depend on `aspirate_from_vial` and `dispense_into_vial` (see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later)).
+- `refill_vial`'s reservoir path uses `dispense_into_vial_from_reservoir`, and the vial-to-vial flows use `aspirate_from_vial` and `dispense_into_vial`.
 
 ### Workflow-file functions now covered by North_Safe
 

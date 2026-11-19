@@ -508,3 +508,34 @@ def test_dispense_into_open_vial_refuses_closed_vial_no_tip_or_overfill(robot):
         robot.dispense_into_open_vial('dest', 8.5)
     robot.pipet_dispense.assert_not_called()
     robot.c9.goto_xy_safe.assert_not_called()
+
+
+# ---- dispense_from_reservoir_into_clamp_vial: the slim reservoir unit operation ----
+
+def test_reservoir_unit_op_dispenses_without_moving_the_vial(robot):
+    robot.move_carousel_to = MagicMock()
+    robot._track_reservoir_dispense = MagicMock()
+    robot.move_vial_to_location = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.uncap_clamp_vial = MagicMock(side_effect=AssertionError('uncapped'))
+    assert robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5) == []
+    robot.c9.dispense_ml.assert_called_once_with(1, pytest.approx(0.5))
+    robot.move_carousel_to.assert_called_once_with('home')
+    robot.recap_clamp_vial.assert_not_called()
+    robot.return_vial_home.assert_not_called()
+    assert robot.VIAL_DF.at[1, 'vial_volume'] == pytest.approx(0.5)
+
+
+def test_reservoir_unit_op_refuses_vial_not_ready_or_overfill(robot):
+    robot.VIAL_DF.at[1, 'location'] = 'main_8mL_rack'
+    with pytest.raises(ValueError, match='not in the clamp'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5)
+    robot.VIAL_DF.at[1, 'location'] = 'clamp'
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.get_config_parameter = lambda config, key, field, **kw: 8.0 if field == 'vial_volume' else 2.5
+    with pytest.raises(ValueError, match='would overfill'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 8.5)
+    robot.c9.dispense_ml.assert_not_called()
+    robot.c9.move_carousel.assert_not_called()
