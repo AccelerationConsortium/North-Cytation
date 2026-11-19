@@ -445,13 +445,15 @@ def test_scale_precheck_stops_at_maximum_wait(monkeypatch):
     import sys
     from pipetting_data import embedded_calibration_validation as validation
 
+    clock = [0.0]  # fake clock: each check takes exactly time_s, so the result does not depend on the OS timer
+
     class UnstableRobot:
         def __init__(self):
             self.check_durations = []
 
         def monitor_weight_over_time(self, time_s):
             self.check_durations.append(time_s)
-            time.sleep(time_s)
+            clock[0] += time_s
             return [dict(mass_g=10.0 + (.05 if i % 2 else -.05),
                          steady_status=False) for i in range(10)]
 
@@ -461,9 +463,12 @@ def test_scale_precheck_stops_at_maximum_wait(monkeypatch):
     lash = SimpleNamespace(nr_robot=robot, simulate=False, logger=logging.getLogger(__name__))
     monkeypatch.setattr(validation, 'SCALE_MAX_WAIT_SECONDS', 0.035)
     monkeypatch.setattr(validation, 'SCALE_CHECK_SECONDS', 0.02)
+    monkeypatch.setattr(validation, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda s: None,
+                                                            time=time.time, perf_counter=time.perf_counter))
 
     assert not validation._scale_ready(lash, 'water', 'small_tip', 0.001)
-    assert sum(robot.check_durations) <= 0.035
+    assert sum(robot.check_durations) == pytest.approx(0.035)
+    assert robot.check_durations == pytest.approx([0.02, 0.015])
     assert len(sent) == 1
 
 

@@ -234,6 +234,7 @@ def test_pipetting_resolves_actual_plate_before_liquid_handling(inventory):
     inv = inventory
     inv.relocate("plate-96", "pipetting_area")
     robot = object.__new__(North_Robot)
+    robot.logger = logging.getLogger(__name__)
     robot.plate_inventory = inv
     robot.WELLPLATES = inv.definitions
     assert robot._resolve_pipetting_plate(None, [95]) == "96 WELL PLATE"
@@ -243,6 +244,9 @@ def test_pipetting_resolves_actual_plate_before_liquid_handling(inventory):
     inv.remove(inv.attachments["plate-96"])
     inv.relocate("plate-96", "waste_stack")
     inv.relocate("plate-24", "pipetting_area")
+    # A plate type without a Locator grid (the real 24-well plate now has grid_24)
+    robot.WELLPLATES = {**inv.definitions, "24 WELL PLATE": {k: v for k, v in inv.definitions["24 WELL PLATE"].items()
+                                                         if k != "name_in_Locator"}}
     robot.get_tip_if_needed = Mock()
     with pytest.raises(ValueError, match="Locator grid"):
         robot.pipet_from_wellplate(0, 0.1)

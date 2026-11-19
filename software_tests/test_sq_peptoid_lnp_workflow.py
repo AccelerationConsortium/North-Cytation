@@ -52,9 +52,9 @@ def setup(monkeypatch, tmp_path):
     name = 'workflows.SQ_Peptoid_LNP_test'
     monkeypatch.delitem(sys.modules, name, raising=False)
     workflow = importlib.import_module(name)
+    monkeypatch.setattr(workflow, '_OUTPUT_ROOT', tmp_path / 'output')
     config = {key: getattr(workflow, key) for key in workflow._CONFIG_KEYS}
     config['INPUT_VIAL_STATUS_FILE'] = robot.VIAL_FILE
-    config['OUTPUT_DIRECTORY'] = str(tmp_path / 'output')
     lash.workflow_config = config
     calls = MagicMock()
     calls.attach_mock(robot, 'robot')
@@ -92,7 +92,7 @@ def test_six_steps_in_order_and_simulation_does_not_save(setup):
     assert sequence[start:] == [
         'robot.dispense_from_vial_into_vial', 'robot.dispense_from_vial_into_vial',
         'robot.aspirate_from_vial', 'robot.dispense_into_vial', 'robot.remove_pipet',
-        'grab_new_wellplate', 'robot.aspirate_from_vial', 'robot.dispense_into_wellplate',
+        'robot.return_vial_home', 'grab_new_wellplate', 'robot.aspirate_from_vial', 'robot.dispense_into_wellplate',
         'robot.aspirate_from_vial', 'robot.dispense_into_wellplate',
         'robot.aspirate_from_vial', 'robot.dispense_into_wellplate',
         'robot.remove_pipet', 'measure_wellplate',
@@ -147,7 +147,7 @@ def test_live_read_is_saved_without_sending_notifications(setup, monkeypatch):
     expected = pd.DataFrame({'signal': [1., 2., 3.]}, index=[0, 1, 2])
     lash.measure_wellplate.return_value = expected
     pd.testing.assert_frame_equal(workflow.execute(), expected)
-    paths = list((root / 'output').glob('SQ_Peptoid_LNP_test_*.csv'))
+    paths = list((root / 'output').glob('*/measurements.csv'))
     assert len(paths) == 1
     pd.testing.assert_frame_equal(pd.read_csv(paths[0], index_col=0), expected)
 
