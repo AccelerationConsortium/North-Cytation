@@ -592,8 +592,9 @@ class North_Track(North_Base):
         speeds = self.TRACK_POSITIONS.get('speeds', {})
         speed = speeds.get(speed_name)
         if speed is None:
-            self.logger.warning(f"Speed '{speed_name}' not found, using default")
-            return 50  # Default fallback speed
+            fallback = self.TRACK_POSITIONS['missing_speed_fallback']
+            self.logger.warning(f"Speed '{speed_name}' not found, using default ({fallback})")
+            speed_name, speed = 'missing_speed_fallback', fallback
         _check_speed_percent(self, 'Track move', speed_name, speed, 'track_positions.yaml')
         return speed
     
@@ -3695,7 +3696,9 @@ class North_Robot(North_Base):
         self.c9.move_carousel(carousel_angle, carousel_height)
 
         #Step 3: aspirate and dispense from the reservoir
-        max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
+        max_volume = (self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False)
+                      or self.get_config_parameter('robot_hardware', 'reservoir_defaults', 'pump_volume_mL',
+                                                   error_on_missing=True))
 
         # Scale recording (the vial is in the clamp); nothing in simulation
         scale = self.start_scale_recording(record_scale, 'dispensing', settle=False)
@@ -3981,7 +3984,7 @@ class North_Robot(North_Base):
         # Safety check: If holding a pipet, ensure the movement path is safe
         if self.HELD_PIPET_TYPE is not None:
             if not self.is_vial_movement_safe_with_pipet(vial_index, location, location_index):
-                self.pause_after_error(f"Cannot move vial {vial_name} while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe")
+                self.pause_after_error(f"Cannot move vial {vial_name} while holding pipet - only tip_held_move_indices in vial_positions.yaml are safe (rack 0-5, clamp 0)")
 
         vial_location = self.get_vial_info(vial_index,'location')
         vial_location_index = self.get_vial_info(vial_index,'location_index')
@@ -4006,10 +4009,13 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=3.0, move_speed=None):
-        """Take the cap off the vial in the clamp (revs: unscrewing turns, default 3.0) and hold it.
+    def uncap_clamp_vial(self, revs=None, move_speed=None):
+        """Take the cap off the vial in the clamp (revs: unscrewing turns; None: capping.uncap_revs in
+        robot_hardware.yaml, 3.0) and hold it.
         Pauses with an error if the gripper is full, the clamp is empty or the vial is open. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'uncap_clamp_vial', 'move_speed', move_speed)
+        if revs is None:
+            revs = self.get_config_parameter('robot_hardware', 'capping', 'uncap_revs', error_on_missing=True)
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -4051,11 +4057,16 @@ class North_Robot(North_Base):
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
-    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
-        """Screw the held cap onto the vial in the clamp (revs: turns, default 1.8; torque_thresh: C9
-        torque limit, default 550). Pauses with an error if no cap is held, the clamp is empty or the vial
+    def recap_clamp_vial(self, revs=None, torque_thresh=None, move_speed=None):
+        """Screw the held cap onto the vial in the clamp (revs: turns; torque_thresh: C9 torque limit;
+        None: capping.recap_revs / recap_torque_thresh in robot_hardware.yaml, 1.8 and 550). Pauses with an error if no cap is held, the clamp is empty or the vial
         is capped. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'recap_clamp_vial', 'move_speed', move_speed)
+        if revs is None:
+            revs = self.get_config_parameter('robot_hardware', 'capping', 'recap_revs', error_on_missing=True)
+        if torque_thresh is None:
+            torque_thresh = self.get_config_parameter('robot_hardware', 'capping', 'recap_torque_thresh',
+                                                      error_on_missing=True)
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -4090,7 +4101,8 @@ class North_Robot(North_Base):
     def goto_location_if_not_there(self, location, move_speed=None):
         """Move to location (Locator position) unless already within 50 counts. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'goto_location_if_not_there', 'move_speed', move_speed)
-        difference_threshold = 50
+        difference_threshold = self.get_config_parameter('robot_hardware', 'physical_constants',
+                                                         'already_there_counts', error_on_missing=True)
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
             self.c9.goto_safe(location, vel=move_speed if move_speed is not None else self.get_speed('fast_approach'))
 
@@ -4507,16 +4519,11 @@ class North_Robot(North_Base):
         Returns:
             bool: True if location is safe with pipet, False otherwise
         """
-        # Safe positions when holding a pipet:
-        # - main_8mL_rack positions 0-5
-        # - clamp position 0
-        if location == 'main_8mL_rack' and location_index is not None:
-            return location_index <= 5
-        elif location == 'clamp' and location_index is not None:
-            return location_index == 0
-        
-        # All other locations are unsafe when holding a pipet
-        return False
+        # Safe positions: tip_held_move_indices in vial_positions.yaml (rack 0-5 and the clamp);
+        # every other location is unsafe when holding a pipet
+        positions = getattr(self, 'VIAL_POSITIONS', None) or _read_yaml_quietly(self.VIAL_POSITIONS_FILE)
+        safe = (positions.get(location) or {}).get('tip_held_move_indices')
+        return bool(safe) and location_index is not None and location_index in safe
 
     #Check if a vial movement path is safe while holding a pipet tip
     def is_vial_movement_safe_with_pipet(self, vial_name, dest_location, dest_location_index):

@@ -45,6 +45,16 @@ gripper_timing:
   uncap_grip_settle_time_s: 1.0  # After closing, before unscrewing; beyond the SDK delay
   recap_position_settle_time_s: 0.5  # Before screwing the held cap onto the vial
 
+# Cap turns and torque when uncap_clamp_vial / recap_clamp_vial are not given them
+capping:
+  uncap_revs: 3.0
+  recap_revs: 1.8
+  recap_torque_thresh: 550  # C9 torque limit for recapping
+
+# Used when a pump in syringe_pumps.yaml has no volume
+reservoir_defaults:
+  pump_volume_mL: 2.5
+
 # Allowed vortex_vial inputs; values outside are refused before the vial is picked up
 vortex_limits:
   min_time_s: 1
@@ -107,6 +117,7 @@ scale_recording:
 # Physical constants
 physical_constants:
   safe_height_z: 292    # Safe height for general robot movements
+  already_there_counts: 50  # goto_location_if_not_there skips the move when closer than this (summed axis counts)
 
 # Module state readout (Lash_E.get_module_state; see docs/plans/module_state_readout.md)
 module_state:

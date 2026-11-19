@@ -108,7 +108,7 @@ def _track(speeds):
     track = object.__new__(North_Track)
     track.logger = logging.getLogger(__name__)
     track.ROBOT_HARDWARE = HARDWARE
-    track.TRACK_POSITIONS = {'speeds': speeds}
+    track.TRACK_POSITIONS = {'speeds': speeds, 'missing_speed_fallback': 50}
     return track
 
 
@@ -214,3 +214,36 @@ def test_resolvers_refuse_bad_overrides_before_moving():
         robot._get_optimized_reservoir_parameters(1.0, None, {'valve_switch_delay': 100})
     assert robot._get_optimized_reservoir_parameters(1.0, None, ReservoirParameters(dispense_speed=20)).dispense_speed == 20
     assert robot.c9.mock_calls == []
+
+
+# ---- values moved from code to YAML keep their old values ----
+
+def test_moved_values_are_unchanged():
+    assert HARDWARE['capping'] == {'uncap_revs': 3.0, 'recap_revs': 1.8, 'recap_torque_thresh': 550}
+    assert HARDWARE['reservoir_defaults'] == {'pump_volume_mL': 2.5}
+    assert HARDWARE['physical_constants']['already_there_counts'] == 50
+    track = yaml.safe_load(open('robot_state/track_positions.yaml', encoding='utf-8'))
+    assert track['missing_speed_fallback'] == 50
+
+
+def test_tip_held_safe_positions_match_the_old_rule():
+    robot = _bare_robot()
+    robot.VIAL_POSITIONS = yaml.safe_load(open('robot_state/vial_positions.yaml', encoding='utf-8'))
+    old_rule = lambda location, index: (location == 'main_8mL_rack' and index <= 5) or (location == 'clamp' and index == 0)
+    for location in robot.VIAL_POSITIONS:
+        for index in range(-1, 60):
+            assert robot.is_location_safe_for_vial_movement_with_pipet(location, index) == old_rule(location, index) \
+                or index < 0, (location, index)
+        assert robot.is_location_safe_for_vial_movement_with_pipet(location, None) is False
+
+
+@pytest.mark.parametrize('method, config_keys', [('uncap_clamp_vial', ['uncap_revs']),
+                                                 ('recap_clamp_vial', ['recap_revs', 'recap_torque_thresh'])])
+def test_capping_defaults_come_from_yaml(method, config_keys):
+    robot = _bare_robot()
+    asked = []
+    robot.get_config_parameter = lambda config, section, key, **kw: asked.append((section, key)) or 0.0
+    robot.get_vial_in_location = MagicMock(side_effect=RuntimeError('stop after reading defaults'))
+    with pytest.raises(RuntimeError):
+        getattr(robot, method)()
+    assert [key for section, key in asked if section == 'capping'] == config_keys
