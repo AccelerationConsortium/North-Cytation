@@ -443,3 +443,38 @@ def test_simulated_reservoir_dispense_with_scale_recording_reads_nothing(robot):
     assert result == (0.0, empty_stability())
     robot.c9.read_scale.assert_not_called()
     assert robot.pollers == []  # no recording thread
+
+
+# ---- aspirate_from_open_vial: the slim aspirate unit operation ----
+
+def open_vial_robot(robot):
+    params = PipettingParameters(overaspirate_vol=.01)
+    robot.resolve_pipetting_setup = lambda *args: (params, 'small_tip')
+    robot.get_tip_if_needed = MagicMock(side_effect=AssertionError('fetched a tip'))
+    robot._ensure_vial_accessible_for_pipetting = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.check_if_aspiration_volume_unacceptable = MagicMock()
+    robot.get_aspirate_height = MagicMock(return_value=0)
+    robot.get_tip_dependent_aspirate_speed = MagicMock(return_value=7)
+    robot.PIPET_TIPS = {'small_tip': {'volume': .2}}
+    return robot
+
+
+def test_aspirate_from_open_vial_aspirates_without_getting_ready(robot):
+    robot = open_vial_robot(robot)
+    assert robot.aspirate_from_open_vial('source', .1) == []
+    robot.c9.aspirate_ml.assert_called_with(0, pytest.approx(.11))
+    assert robot.VIAL_DF.at[0, 'vial_volume'] == pytest.approx(9.9)
+    assert robot.PIPET_FLUID_VOLUME == pytest.approx(10.1)
+
+
+def test_aspirate_from_open_vial_refuses_a_closed_vial_or_wrong_tip(robot):
+    robot = open_vial_robot(robot)
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open for pipetting'):
+        robot.aspirate_from_open_vial('source', .1)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.HELD_PIPET_TYPE = 'large_tip'
+    with pytest.raises(ValueError, match='needs small_tip, holding large_tip'):
+        robot.aspirate_from_open_vial('source', .1)
+    robot.c9.aspirate_ml.assert_not_called()
+    robot.c9.goto_xy_safe.assert_not_called()

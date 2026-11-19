@@ -2332,7 +2332,11 @@ class North_Robot(North_Base):
                           move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False, 
                           continuous_mass_monitoring=False, save_mass_data=False):
         """
-        Aspirate amount_ml from a source vial.
+        Aspirate amount_mL from a source vial, getting ready first (combined unit operation).
+
+        Gets the right tip and makes the vial accessible (moves it to the clamp and uncaps it if
+        needed), then runs the liquid step (aspirate_from_open_vial) and, with scale recording,
+        analyzes the mass (pipetting_data/mass_analysis.py).
         
         Args:
             source_vial_name (str): Name of the source vial to aspirate from
@@ -2356,19 +2360,7 @@ class North_Robot(North_Base):
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters, resolved_tip = self.resolve_pipetting_setup(
             amount_mL, liquid, parameters, specified_tip)
-        
-        # Extract liquid handling values from parameters
-        asp_disp_cycles = parameters.asp_disp_cycles
-        aspirate_wait_time = parameters.aspirate_wait_time
-        pre_asp_air_vol = parameters.pre_asp_air_vol
-        post_asp_air_vol = parameters.post_asp_air_vol
-        overaspirate_vol = parameters.overaspirate_vol
-        post_retract_wait_time = parameters.post_retract_wait_time
-        # Pre-aspiration air stays upstream; conservatively include liquid,
-        # positive overaspirate, and post-aspiration air in the tip check.
-        total_tip_vol = amount_mL + max(0, overaspirate_vol) + max(0, post_asp_air_vol)
 
-        
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
         # Check if source vial has a closed cap that will require uncapping
@@ -2404,6 +2396,73 @@ class North_Robot(North_Base):
             #Get a tip if we need one
             self.get_tip_if_needed(required_tip_type)
         
+        # The liquid step (same as aspirate_from_open_vial, with the parameters already resolved)
+        continuous_mass_data, source_vial_clamped = self._aspirate_open_vial(
+            source_vial_name, source_vial_num, amount_mL, parameters, move_to_aspirate, track_height,
+            move_up, post_asp_shake, continuous_mass_monitoring)
+
+        measured_mass = None
+        stability_info = empty_stability()
+        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
+        if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
+            source_name = self.get_vial_info(source_vial_num, 'vial_name')
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'aspiration', source_name, amount_mL, stability_info,
+                save=save_mass_data, file_prefix="aspiration_mass_", file_stem=source_name)
+
+        # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
+        if continuous_mass_monitoring and source_vial_clamped:
+            return measured_mass, stability_info
+        else:
+            return None
+    
+    def aspirate_from_open_vial(self, vial_name, amount_mL, parameters=None, liquid=None, specified_tip=None,
+                                move_to_aspirate=True, track_height=True, move_up=True, record_scale=False):
+        """
+        Unit operation: aspirate amount_mL from a vial that is already open and reachable, with the
+        right tip already held. Does not get a tip or move the vial (aspirate_from_vial does that).
+
+        Args:
+            vial_name (str or int): vial to aspirate from; must be pipetable (open, or uncapped in the clamp)
+            amount_mL (float): mL to aspirate, at most what the vial holds
+            parameters (PipettingParameters, optional): overrides (None: calibrated for liquid, else defaults)
+            liquid (str, optional): liquids.yaml name for calibrated parameters
+            specified_tip (str, optional): tip type to use instead of the one chosen for the volume
+            move_to_aspirate, track_height, move_up: as in aspirate_from_vial
+            record_scale (bool): record the balance around the aspirate (vial in the clamp only)
+
+        Refused before moving (ValueError): vial not pipetable, or the held tip is not the tip this
+        volume needs. Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
+        """
+        self._dispense_aspiration_settings = None
+        self._dispense_aspiration_source = None
+        parameters, resolved_tip = self.resolve_pipetting_setup(amount_mL, liquid, parameters, specified_tip)
+        vial_num = self.normalize_vial_index(vial_name)
+        if not self.is_vial_pipetable(vial_num):
+            raise ValueError(f"Aspirate refused before moving: vial {vial_name} is not open for pipetting "
+                             f"(use aspirate_from_vial to uncap it first)")
+        if self.HELD_PIPET_TYPE != resolved_tip:
+            raise ValueError(f"Aspirate refused before moving: {amount_mL:.3f} mL needs {resolved_tip}, "
+                             f"holding {self.HELD_PIPET_TYPE} (use aspirate_from_vial to get it)")
+        readings, _ = self._aspirate_open_vial(vial_name, vial_num, amount_mL, parameters, move_to_aspirate,
+                                               track_height, move_up, False, record_scale)
+        return readings
+
+    def _aspirate_open_vial(self, source_vial_name, source_vial_num, amount_mL, parameters, move_to_aspirate,
+                            track_height, move_up, post_asp_shake, continuous_mass_monitoring):
+        """The liquid step of an aspirate, with parameters already resolved and the tip and vial ready.
+        Returns (scale readings, whether the vial was in the clamp)."""
+        asp_disp_cycles = parameters.asp_disp_cycles
+        aspirate_wait_time = parameters.aspirate_wait_time
+        pre_asp_air_vol = parameters.pre_asp_air_vol
+        post_asp_air_vol = parameters.post_asp_air_vol
+        overaspirate_vol = parameters.overaspirate_vol
+        post_retract_wait_time = parameters.post_retract_wait_time
+        # Pre-aspiration air stays upstream; conservatively include liquid,
+        # positive overaspirate, and post-aspiration air in the tip check.
+        total_tip_vol = amount_mL + max(0, overaspirate_vol) + max(0, post_asp_air_vol)
+
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(total_tip_vol) 
         
@@ -2421,11 +2480,6 @@ class North_Robot(North_Base):
                 f"Cannot aspirate more volume than in vial: {amount_mL:.3f} mL requested from "
                 f"'{source_vial_name}' ({location}), which has {source_vial_volume:.3f} mL")
 
-        # Initialize mass monitoring if requested
-        measured_mass = None
-        continuous_mass_data = []
-        stability_info = empty_stability()
-        
         source_vial_clamped = self.get_vial_info(source_vial_num,'location')=='clamp' #Is the source vial clamped?
 
         self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
@@ -2484,7 +2538,7 @@ class North_Robot(North_Base):
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
-        continuous_mass_data = scale.stop()
+        readings = scale.stop()
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -2499,19 +2553,8 @@ class North_Robot(North_Base):
         if getattr(self, 'dispense_recording', 'off') == 'auto':
             capture_aspiration(self, parameters, source_vial_num, aspirate_speed, retract_speed)
 
-        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
-        if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
-            source_name = self.get_vial_info(source_vial_num, 'vial_name')
-            measured_mass = self._analyze_mass_readings(
-                continuous_mass_data, 'aspiration', source_name, amount_mL, stability_info,
-                save=save_mass_data, file_prefix="aspiration_mass_", file_stem=source_name)
+        return readings, source_vial_clamped
 
-        # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
-        if continuous_mass_monitoring and source_vial_clamped:
-            return measured_mass, stability_info
-        else:
-            return None
-    
     #Adjust height based on the currently held pipet tip - now extensible to all tip types
     def adjust_height_based_on_pipet_held(self, height):
         height_shift_pipet = 0
