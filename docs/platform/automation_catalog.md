@@ -26,11 +26,11 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 |---|---|
 | `move_home` | Park the arm and home the carousel |
 | `home_robot_components` | Home all axes, pumps and carousel (startup) |
-| `goto_location_if_not_there` | Move the arm to a named location |
-| `move_rel_xyz` | Relative XYZ move |
+| `goto_location_if_not_there` | Move the arm to a named location. Like every method taking `move_speed` (vial moves, cap/uncap, dispenses), refuses a speed outside 1-100 percent (`speed_limits`) before moving |
+| `move_rel_xyz` | Relative XYZ move (mm); `vel` 1-100 percent, refused outside |
 | `pipet_aspirate` | Pump draws a volume (no motion) |
 | `pipet_dispense` | Pump expels a volume (no motion) |
-| `adjust_pump_speed` | Set the pump speed |
+| `adjust_pump_speed` | Set the pump speed code (1-40, lower is faster; outside pauses with an error) |
 | `get_current_height` | Read the Z position |
 | `open_vial_gripper` / `close_vial_gripper` | Open / close the vial gripper (output set in `robot_hardware.yaml`) |
 | `open_clamp` / `close_clamp` | Open / close the vial clamp |
@@ -162,7 +162,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Unit operation | Class | What it does | State after |
 |---|---|---|---|
-| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder (shake and weigh until reached; settings in `powder_settings.yaml`). Refuses a channel not listed in `powder_channels.yaml` before moving | Powder dispensed; returns the mass dispensed |
+| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder (shake and weigh until reached; settings in `powder_settings.yaml`). Refuses (before moving) a mass not > 0 or above 1000 mg (`powder_limits` in `robot_hardware.yaml`), or a channel not listed in `powder_channels.yaml` | Powder dispensed; returns the mass dispensed |
 | `run_plate` | Biotek_Wrapper | Read a plate that is already loaded in the Cytation | Data produced; plate still inside |
 | `move_wellplate_to_cytation` | Lash_E | Move a plate from the deck into the Cytation | Plate inside the Cytation |
 | `move_wellplate_back_from_cytation` | Lash_E | Move a plate from the Cytation back to the deck | Plate on the deck |
@@ -180,7 +180,7 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |
-| `mass_dispense_into_vial` | Lash_E | vial to clamp (if not there) > take off a closed cap (powder goes through an open cap) > robot home > dispense powder > put the cap back > return vial. Needs `initialize_p2=True`; returns the mass dispensed | Vial home, capped as before |
+| `mass_dispense_into_vial` | Lash_E | vial to clamp (if not there) > take off a closed cap (powder goes through an open cap) > robot home > dispense powder > put the cap back > return vial. Needs `initialize_p2=True`; refuses a bad mass or channel before the vial moves; returns the mass dispensed | Vial home, capped as before |
 | `run_photoreactor` | Lash_E | move vial > run reactor > return vial | Vial home |
 
 Notes:
