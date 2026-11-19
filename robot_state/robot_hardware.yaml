@@ -28,7 +28,7 @@ centrifuge_pneumatics:
   lid: 11      # True = open lid, False = close lid
   vacuum: 10   # True = vacuum on, False = vacuum off
 
-# Movement speeds (mm/s or units/s)
+# Movement speeds (percent of max velocity, 1-100: speed_limits below)
 # ORIGINAL VALUES (commented for restoration): default_robot: 20, fast_approach: 30, standard_xy: 15, precise_movement: 5, retract: 5
 movement_speeds:
   default_robot: 20       # Default velocity for robot initialization (was: 20)
@@ -67,6 +67,12 @@ stirrer_limits:
 spinner_limits:
   min_speed: 1
   max_speed: 100000
+
+# Allowed named move speeds (movement_speeds above, speeds in track_positions.yaml), as percent of max
+# velocity; the C9 reads 0-100 as percent and larger values as counts/s, so values outside are refused
+speed_limits:
+  min_percent: 1
+  max_percent: 100
 
 # Scale recording around an aspirate or dispense (North_Base.start_scale_recording); no waits in simulation
 scale_recording:

@@ -91,3 +91,45 @@ def test_stirring_and_spinner_refuse_bad_speeds_before_sending(temp, spin, speed
         spin.set_speed(speed)
     temp.c8.spin_axis.assert_not_called()
     spin.c8.spin_axis.assert_not_called()
+
+
+# ---- named move speeds: percent of max velocity (the C9 reads > 100 as counts/s) ----
+
+def test_every_configured_speed_is_within_the_limits():
+    limits = HARDWARE['speed_limits']
+    assert limits == {'min_percent': 1, 'max_percent': 100}
+    track = yaml.safe_load(open('robot_state/track_positions.yaml', encoding='utf-8'))
+    for speed in list(HARDWARE['movement_speeds'].values()) + list(track['speeds'].values()):
+        assert limits['min_percent'] <= speed <= limits['max_percent']
+
+
+def _track(speeds):
+    from North_Safe import North_Track
+    track = object.__new__(North_Track)
+    track.logger = logging.getLogger(__name__)
+    track.ROBOT_HARDWARE = HARDWARE
+    track.TRACK_POSITIONS = {'speeds': speeds}
+    return track
+
+
+def _robot(speeds):
+    from North_Safe import North_Robot
+    robot = object.__new__(North_Robot)
+    robot.logger = logging.getLogger(__name__)
+    robot.ROBOT_HARDWARE = {**HARDWARE, 'movement_speeds': speeds}
+    robot.get_config_parameter = lambda config, section, key, **kw: robot.ROBOT_HARDWARE[section][key]
+    return robot
+
+
+def test_speeds_are_returned_unchanged():
+    assert _track({'default_x': 50}).get_speed('default_x') == 50
+    assert _track({}).get_speed('missing') == 50  # unchanged fallback, with a warning
+    assert _robot({'retract': 5}).get_speed('retract') == 5
+
+
+@pytest.mark.parametrize('speed', [0, 101, 5000, -1, float('nan'), 'fast'])
+def test_out_of_range_configured_speeds_are_refused_before_moving(speed):
+    with pytest.raises(ValueError, match=r"Track move refused before moving: speed 'default_x'.*track_positions.yaml"):
+        _track({'default_x': speed}).get_speed('default_x')
+    with pytest.raises(ValueError, match=r"Move refused before moving: speed 'retract'.*movement_speeds"):
+        _robot({'retract': speed}).get_speed('retract')

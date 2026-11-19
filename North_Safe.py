@@ -44,6 +44,17 @@ def _hardware_limits(owner, section):
     return hardware[section]
 
 
+def _check_speed_percent(owner, action, speed_name, speed, source):
+    """A configured move speed must be a percent of max velocity within speed_limits (robot_hardware.yaml);
+    the C9 reads 0-100 as percent and larger values as counts/s."""
+    limits = _hardware_limits(owner, 'speed_limits')
+    try:
+        _check_in_range(action, f"speed '{speed_name}'", speed, limits['min_percent'], limits['max_percent'], '%',
+                        'speed_limits')
+    except ValueError as error:
+        raise ValueError(f"{error} [set in {source}]") from None
+
+
 def _check_in_range(action, name, value, low, high, unit, section, whole=False):
     """ValueError "<action> refused before moving" unless value is a number within [low, high]
     (and a whole number if whole). Returns nothing: callers pass the original value on."""
@@ -547,12 +558,14 @@ class North_Track(North_Base):
         self.logger.debug(f"Updated gripper location to: {self.CURRENT_GRIPPER_LOCATION} at position {self.CURRENT_GRIPPER_POSITION}")
     
     def get_speed(self, speed_name):
-        """Get movement speed by name"""
+        """Track speed by name from track_positions.yaml (percent of max velocity, 1-100;
+        speed_limits in robot_hardware.yaml). ValueError before moving if outside that range."""
         speeds = self.TRACK_POSITIONS.get('speeds', {})
         speed = speeds.get(speed_name)
         if speed is None:
             self.logger.warning(f"Speed '{speed_name}' not found, using default")
             return 50  # Default fallback speed
+        _check_speed_percent(self, 'Track move', speed_name, speed, 'track_positions.yaml')
         return speed
     
     def get_limit(self, limit_name):
@@ -609,10 +622,12 @@ class North_Track(North_Base):
 
     # === 3. BASIC MOVEMENT & GRIPPER PRIMITIVES ===
     def set_horizontal_speed(self,vel):
+        """No effect: nothing reads c9.DEFAULT_X_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting horizontal speed to %d", vel)
         self.c9.DEFAULT_X_SPEED = vel
 
     def set_vertical_speed(self,vel):
+        """No effect: nothing reads c9.DEFAULT_Y_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting vertical speed to %d", vel)
         self.c9.DEFAULT_Y_SPEED = vel    
 
@@ -1233,8 +1248,11 @@ class North_Robot(North_Base):
     # ====================================================================
     
     def get_speed(self, speed_name):
-        """Get movement speed from robot hardware configuration"""
-        return self.get_config_parameter('robot_hardware', 'movement_speeds', speed_name, error_on_missing=True)
+        """Arm speed by name from movement_speeds in robot_hardware.yaml (percent of max velocity, 1-100;
+        speed_limits in robot_hardware.yaml). ValueError before moving if outside that range."""
+        speed = self.get_config_parameter('robot_hardware', 'movement_speeds', speed_name, error_on_missing=True)
+        _check_speed_percent(self, 'Move', speed_name, speed, 'movement_speeds in robot_hardware.yaml')
+        return speed
     
     def get_safe_height(self):
         """Get safe height from robot hardware configuration"""
