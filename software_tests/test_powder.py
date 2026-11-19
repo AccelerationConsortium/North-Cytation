@@ -114,3 +114,30 @@ def test_cartridge_status_load_and_empty(tmp_path):
     st.record_empty("powder-0", sources)
     row = st.cartridge_status(channels, sources, log)[0]
     assert row["load"] is None and row["emptied_on"]
+
+
+def test_powder_limit_is_in_robot_hardware_yaml():
+    import yaml
+    assert yaml.safe_load((ROOT / "robot_state/robot_hardware.yaml").read_text())["powder_limits"] == {"max_mg": 1000}
+
+
+@pytest.mark.parametrize("mass, message", [(0, "must be > 0"), (-5, "must be > 0"), (float("nan"), "must be > 0"),
+                                           ("a", "must be > 0"), (1000.1, "above 1000 mg")])
+def test_a_bad_mass_is_refused_before_anything_moves(powder, mass, message):
+    with pytest.raises(ValueError, match=f"refused before moving: mass_mg.*{message}|refused before moving: mass_mg must be > 0"):
+        powder.dispense_powder_mg(mass, channel=0)
+    powder.c9.move_carousel.assert_not_called()
+    powder.p2.activate_powder_channel.assert_not_called()
+
+
+def test_the_largest_allowed_mass_is_dispensed(powder):
+    assert powder.dispense_powder_mg(1000, channel=0) == 1000
+
+
+def test_the_vial_flow_refuses_a_bad_mass_before_the_vial_moves(powder):
+    lash = coordinator(pipetable=False)
+    lash.powder_dispenser = powder
+    with pytest.raises(ValueError, match="above 1000 mg"):
+        master_usdl_coordinator.Lash_E.mass_dispense_into_vial(lash, "v1", 5000)
+    lash.nr_robot.move_vial_to_location.assert_not_called()
+    lash.nr_robot.uncap_clamp_vial.assert_not_called()

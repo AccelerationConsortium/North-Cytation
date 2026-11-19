@@ -13,6 +13,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirPa
 from pipetting_data.pipetting_wizard import PipettingWizard, NEAR_EXTRAPOLATION_FRACTION
 from pipetting_data.dispense_recording import recording_density, record_dispense, capture_aspiration
 from pipetting_data.liquid_registry import liquid_conditions_tip
+from pipetting_data.mass_analysis import analyze_mass_readings, empty_stability, save_mass_readings
 import matplotlib.patches as patches
 import threading
 import json
@@ -34,10 +35,129 @@ def _read_yaml_quietly(file_path):
     return _QUIET_YAML_CACHE[file_path]
 
 
+ROBOT_HARDWARE_PATH = "robot_state/robot_hardware.yaml"
+
+
+def _hardware_limits(owner, section):
+    """The `section` limits from robot_hardware.yaml (KeyError if missing)."""
+    hardware = getattr(owner, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(ROBOT_HARDWARE_PATH)
+    return hardware[section]
+
+
+def _check_optional_speed(owner, action, name, speed):
+    """A move speed given by the caller (None: the default) must be a percent of max velocity within
+    speed_limits (robot_hardware.yaml); the C9 reads 0-100 as percent and larger values as counts/s."""
+    if speed is not None:
+        limits = _hardware_limits(owner, 'speed_limits')
+        _check_in_range(action, name, speed, limits['min_percent'], limits['max_percent'], '%',
+                        'speed_limits')
+
+
+def _check_parameter_limits(owner, action, parameters):
+    """Each resolved PipettingParameters / ReservoirParameters value (None: the default) must be within
+    parameter_limits (robot_hardware.yaml); ValueError before moving otherwise."""
+    for name, limit in _hardware_limits(owner, 'parameter_limits').items():
+        value = getattr(parameters, name, None)
+        if value is not None:
+            _check_in_range(action, name, value, limit['min'], limit['max'], f" {limit.get('unit', '')}".rstrip(),
+                            'parameter_limits', whole=limit.get('whole', False))
+
+
+def _check_speed_percent(owner, action, speed_name, speed, source):
+    """A configured move speed must be a percent of max velocity within speed_limits (robot_hardware.yaml);
+    the C9 reads 0-100 as percent and larger values as counts/s."""
+    limits = _hardware_limits(owner, 'speed_limits')
+    try:
+        _check_in_range(action, f"speed '{speed_name}'", speed, limits['min_percent'], limits['max_percent'], '%',
+                        'speed_limits')
+    except ValueError as error:
+        raise ValueError(f"{error} [set in {source}]") from None
+
+
+def _check_in_range(action, name, value, low, high, unit, section, whole=False):
+    """ValueError "<action> refused before moving" unless value is a number within [low, high]
+    (and a whole number if whole). Returns nothing: callers pass the original value on."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is not a number") from None
+    if not low <= number <= high:  # also refuses NaN
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is outside "
+                         f"{low}-{high}{unit} ({section} in robot_hardware.yaml)")
+    if whole and number != int(number):
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is not a whole number")
+
+
+class ScaleRecording:
+    """Scale readings taken in the background around one liquid step (see North_Base.start_scale_recording).
+
+    Phases: 'baseline_pre' until mark_start(), then the operation phase until mark_end(), then
+    'baseline_post'. Inactive (not requested, or simulation): takes no readings and never waits."""
+
+    def __init__(self, robot, active, phase, settle):
+        self.robot, self.phase, self.readings = robot, phase, []
+        self.active = bool(active) and not robot.simulate
+        self._start = self._end = None
+        self._thread = None
+        if not self.active:
+            return
+        self.settings = _hardware_limits(robot, 'scale_recording')
+        if settle:
+            robot.logger.info(f"Waiting {self.settings['settle_s']:.1f}s for the scale to settle after positioning...")
+            time.sleep(self.settings['settle_s'])
+        self._running = threading.Event()
+        self._running.set()
+        self._t0 = time.time()
+        self._thread = threading.Thread(target=self._record, daemon=True)
+        self._thread.start()
+        robot.logger.info(f"Started continuous mass monitoring with pre-{phase} baseline")
+        time.sleep(self.settings['pre_baseline_s'])
+
+    def _record(self):
+        while self._running.is_set():
+            try:
+                now = time.time()
+                steady_status, weight = self.robot.read_scale()
+                if self._start is None or now < self._start:
+                    phase = 'baseline_pre'
+                elif self._end is None or now < self._end:
+                    phase = self.phase
+                else:
+                    phase = 'baseline_post'
+                self.readings.append({'timestamp': now, 'time_relative': now - self._t0, 'mass_g': weight,
+                                      'phase': phase, 'steady_status': steady_status})
+                self.robot.logger.debug(f'Mass: {weight:.4f}g at {now - self._t0:.3f}s ({phase}) steady={steady_status}')
+            except Exception as e:
+                self.robot.logger.warning(f"Scale reading failed: {e}")
+            time.sleep(self.settings['read_interval_s'])
+
+    def mark_start(self):
+        """The liquid step starts now."""
+        if self.active:
+            self._start = time.time()
+
+    def mark_end(self):
+        """The liquid step ended now."""
+        if self.active:
+            self._end = time.time()
+            self.robot.logger.info(f"{self.phase.capitalize()} took {self._end - self._start:.3f}s, "
+                                   f"collecting post-{self.phase} baseline")
+
+    def stop(self):
+        """Record the post-baseline, then stop. Returns the readings."""
+        if self.active and self._thread is not None:
+            time.sleep(self.settings['post_baseline_s'])
+            self._running.clear()
+            self._thread.join(timeout=self.settings['stop_timeout_s'])
+            self._thread = None
+            self.robot.logger.info(f"Stopped continuous mass monitoring. Collected {len(self.readings)} data points")
+        return self.readings
+
+
 class North_Base:
     """Base class for North robot components with shared functionality"""
 
-    ROBOT_HARDWARE_PATH = "robot_state/robot_hardware.yaml"
+    ROBOT_HARDWARE_PATH = ROBOT_HARDWARE_PATH
     CAROUSEL_POSITIONS_PATH = "robot_state/carousel_positions.yaml"
 
     def _hardware_setting(self, section, key, default):
@@ -54,6 +174,15 @@ class North_Base:
     def read_steady_scale(self):
         """Primitive: wait for a steady balance reading and return the mass (g)."""
         return self.c9.read_steady_scale()
+
+    def start_scale_recording(self, active, phase, settle=True):
+        """Unit operation: record the scale in the background around one liquid step.
+
+        Waits settle_s (if settle), starts recording, waits pre_baseline_s; call mark_start() and
+        mark_end() around the step, then stop() (waits post_baseline_s, returns the readings).
+        Timings: scale_recording in robot_hardware.yaml. Does nothing (no readings, no waits) if not
+        active or in simulation. Analyze the readings with pipetting_data/mass_analysis.py."""
+        return ScaleRecording(self, active, phase, settle)
 
     def zero_scale(self):
         """Primitive: tare the balance."""
@@ -269,6 +398,7 @@ class North_Track(North_Base):
         )
 
     def get_track_status(self):
+        """Reload the plate inventory and track pose from track_status.yaml."""
         loaded = PlateInventory.load(self.TRACK_STATUS_FILE, self.WELLPLATES, self.TRACK_POSITIONS)
         if getattr(self, "_inventory", None) is None:
             self._inventory = loaded
@@ -284,18 +414,22 @@ class North_Track(North_Base):
 
     @property
     def inventory(self):
+        """The PlateInventory (shared with North_Robot)."""
         return self._inventory
 
     @property
     def NUM_SOURCE(self):
+        """Number of plates in the source stack."""
         return len(self.inventory.contents("source_stack"))
 
     @property
     def NUM_WASTE(self):
+        """Number of plates in the waste stack."""
         return len(self.inventory.contents("waste_stack"))
 
     @property
     def CURRENT_WP_TYPE(self):
+        """The one plate type on the deck; ValueError if there are several."""
         types = {obj["type"] for obj in self.inventory.objects.values() if obj["kind"] == "plate"}
         if len(types) != 1:
             raise ValueError("No single global plate type; select a plate by position or ID")
@@ -303,6 +437,7 @@ class North_Track(North_Base):
 
     @property
     def ACTIVE_WELLPLATE_POSITION(self):
+        """The one position (not a stack) holding a plate, or None; ValueError if several."""
         locations = [location for location in self.inventory.positions
                      if location not in ("source_stack", "waste_stack")
                      and any(self.inventory.objects[item]["kind"] == "plate"
@@ -312,6 +447,7 @@ class North_Track(North_Base):
         return locations[0] if locations else None
 
     def save_track_status(self):
+        """Save the inventory and track pose to track_status.yaml (not in simulation, unless the scheduler allows it)."""
         self.inventory.data["track_pose"] = {
             "location": self.CURRENT_GRIPPER_LOCATION, **self.CURRENT_GRIPPER_POSITION,
         }
@@ -323,6 +459,7 @@ class North_Track(North_Base):
             self.inventory.save(self.TRACK_STATUS_FILE)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
+        """Deprecated: prints a notice and waits for Enter. Use the Lash_E start-up GUI."""
         print("\n" + "="*60)
         print("DEPRECATION WARNING: check_input_file()")
         print("="*60)
@@ -410,6 +547,7 @@ class North_Track(North_Base):
         #     input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
+        """Move the track to its origin, unless a held plate or unfinished transfer is recorded."""
         if self.inventory.positions["gripper"] or self.inventory.data.get("pending_transfer"):
             self.logger.info("Preserving recorded gripper/transfer state; no automatic recovery motion.")
             return
@@ -427,6 +565,7 @@ class North_Track(North_Base):
     
     # === WELLPLATE POSITION TRACKING ===
     def set_wellplate_position(self, position):
+        """Removed: always raises ValueError. Use inventory transfers."""
         raise ValueError("Use inventory transfers; a single active-plate position cannot describe this state")
     
     def update_gripper_location(self, location_name, x=None, z=None):
@@ -448,12 +587,15 @@ class North_Track(North_Base):
         self.logger.debug(f"Updated gripper location to: {self.CURRENT_GRIPPER_LOCATION} at position {self.CURRENT_GRIPPER_POSITION}")
     
     def get_speed(self, speed_name):
-        """Get movement speed by name"""
+        """Track speed by name from track_positions.yaml (percent of max velocity, 1-100;
+        speed_limits in robot_hardware.yaml). ValueError before moving if outside that range."""
         speeds = self.TRACK_POSITIONS.get('speeds', {})
         speed = speeds.get(speed_name)
         if speed is None:
-            self.logger.warning(f"Speed '{speed_name}' not found, using default")
-            return 50  # Default fallback speed
+            fallback = self.TRACK_POSITIONS['missing_speed_fallback']
+            self.logger.warning(f"Speed '{speed_name}' not found, using default ({fallback})")
+            speed_name, speed = 'missing_speed_fallback', fallback
+        _check_speed_percent(self, 'Track move', speed_name, speed, 'track_positions.yaml')
         return speed
     
     def get_limit(self, limit_name):
@@ -510,26 +652,31 @@ class North_Track(North_Base):
 
     # === 3. BASIC MOVEMENT & GRIPPER PRIMITIVES ===
     def set_horizontal_speed(self,vel):
+        """No effect (vel is ignored): nothing reads c9.DEFAULT_X_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting horizontal speed to %d", vel)
         self.c9.DEFAULT_X_SPEED = vel
 
     def set_vertical_speed(self,vel):
+        """No effect (vel is ignored): nothing reads c9.DEFAULT_Y_SPEED. Track moves use the speeds in track_positions.yaml."""
         self.logger.debug("Setting vertical speed to %d", vel)
         self.c9.DEFAULT_Y_SPEED = vel    
 
     def open_gripper(self):
+        """Open the track gripper (outputs in robot_hardware.yaml; waits gripper_delay s)."""
         self.logger.debug("Opening gripper")
         self.c9.set_output(self.get_axis('gripper_open'), True)  
         self.c9.set_output(self.get_axis('gripper_close'), False)
         self.c9.delay(self.get_timing('gripper_delay'))
     
     def close_gripper(self):
+        """Close the track gripper (outputs in robot_hardware.yaml; waits gripper_delay s)."""
         self.logger.debug("Closing gripper")
         self.c9.set_output(self.get_axis('gripper_close'), True)  #gripper close
         self.c9.set_output(self.get_axis('gripper_open'), False)
         self.c9.delay(self.get_timing('gripper_delay'))
 
     def origin(self):
+        """Raise the track to max_safe_height, then move to x = 0 (counts; track_positions.yaml)."""
         self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z')) #max_height
         self.c9.move_axis(self.get_axis('x_axis'), 0, vel=self.get_speed('default_x'))
         self.logger.debug("Moving North Track to home position")
@@ -592,6 +739,14 @@ class North_Track(North_Base):
             self.save_track_status()
 
     def grab_wellplate_from_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None, object_kind=None):
+        """Pick up the top plate or lid at location_name (track_positions.yaml).
+
+        wellplate_type: expected type (wellplates.yaml), or a lid alias; ValueError if it differs
+        waypoint_locations: named waypoints for the approach
+        z_override: grab height in track counts instead of the stack height
+        object_kind: 'plate' or 'lid' to require one
+        Refused before moving (ValueError) if the gripper is full or the object does not match.
+        Returns the object id."""
         if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
             self.check_reader_motion()
         inv = self.inventory
@@ -632,9 +787,16 @@ class North_Track(North_Base):
         return source_id
 
     def grab_lid_from_location(self, location_name, **kwargs):
+        """Pick up the lid at location_name (grab_wellplate_from_location with object_kind='lid')."""
         return self.grab_wellplate_from_location(location_name, object_kind="lid", **kwargs)
 
     def release_wellplate_in_location(self, location_name, wellplate_type=None, waypoint_locations=None, z_override=None):
+        """Put the held plate or lid down at location_name (track_positions.yaml).
+
+        wellplate_type: expected type; ValueError if the held object differs
+        waypoint_locations: named waypoints for the approach
+        z_override: release height in track counts instead of the stack height
+        Refused before moving (ValueError) if the destination cannot take it. Returns the object id."""
         if location_name == "cytation_tray" and hasattr(self, "check_reader_motion"):
             self.check_reader_motion()
         inv = self.inventory
@@ -670,6 +832,8 @@ class North_Track(North_Base):
         return self.inventory.stack_z(stack_name, operation)
 
     def move_wellplate(self, source, destination, expected_type=None, move_home_afterwards=True):
+        """Move the plate at source to destination (track position names), checking both ends
+        before picking up. expected_type: plate type (wellplates.yaml). Returns the plate id."""
         inv = self.inventory
         plate_id = inv.plate_at(source, expected_type)
         inv.check_destination(plate_id, destination)
@@ -691,13 +855,16 @@ class North_Track(North_Base):
         return plate_id
 
     def get_new_wellplate(self, move_home_afterwards=True):
+        """Move a new plate from the source stack to the pipetting area. Returns the plate id."""
         return self.move_wellplate("source_stack", "pipetting_area", move_home_afterwards=move_home_afterwards)
 
     def discard_wellplate(self, move_home_afterwards=True, pickup_location='pipetting_area', discard_location='waste_stack'):
+        """Move the plate at pickup_location to discard_location (default: waste stack). Returns the plate id."""
         return self.move_wellplate(pickup_location, discard_location, move_home_afterwards=move_home_afterwards)
 
     # === 7. UTILITIES ===        
     def get_ordinal(self,n): #convert n into an ordinal number (ex. 1st, 2nd, 4th)  -- from chatgpt
+        """n as an ordinal string (1 -> '1st')."""
         if 10 <= n % 100 <= 20:
             suffix = 'th'
         else:
@@ -732,20 +899,27 @@ class North_Powder(North_Base):
             self.set_opening(channel, 0)
 
     def activate_powder_channel(self, channel=0):
+        """Select powder channel (listed in powder_channels.yaml) and home its stepper."""
         self.logger.debug(f"Activating powder channel: {channel}")
         self.p2.activate_powder_channel(channel)
         self.p2.home_OL_stepper(0, 300)
 
     # shake the cartridge for t ms, with frequency f [40, 180] hz, amplitude [60, 100] %
     def shake(self,t, f=80, a=80, wait=True):
+        """Shake the cartridge for t ms at frequency f (Hz, default 80) and amplitude a (%, default 80)."""
         self.logger.debug("Shaking dispenser cartridge...")
         return self.p2.amc_pwm(int(f), int(t), int(a), wait=wait)
     
     def set_opening(self, channel, deg):
+        """Set the valve opening of channel to deg degrees (0 closed; protocols use up to 90)."""
         self.logger.debug(f"Setting opening for channel {channel} to {deg} degrees")
         self.p2.move_axis(channel, deg*(1000/360.0))
 
     def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
+        """Closed-loop powder dispense: shake and weigh until mg_target (mg) is within the protocol's
+        tol (mg) or max_tries shakes are used. protocol: a powder_settings.yaml protocol (None: default).
+        zero_scale: zero the balance first. Returns the mass dispensed (mg). Use dispense_powder_mg,
+        which checks the mass and channel first."""
         from robot_state import powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
@@ -820,11 +994,29 @@ class North_Powder(North_Base):
 
         return meas_mass
 
-    def dispense_powder_mg(self, mass_mg, channel=0):
+    def check_powder_dispense(self, mass_mg, channel=0):
+        """ValueError before moving unless mass_mg is > 0 and at most max_mg (powder_limits in
+        robot_hardware.yaml) and the channel is listed in powder_channels.yaml."""
+        try:
+            positive = float(mass_mg) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Powder dispense refused before moving: mass_mg must be > 0, got {mass_mg!r}")
+        max_mg = _hardware_limits(self, 'powder_limits')['max_mg']
+        if float(mass_mg) > max_mg:
+            raise ValueError(f"Powder dispense refused before moving: mass_mg {mass_mg!r} is above {max_mg} mg "
+                             f"(powder_limits in robot_hardware.yaml)")
         channels = self.powder_channels()
         if channel not in channels:
             raise ValueError(f"Powder channel {channel} isn't listed in {self.POWDER_CHANNELS_PATH} "
                              f"(listed: {sorted(channels) or 'none'}); add the slot there first")
+
+    def dispense_powder_mg(self, mass_mg, channel=0):
+        """Dispense mass_mg of powder (mg, > 0 and at most 1000: powder_limits in robot_hardware.yaml) from
+        channel (listed in powder_channels.yaml) at the carousel. Refused before moving (ValueError)
+        otherwise. Returns the mass dispensed (mg; the target in simulation)."""
+        self.check_powder_dispense(mass_mg, channel)
         self.logger.info(f"Dispensing {mass_mg} mg on channel {channel}")
 
         self.activate_powder_channel(channel)
@@ -858,7 +1050,20 @@ class North_Temp:
         else:
             self.t8 = MagicMock()
     
+    def _check_heater_inputs(self, action, target_temp, channel):
+        """Refuse a temperature or channel outside heater_limits (robot_hardware.yaml); warn when hot."""
+        limits = _hardware_limits(self, 'heater_limits')
+        first, last = limits['channels']
+        _check_in_range(action, 'channel', channel, first, last, '', 'heater_limits', whole=True)
+        _check_in_range(action, 'target_temp', target_temp, limits['min_c'], limits['max_c'], ' C', 'heater_limits')
+        if float(target_temp) > limits['warn_above_c']:
+            self.logger.warning(f"Heater channel {channel} set to {target_temp} C, above {limits['warn_above_c']} C "
+                                f"(heater_limits in robot_hardware.yaml)")
+
     def autotune(self,target_temp,channel=0):
+        """Autotune heater channel (0-7) at target_temp (C, 0-250; heater_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; warns above warn_above_c."""
+        self._check_heater_inputs('Autotune', target_temp, channel)
         self.logger.debug(f"Autotuning channel {channel} to target temperature {target_temp}C")
         self.t8.disable_channel(channel)
         self.t8.set_temp(channel, target_temp)
@@ -866,22 +1071,33 @@ class North_Temp:
         self.t8.temp_autotune(channel, True)
 
     def set_temp(self,target_temp,channel=0):
+        """Heat channel (0-7) to target_temp (C, 0-250; heater_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; warns above warn_above_c."""
+        self._check_heater_inputs('Heater', target_temp, channel)
         self.logger.debug(f"Setting channel {channel} to target temperature {target_temp}C")
         self.t8.set_temp(channel, target_temp)
         self.t8.enable_channel(channel)
     
     def get_temp(self,channel=0):
+        """Temperature of heater channel (0-7), in C."""
         return self.t8.get_temp(channel)
 
     def turn_off_heating(self,channel=0):
+        """Turn off heater channel (0-7)."""
         self.logger.debug(f"Turning off heating for channel {channel}")
         self.t8.disable_channel(channel)
 
     def turn_on_stirring(self,speed=10000):
+        """Stir at speed (motor counts/s, 1-100000; stirrer_limits in robot_hardware.yaml; default 10000).
+        Refused before sending (ValueError) outside those limits; stop with turn_off_stirring."""
+        limits = _hardware_limits(self, 'stirrer_limits')
+        _check_in_range('Stirring', 'speed', speed, limits['min_speed'], limits['max_speed'], ' cts/s',
+                        'stirrer_limits')
         self.logger.debug(f"Turning on stirring at speed {speed}")
         self.c8.spin_axis(1, speed)
 
     def turn_off_stirring(self):
+        """Stop the stirrer (speed 0)."""
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
 
@@ -896,28 +1112,38 @@ class North_Spin(North_Base):
         self.logger.debug("Initializing centrifuge controller...")
     
     def set_speed(self,speed):
-        self.logger.debug(f"Setting centrifuge speed to {speed} RPM")
+        """Spin the centrifuge at speed (motor counts/s, 1-100000; spinner_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; stop with stop_spin."""
+        limits = _hardware_limits(self, 'spinner_limits')
+        _check_in_range('Spin', 'speed', speed, limits['min_speed'], limits['max_speed'], ' cts/s',
+                        'spinner_limits')
+        self.logger.debug(f"Setting centrifuge speed to {speed} cts/s")
         self.c8.spin_axis(2, speed)
 
     def stop_spin(self):
+        """Stop the centrifuge (speed 0)."""
         self.logger.debug("Stopping centrifuge spin")
         self.c8.spin_axis(2,0)
 
     #NOTE: Port 3 is the extender port. 
 
     def open_lid(self):
+        """Open the centrifuge lid (output centrifuge_pneumatics.lid in robot_hardware.yaml)."""
         self.logger.debug("Opening centrifuge lid")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), True)  # Open lid pneumatic
 
     def close_lid(self):
+        """Close the centrifuge lid (output centrifuge_pneumatics.lid in robot_hardware.yaml)."""
         self.logger.debug("Closing centrifuge lid")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'lid', 11), False)  # Close lid pneumatic
 
     def turn_on_vacuum(self):
+        """Turn on the centrifuge vacuum (output centrifuge_pneumatics.vacuum in robot_hardware.yaml)."""
         self.logger.debug("Turning on centrifuge vacuum")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), True)  # Turn on vacuum pneumatic
 
     def turn_off_vacuum(self):
+        """Turn off the centrifuge vacuum (output centrifuge_pneumatics.vacuum in robot_hardware.yaml)."""
         self.logger.debug("Turning off centrifuge vacuum")
         self.c9.set_output(self._hardware_setting('centrifuge_pneumatics', 'vacuum', 10), False)  # Turn off vacuum pneumatic
 
@@ -1079,6 +1305,7 @@ class North_Robot(North_Base):
 
     #Load the pumps and set volumes from YAML configuration
     def load_pumps(self):
+        """Set each pump's volume (mL) and default speed code (0-40) from syringe_pumps.yaml."""
         self.logger.debug("Loading pumps from YAML configuration...")
         
         if not self.PUMP_CONFIG:
@@ -1108,8 +1335,11 @@ class North_Robot(North_Base):
     # ====================================================================
     
     def get_speed(self, speed_name):
-        """Get movement speed from robot hardware configuration"""
-        return self.get_config_parameter('robot_hardware', 'movement_speeds', speed_name, error_on_missing=True)
+        """Arm speed by name from movement_speeds in robot_hardware.yaml (percent of max velocity, 1-100;
+        speed_limits in robot_hardware.yaml). ValueError before moving if outside that range."""
+        speed = self.get_config_parameter('robot_hardware', 'movement_speeds', speed_name, error_on_missing=True)
+        _check_speed_percent(self, 'Move', speed_name, speed, 'movement_speeds in robot_hardware.yaml')
+        return speed
     
     def get_safe_height(self):
         """Get safe height from robot hardware configuration"""
@@ -1347,6 +1577,7 @@ class North_Robot(North_Base):
 
     #Save the status of the robot to memory
     def save_robot_status(self):
+        """Save the vial table and robot status (tip, gripper, tip contents) to file (not in simulation, unless the scheduler allows it)."""
         #self.logger.debug("Saving robot status to file: %s", self.ROBOT_STATUS_FILE)
         # Robot status data - ensure all values are Python native types to avoid YAML serialization issues
         robot_status = {
@@ -1373,6 +1604,7 @@ class North_Robot(North_Base):
 
     #Update the status of the robot from memory
     def get_robot_status(self):
+        """Load the vial table and robot state files."""
         self.logger.debug("Getting robot status from file: %s", self.ROBOT_STATUS_FILE)
         
         # Get the vial dataframe
@@ -1552,7 +1784,7 @@ class North_Robot(North_Base):
             self.logger.warning(f"Sample tracking: could not record the reservoir dispense: {error}")
 
     def track_powder_dispense(self, channel, vial, mass_mg):
-        """Powder into a vial: logged, and the vial's record updated with mg of that powder."""
+        """Powder into a vial: logged, and the vial's record updated with mass_mg (mg) of that powder."""
         try:
             source = sample_tracking.source_container(sample_tracking.cartridge_slot(channel))
             destination = self._vial_container_id(vial)
@@ -1570,6 +1802,7 @@ class North_Robot(North_Base):
 
     #Remove the pipet tip
     def remove_pipet(self):
+        """Drop the held tip at its removal location (pipet_tips.yaml); does nothing if no tip is held."""
         self._dispense_aspiration_settings = None
         self._dispense_aspiration_source = None
         if self.HELD_PIPET_TYPE is None:
@@ -1765,6 +1998,8 @@ class North_Robot(North_Base):
         pass
  
     def adjust_pump_speed(self, pump, pump_speed):
+        """Set pump's speed code (1-40; lower is faster). A non-integer is rounded with a warning;
+        outside 1-40 pauses with an error (logged as an error in simulation)."""
         self.logger.debug(f"Adjusting pump {pump} speed to {pump_speed}")
         
         # Ensure pump_speed is a native Python int and round if needed
@@ -1971,6 +2206,7 @@ class North_Robot(North_Base):
         self.logger.debug("Liquid review context: " + json.dumps({
             "liquid": liquid, "target_volume_ml": volume,
         }))
+        _check_parameter_limits(self, 'Pipetting', optimized)
         return optimized
 
     def resolve_pipetting_setup(self, volume, liquid=None, user_parameters=None,
@@ -2112,11 +2348,14 @@ class North_Robot(North_Base):
                         if user_value is not None:  # Only override if user explicitly set a value
                             setattr(optimized, param_name, user_value)
                             self.logger.debug(f"Applied reservoir user param {param_name}={user_value}")
-        
+
+        _check_parameter_limits(self, 'Reservoir dispense', optimized)
         return optimized
 
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
     def check_if_aspiration_volume_unacceptable(self, amount_mL):
+        """Pause with an error if amount_mL (mL) is above the held tip's volume or below its
+        min_suggested_volume (pipet_tips.yaml). Returns True if there was an issue."""
         if self.HELD_PIPET_TYPE is None:
             return False  # No tip held, no volume restrictions
             
@@ -2156,6 +2395,9 @@ class North_Robot(North_Base):
 
     #Get adjust the aspiration height based on how much is there
     def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=1.0):
+        """Aspirate height (mm) for amount_mL (mL) from the vial: the location's min_pipetting_height,
+        raised by height_volume_constant (mm per mL, vial_positions.yaml) for the liquid left minus buffer (mL)
+        when track_height. Never below the minimum."""
 
         #Get required information
         base_height = self.get_min_pipetting_height(source_vial_num)
@@ -2255,7 +2497,11 @@ class North_Robot(North_Base):
                           move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False, 
                           continuous_mass_monitoring=False, save_mass_data=False):
         """
-        Aspirate amount_ml from a source vial.
+        Aspirate amount_mL from a source vial, getting ready first (combined unit operation).
+
+        Gets the right tip and makes the vial accessible (moves it to the clamp and uncaps it if
+        needed), then runs the liquid step (aspirate_from_open_vial) and, with scale recording,
+        analyzes the mass (pipetting_data/mass_analysis.py).
         
         Args:
             source_vial_name (str): Name of the source vial to aspirate from
@@ -2279,19 +2525,7 @@ class North_Robot(North_Base):
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters, resolved_tip = self.resolve_pipetting_setup(
             amount_mL, liquid, parameters, specified_tip)
-        
-        # Extract liquid handling values from parameters
-        asp_disp_cycles = parameters.asp_disp_cycles
-        aspirate_wait_time = parameters.aspirate_wait_time
-        pre_asp_air_vol = parameters.pre_asp_air_vol
-        post_asp_air_vol = parameters.post_asp_air_vol
-        overaspirate_vol = parameters.overaspirate_vol
-        post_retract_wait_time = parameters.post_retract_wait_time
-        # Pre-aspiration air stays upstream; conservatively include liquid,
-        # positive overaspirate, and post-aspiration air in the tip check.
-        total_tip_vol = amount_mL + max(0, overaspirate_vol) + max(0, post_asp_air_vol)
 
-        
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
         # Check if source vial has a closed cap that will require uncapping
@@ -2327,6 +2561,73 @@ class North_Robot(North_Base):
             #Get a tip if we need one
             self.get_tip_if_needed(required_tip_type)
         
+        # The liquid step (same as aspirate_from_open_vial, with the parameters already resolved)
+        continuous_mass_data, source_vial_clamped = self._aspirate_open_vial(
+            source_vial_name, source_vial_num, amount_mL, parameters, move_to_aspirate, track_height,
+            move_up, post_asp_shake, continuous_mass_monitoring)
+
+        measured_mass = None
+        stability_info = empty_stability()
+        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
+        if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
+            source_name = self.get_vial_info(source_vial_num, 'vial_name')
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'aspiration', source_name, amount_mL, stability_info,
+                save=save_mass_data, file_prefix="aspiration_mass_", file_stem=source_name)
+
+        # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
+        if continuous_mass_monitoring and source_vial_clamped:
+            return measured_mass, stability_info
+        else:
+            return None
+    
+    def aspirate_from_open_vial(self, vial_name, amount_mL, parameters=None, liquid=None, specified_tip=None,
+                                move_to_aspirate=True, track_height=True, move_up=True, record_scale=False):
+        """
+        Unit operation: aspirate amount_mL from a vial that is already open and reachable, with the
+        right tip already held. Does not get a tip or move the vial (aspirate_from_vial does that).
+
+        Args:
+            vial_name (str or int): vial to aspirate from; must be pipetable (open, or uncapped in the clamp)
+            amount_mL (float): mL to aspirate, at most what the vial holds
+            parameters (PipettingParameters, optional): overrides (None: calibrated for liquid, else defaults)
+            liquid (str, optional): liquids.yaml name for calibrated parameters
+            specified_tip (str, optional): tip type to use instead of the one chosen for the volume
+            move_to_aspirate, track_height, move_up: as in aspirate_from_vial
+            record_scale (bool): record the balance around the aspirate (vial in the clamp only)
+
+        Refused before moving (ValueError): vial not pipetable, or the held tip is not the tip this
+        volume needs. Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
+        """
+        self._dispense_aspiration_settings = None
+        self._dispense_aspiration_source = None
+        parameters, resolved_tip = self.resolve_pipetting_setup(amount_mL, liquid, parameters, specified_tip)
+        vial_num = self.normalize_vial_index(vial_name)
+        if not self.is_vial_pipetable(vial_num):
+            raise ValueError(f"Aspirate refused before moving: vial {vial_name} is not open for pipetting "
+                             f"(use aspirate_from_vial to uncap it first)")
+        if self.HELD_PIPET_TYPE != resolved_tip:
+            raise ValueError(f"Aspirate refused before moving: {amount_mL:.3f} mL needs {resolved_tip}, "
+                             f"holding {self.HELD_PIPET_TYPE} (use aspirate_from_vial to get it)")
+        readings, _ = self._aspirate_open_vial(vial_name, vial_num, amount_mL, parameters, move_to_aspirate,
+                                               track_height, move_up, False, record_scale)
+        return readings
+
+    def _aspirate_open_vial(self, source_vial_name, source_vial_num, amount_mL, parameters, move_to_aspirate,
+                            track_height, move_up, post_asp_shake, continuous_mass_monitoring):
+        """The liquid step of an aspirate, with parameters already resolved and the tip and vial ready.
+        Returns (scale readings, whether the vial was in the clamp)."""
+        asp_disp_cycles = parameters.asp_disp_cycles
+        aspirate_wait_time = parameters.aspirate_wait_time
+        pre_asp_air_vol = parameters.pre_asp_air_vol
+        post_asp_air_vol = parameters.post_asp_air_vol
+        overaspirate_vol = parameters.overaspirate_vol
+        post_retract_wait_time = parameters.post_retract_wait_time
+        # Pre-aspiration air stays upstream; conservatively include liquid,
+        # positive overaspirate, and post-aspiration air in the tip check.
+        total_tip_vol = amount_mL + max(0, overaspirate_vol) + max(0, post_asp_air_vol)
+
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(total_tip_vol) 
         
@@ -2344,18 +2645,6 @@ class North_Robot(North_Base):
                 f"Cannot aspirate more volume than in vial: {amount_mL:.3f} mL requested from "
                 f"'{source_vial_name}' ({location}), which has {source_vial_volume:.3f} mL")
 
-        # Initialize mass monitoring if requested
-        measured_mass = None
-        continuous_mass_data = []
-        stability_info = {
-            'pre_stable_count': 0,
-            'pre_total_count': 0, 
-            'post_stable_count': 0,
-            'post_total_count': 0,
-            'pre_baseline_std': 0.0,
-            'post_baseline_std': 0.0
-        }
-        
         source_vial_clamped = self.get_vial_info(source_vial_num,'location')=='clamp' #Is the source vial clamped?
 
         self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
@@ -2374,64 +2663,13 @@ class North_Robot(North_Base):
 
         self.adjust_pump_speed(0,10)
 
-        # Setup continuous mass monitoring if requested
-        monitoring_active = threading.Event()
-        aspiration_start_time = None 
-        aspiration_end_time = None
-        
-        def read_scale_continuous():
-            """Continuously read scale at maximum rate (5 Hz) during aspiration"""
-            while monitoring_active.is_set():
-                if not self.simulate and source_vial_clamped:
-                    try:
-                        current_time = time.time()
-                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
-                        
-                        # Determine phase based on timing
-                        time_relative = current_time - start_time
-                        if time_relative < 1.0:
-                            phase = 'baseline_pre'
-                        elif aspiration_start_time is None or current_time < aspiration_start_time:
-                            phase = 'baseline_pre'  # Still in pre-baseline
-                        elif aspiration_end_time is None or current_time < aspiration_end_time:
-                            phase = 'aspiration'
-                        else:
-                            phase = 'baseline_post'
-                        
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status  # Track if scale says reading is stable
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                if not self.simulate:
-                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
-
         #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
             
-        # Start continuous monitoring if requested (includes pre-aspiration baseline)
-        if continuous_mass_monitoring and source_vial_clamped:
-            self.logger.info(f"Short wait time, allowing scale to settle after robot positioning...")
-            if not self.simulate:
-                time.sleep(1.0)  # 1 second settling delay
-            
-            start_time = time.time()
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            self.logger.info("Started continuous mass monitoring with pre-aspiration baseline")
-            
-            # Wait for 2.0s baseline before aspiration for better stability
-            if not self.simulate:
-                time.sleep(2.0)
+        # Scale recording: only with the vial in the clamp; nothing in simulation
+        scale = self.start_scale_recording(continuous_mass_monitoring and source_vial_clamped, 'aspiration')
 
-        
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
             self.c9.move_z(disp_height)
@@ -2439,9 +2677,7 @@ class North_Robot(North_Base):
         
         self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
 
-        # Record when actual aspiration starts
-        if continuous_mass_monitoring and source_vial_clamped:
-            aspiration_start_time = time.time()
+        scale.mark_start()
 
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
@@ -2450,12 +2686,8 @@ class North_Robot(North_Base):
             self.pipet_dispense(amount_mL+overaspirate_vol, wait_time=0)
         self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
-        # Record when aspiration ends
-        if continuous_mass_monitoring and source_vial_clamped:
-            aspiration_end_time = time.time()
-            aspiration_duration = aspiration_end_time - aspiration_start_time
-            self.logger.info(f"Aspiration took {aspiration_duration:.3f}s, collecting post-aspiration baseline")
-        
+        scale.mark_end()
+
         #Step 3: Retract and aspirate air if needed
         if post_asp_shake:
             None
@@ -2471,17 +2703,7 @@ class North_Robot(North_Base):
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
-        # Stop continuous monitoring and analyze data if requested
-        if continuous_mass_monitoring and source_vial_clamped:
-            # Let monitoring thread continue for post-baseline period
-            if not self.simulate:
-                time.sleep(2.0)  # 2.0s post-aspiration baseline for better data
-            
-            # Stop continuous monitoring after collecting post-baseline data
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-
+        readings = scale.stop()
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -2496,108 +2718,11 @@ class North_Robot(North_Base):
         if getattr(self, 'dispense_recording', 'off') == 'auto':
             capture_aspiration(self, parameters, source_vial_num, aspirate_speed, retract_speed)
 
-        # Analyze continuous mass data after monitoring is stopped
-        if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using STABILITY instead of time phases
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
-                
-                # Calculate final result (NOTE: For aspiration, mass should DECREASE, so we reverse the sign)
-                measured_mass = pre_baseline - post_baseline  # Reversed for aspiration
-                self.logger.info(f"ASPIRATION MASS calculation:")
-                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
-                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-                
-                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
-                               f"{post_count} post-readings ({post_stable_count} stable)")
-                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
-                               f"post_std={stability_info['post_baseline_std']:.6f}g")
-                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-            
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"aspiration_mass_data_{self.get_vial_info(source_vial_num, 'vial_name')}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                # Ensure log-specific directory exists
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                
-                # Convert to DataFrame and save
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} aspiration mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot using helper method
-                self._create_mass_vs_time_plot(
-                    continuous_mass_data, pre_baseline, post_baseline,
-                    self.get_vial_info(source_vial_num, 'vial_name'), amount_mL, measured_mass, "aspiration",
-                    log_folder, timestamp_str
-                )
-        
-        # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
-        if continuous_mass_monitoring and source_vial_clamped:
-            return measured_mass, stability_info
-        else:
-            return None
-    
+        return readings, source_vial_clamped
+
     #Adjust height based on the currently held pipet tip - now extensible to all tip types
     def adjust_height_based_on_pipet_held(self, height):
+        """height (mm) plus the held tip's delta_z_to_tip_bottom (mm, pipet_tips.yaml)."""
         height_shift_pipet = 0
         
         if self.HELD_PIPET_TYPE is not None:
@@ -2659,7 +2784,9 @@ class North_Robot(North_Base):
             liquid (str, optional): Liquid type for calibrated parameter optimization
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
             compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
+            move_speed (float, optional): speed of the vial moves and dispense approach, percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
         """
+        _check_optional_speed(self, 'dispense_from_vial_into_vial', 'move_speed', move_speed)
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
         source_vial_index = self.normalize_vial_index(source_vial_name)
@@ -2763,7 +2890,16 @@ class North_Robot(North_Base):
             aspirate (bool): True for aspirate, False for dispense (default: True)
             move_to_aspirate (bool): Whether to move to location (default: True)
             well_plate_type (str): Type of well plate (default: "96 WELL PLATE")
+
+        volume must be a number > 0 mL (ValueError before moving).
         """
+        try:
+            positive = float(volume) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Wellplate {'aspirate' if aspirate else 'dispense'} refused before moving: "
+                             f"volume must be > 0 mL, got {volume!r}")
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, [wp_index])
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(volume, liquid, parameters)
@@ -2825,6 +2961,17 @@ class North_Robot(North_Base):
         self.save_robot_status()  # keeps the tip's tracked contents across a restart
 
     #Mix the well
+    def _check_mix_inputs(self, volume, repeats):
+        """ValueError before moving unless volume is > 0 mL and repeats a whole number >= 1; returns int(repeats)."""
+        try:
+            ok = float(volume) > 0 and float(repeats) >= 1 and float(repeats) == int(repeats)
+        except (TypeError, ValueError, OverflowError):
+            ok = False
+        if not ok:  # also refuses NaN
+            raise ValueError(f"Mix refused before moving: need volume > 0 mL and a whole number of repeats >= 1, "
+                             f"got volume={volume!r}, repeats={repeats!r}")
+        return int(repeats)
+
     def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type=None, parameters=None, liquid=None):
         """
         Mix a well in a wellplate by aspirating and dispensing repeatedly.
@@ -2836,7 +2983,10 @@ class North_Robot(North_Base):
             well_plate_type: Type of well plate (default: "96 WELL PLATE")
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
             liquid (str, optional): Liquid type for calibrated parameter optimization
+
+        volume must be > 0 mL and repeats a whole number >= 1 (ValueError before moving).
         """
+        repeats = self._check_mix_inputs(volume, repeats)
         self.logger.info(f"Mixing well {wp_index} in well plate of type {well_plate_type} with volume {volume:.3f} mL for {repeats} repeats")
         self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
         self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, aspirate=False, move_to_aspirate=False, well_plate_type=well_plate_type)
@@ -2847,28 +2997,44 @@ class North_Robot(North_Base):
     #Mix in a vial
     def mix_vial(self, vial_name, volume, repeats=3, parameters=None, liquid=None):
         """
-        Mix a vial by aspirating and dispensing repeatedly.
-        
+        Combined unit operation: mix a vial by pipetting up and down with one tip, the tip kept low
+        in the liquid (like mix_well_in_wellplate).
+
+        Gets the right tip and makes the vial accessible (aspirate_from_vial: moves it to the clamp
+        and uncaps it if needed), then repeats aspirate_from_open_vial / dispense_into_open_vial in
+        place. No dispense-recording rows.
+
         Args:
             vial_name: Name or index of the vial to mix
-            volume: Volume to use for mixing in mL
-            repeats: Number of mixing cycles (default: 3)
+            volume (float): mL drawn up each cycle, > 0 (must fit the tip and be in the vial)
+            repeats (int): number of up-and-down cycles, >= 1 (default: 3)
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
             liquid (str, optional): Liquid type for calibrated parameter optimization
+
+        Refused before moving (ValueError): volume not > 0, or repeats not a whole number >= 1.
+        State after: tip still attached (empty); vial open where it was mixed (may be the clamp).
         """
+        repeats = self._check_mix_inputs(volume, repeats)
         self.logger.info(f"Mixing vial {vial_name} with volume {volume:.3f} mL for {repeats} repeats")
         vial_index = self.normalize_vial_index(vial_name)
         self.aspirate_from_vial(vial_index, volume, parameters=parameters, liquid=liquid, move_up=False, track_height=False)
-        self.dispense_into_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False, record_measurement=False)
+        self.dispense_into_open_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False)
         for i in range(1, repeats):
-            self.dispense_from_vial_into_vial(vial_index, vial_index, volume, parameters=parameters, liquid=liquid, record_measurement=False)
+            self.aspirate_from_open_vial(vial_index, volume, parameters=parameters, liquid=liquid,
+                                         move_to_aspirate=False, track_height=False, move_up=False)
+            self.dispense_into_open_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False)
 
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,
                           initial_move=True, measure_weight=False, continuous_mass_monitoring=False,
                           save_mass_data=False, move_speed=None, record_measurement=True):
         """
-        Dispense liquid into a vial.
+        Dispense liquid into a vial, getting ready first (combined unit operation).
+
+        Makes the vial accessible (moves it to the clamp and uncaps it if needed), checks it has
+        room, then runs the liquid step (dispense_into_open_vial). Around it: optional before/after
+        weighing, scale recording with mass analysis (pipetting_data/mass_analysis.py), and the
+        dispense-recording row when dispense_recording is 'auto'.
 
         Args:
             dest_vial_name: Name of destination vial
@@ -2879,19 +3045,11 @@ class North_Robot(North_Base):
             measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
             continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
             save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+            move_speed (float, optional): speed of the move to the vial, percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
         """
+        _check_optional_speed(self, 'dispense_into_vial', 'move_speed', move_speed)
         # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
-
-        # Extract liquid handling values from parameters
-        wait_time = parameters.dispense_wait_time
-        blowout_vol = parameters.blowout_vol
-
-        # Calculate overdispense volume from constituent parts
-        overdispense_vol = (amount_mL +
-                           parameters.overaspirate_vol +
-                           parameters.pre_asp_air_vol +
-                           parameters.post_asp_air_vol)
 
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
@@ -2901,32 +3059,17 @@ class North_Robot(North_Base):
 
         measured_mass = None
         continuous_mass_data = []
-        stability_info = {
-            'pre_stable_count': 0,
-            'pre_total_count': 0,
-            'post_stable_count': 0,
-            'post_total_count': 0,
-            'pre_baseline_std': 0.0,
-            'post_baseline_std': 0.0
-        }
+        stability_info = empty_stability()
 
         self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
 
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
-        dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
 
         # Check if dispensing would exceed vial capacity
-        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
-        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
-
-        if max_vial_volume is not None:
-            post_dispense_volume = dest_vial_volume + amount_mL
-            if (post_dispense_volume > max_vial_volume
-                    and not math.isclose(post_dispense_volume, max_vial_volume,
-                                         rel_tol=0.0, abs_tol=1e-9)):
-                self.pause_after_error(f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
-                                     f"would exceed capacity ({post_dispense_volume:.6f} mL > {max_vial_volume:.6f} mL max)")
-                return
+        too_full = self._vial_overfill_message(dest_vial_num, amount_mL)
+        if too_full:
+            self.pause_after_error(too_full)
+            return
 
         # Recording opts into the existing weighing path; it never prepares a vial.
         original_result = (measured_mass, stability_info.copy())
@@ -2951,211 +3094,16 @@ class North_Robot(North_Base):
         else:
             initial_mass = None  # Will be handled by continuous monitoring if needed
 
-        # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
-        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+        # The liquid step (same as dispense_into_open_vial, with the parameters already resolved)
+        continuous_mass_data, dispense_speed = self._dispense_open_vial(
+            dest_vial_num, amount_mL, parameters, liquid, initial_move, move_speed,
+            measure_weight and continuous_mass_monitoring and dest_vial_clamped)
 
-        self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
-
-        #Where is the vial?
-        location= self.get_vial_location(dest_vial_num,True)
-
-        #What height do we need to go to?
-        height = self.get_height_at_location(location) #baseline z-height
-        height = self.adjust_height_based_on_pipet_held(height)
-
-        #Move to the location if told to (Could change this to an auto-check)
-        if initial_move:
-            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
-
-        # Setup continuous mass monitoring if requested
-        monitoring_active = threading.Event()
-
-        def read_scale_continuous():
-            """Continuously read scale at maximum rate (5 Hz) during dispensing"""
-            while monitoring_active.is_set():
-                if not self.simulate and dest_vial_clamped:
-                    try:
-                        current_time = time.time()
-                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
-
-                        # Determine phase based on timing
-                        time_relative = current_time - start_time
-                        if time_relative < 1.0:
-                            phase = 'baseline_pre'
-                        elif dispense_start_time is None or current_time < dispense_start_time:
-                            phase = 'baseline_pre'  # Still in pre-baseline
-                        elif dispense_end_time is None or current_time < dispense_end_time:
-                            phase = 'dispensing'
-                        else:
-                            phase = 'baseline_post'
-
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status  # NEW: Track if scale says reading is stable
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                if not self.simulate:
-                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
-
-        #Pipet into the vial
-        if initial_move:
-            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
-
-        # Start continuous monitoring if requested (includes pre-dispense baseline)
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            # Conditional settling based on dispense wait time
-            self.logger.info(f"Short wait time ({1.0:.1f}s), allowing scale to settle after robot positioning...")
-            if not self.simulate:
-                time.sleep(1.0)  # 2 second settling delay for short wait times
-            
-            start_time = time.time()
-            dispense_start_time = None  # Will be set when dispensing starts
-            dispense_end_time = None    # Will be set when dispensing ends
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            self.logger.info("Started continuous mass monitoring with pre-dispense baseline")
-            
-            # Wait for 1.0s baseline before dispensing for better stability
-            if not self.simulate:
-                time.sleep(2.0)
-            
-        # Record when actual dispensing starts
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            dispense_start_time = time.time()
-        
-        # Perform the actual dispensing
-        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
-        
-        # Record when dispensing ends and wait for post-dispense baseline
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            dispense_end_time = time.time()
-            dispense_duration = dispense_end_time - dispense_start_time
-            self.logger.info(f"Dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
-            
-            # Let monitoring thread continue for post-baseline period
-            if not self.simulate:
-                time.sleep(2.0)  # 1.0s post-dispense baseline for better data
-            
-            # Stop continuous monitoring after collecting post-baseline data
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-        
-         #Track the added volume in the dataframe
-        self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
-        self.PIPET_FLUID_VOLUME -= amount_mL
-        self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
-        self.save_robot_status()
-
-        # Analyze continuous mass data after monitoring is stopped
+        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
         if measure_weight and continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using STABILITY instead of time phases
-                
-                # OLD WAY: Use arbitrary time phases (might include unstable readings)
-                # pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                # post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                
-                # NEW WAY: Use actual stability status from scale hardware
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Calculate mass difference using INDEPENDENT baseline analysis
-                # Each baseline uses stable readings if available, otherwise falls back to time-based
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
-                
-                # Calculate final result
-                measured_mass = post_baseline - pre_baseline
-                self.logger.info(f"INDEPENDENT BASELINE calculation:")
-                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Log comparison info
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
-                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-                
-                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
-                               f"{post_count} post-readings ({post_stable_count} stable)")
-                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
-                               f"post_std={stability_info['post_baseline_std']:.6f}g")
-                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-            
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"mass_data_{dest_vial_name}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                # Ensure log-specific directory exists
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                
-                # Convert to DataFrame and save
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot using helper method
-                self._create_mass_vs_time_plot(
-                    continuous_mass_data, pre_baseline, post_baseline,
-                    dest_vial_name, amount_mL, measured_mass, "dispense",
-                    log_folder, timestamp_str
-                )  
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'dispense', dest_vial_name, amount_mL, stability_info,
+                save=save_mass_data, file_prefix="mass_", file_stem=dest_vial_name)
 
         # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
         elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
@@ -3185,95 +3133,137 @@ class North_Robot(North_Base):
             return original_result
         return measured_mass, stability_info
 
-    def _create_mass_vs_time_plot(self, continuous_mass_data, pre_baseline, post_baseline, 
-                                 vial_name, target_volume, measured_mass, operation_type, 
-                                 log_folder, timestamp_str, additional_info=""):
+    def dispense_into_open_vial(self, vial_name, amount_mL, parameters=None, liquid=None,
+                                initial_move=True, move_speed=None, record_scale=False):
         """
-        Create and save a mass vs time plot for continuous monitoring data.
-        
+        Unit operation: dispense amount_mL from the held tip into a vial that is already open and
+        reachable. Does not move or uncap the vial (dispense_into_vial does that) and does not write
+        a dispense-recording row.
+
         Args:
-            continuous_mass_data: List of mass measurement dictionaries
-            pre_baseline: Pre-operation baseline mass
-            post_baseline: Post-operation baseline mass  
-            vial_name: Name of the vial being monitored
-            target_volume: Target volume for the operation (mL)
-            measured_mass: Measured mass difference (g)
-            operation_type: "dispense", "aspiration", or "reservoir"
-            log_folder: Folder name for saving files
-            timestamp_str: Timestamp string for unique filenames
-            additional_info: Additional info for filename (e.g., "_res1")
+            vial_name (str or int): vial to dispense into; must be pipetable (open, or uncapped in the clamp)
+            amount_mL (float): mL to dispense; the vial must have room (vial_volume in vial_positions.yaml)
+            parameters (PipettingParameters, optional): overrides (None: calibrated for liquid, else defaults)
+            liquid (str, optional): liquids.yaml name for calibrated parameters and the +/- uncertainty
+            initial_move (bool): move to the vial first (default True)
+            move_speed (float, optional): speed for that move (None: standard speeds)
+            record_scale (bool): record the balance around the dispense (vial in the clamp only)
+
+        Refused before moving (ValueError): vial not pipetable, no tip held, or not enough room.
+        Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
         """
-        import matplotlib.pyplot as plt
+        _check_optional_speed(self, 'dispense_into_open_vial', 'move_speed', move_speed)
+        parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
+        vial_num = self.normalize_vial_index(vial_name)
+        if not self.is_vial_pipetable(vial_num):
+            raise ValueError(f"Dispense refused before moving: vial {vial_name} is not open for pipetting "
+                             f"(use dispense_into_vial to uncap it first)")
+        if self.HELD_PIPET_TYPE is None:
+            raise ValueError("Dispense refused before moving: no tip held")
+        too_full = self._vial_overfill_message(vial_num, amount_mL)
+        if too_full:
+            raise ValueError(f"Dispense refused before moving: {too_full}")
+        clamped = self.get_vial_info(vial_num, 'location') == 'clamp'
+        readings, _ = self._dispense_open_vial(vial_num, amount_mL, parameters, liquid, initial_move, move_speed,
+                                               record_scale and clamped)
+        return readings
+
+    def _vial_overfill_message(self, dest_vial_num, amount_mL):
+        """Why amount_mL would overfill the vial (its location's vial_volume), or None if it fits."""
+        dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
+        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + amount_mL
+            if (post_dispense_volume > max_vial_volume
+                    and not math.isclose(post_dispense_volume, max_vial_volume,
+                                         rel_tol=0.0, abs_tol=1e-9)):
+                return (f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
+                        f"would exceed capacity ({post_dispense_volume:.6f} mL > {max_vial_volume:.6f} mL max)")
+        return None
+
+    def _dispense_open_vial(self, dest_vial_num, amount_mL, parameters, liquid, initial_move, move_speed, record_scale):
+        """The liquid step of a dispense into a vial, with parameters resolved and the vial ready.
+        Returns (scale readings, dispense speed used)."""
+        wait_time = parameters.dispense_wait_time
+        blowout_vol = parameters.blowout_vol
+        # Calculate overdispense volume from constituent parts
+        overdispense_vol = (amount_mL +
+                           parameters.overaspirate_vol +
+                           parameters.pre_asp_air_vol +
+                           parameters.post_asp_air_vol)
+
+        # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
+        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+
+        self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
+
+        #Where is the vial?
+        location= self.get_vial_location(dest_vial_num,True)
+
+        #What height do we need to go to?
+        height = self.get_height_at_location(location) #baseline z-height
+        height = self.adjust_height_based_on_pipet_held(height)
+
+        #Move to the location if told to (Could change this to an auto-check)
+        if initial_move:
+            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
+
+        #Pipet into the vial
+        if initial_move:
+            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
+
+        # Scale recording: only with the vial in the clamp; nothing in simulation
+        scale = self.start_scale_recording(record_scale, 'dispensing')
+
+        scale.mark_start()
         
-        mass_df = pd.DataFrame(continuous_mass_data)
-        plt.figure(figsize=(12, 6))
+        # Perform the actual dispensing
+        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
         
-        # Plot one continuous line
-        plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'k-', linewidth=2, label='Mass readings', zorder=3)
-        
-        # Add scatter overlay to show stable vs unstable readings
-        stable_data = mass_df[mass_df['steady_status'] == True]
-        unstable_data = mass_df[mass_df['steady_status'] == False]
-        
-        if len(stable_data) > 0:
-            plt.scatter(stable_data['time_relative'], stable_data['mass_g'], 
-                      c='green', s=20, alpha=0.7, label='Stable readings', zorder=4)
-        if len(unstable_data) > 0:
-            plt.scatter(unstable_data['time_relative'], unstable_data['mass_g'], 
-                      c='red', s=20, alpha=0.7, label='Unstable readings', zorder=4)
-        
-        # Add phase background shading
-        if len(mass_df) > 0:
-            # Get phase transition points
-            pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
-            if operation_type == "aspiration":
-                operation_data = mass_df[mass_df['phase'] == 'aspiration']
-                operation_color = 'orange'
-                operation_label = 'Aspiration'
-            else:  # dispense or reservoir
-                operation_data = mass_df[mass_df['phase'] == 'dispensing']
-                operation_color = 'blue'
-                operation_label = 'Dispensing'
-            post_data = mass_df[mass_df['phase'] == 'baseline_post']
-            
-            # Shade background regions
-            if len(pre_data) > 0:
-                plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
-                           alpha=0.2, color='green', label='Pre-baseline', zorder=1)
-            if len(operation_data) > 0:
-                plt.axvspan(operation_data['time_relative'].min(), operation_data['time_relative'].max(), 
-                           alpha=0.2, color=operation_color, label=operation_label, zorder=1)
-            if len(post_data) > 0:
-                plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
-                           alpha=0.2, color='red', label='Post-baseline', zorder=1)
-        
-        # Add horizontal lines for averaged baselines
-        plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
-        plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
-        
-        plt.xlabel('Time (seconds)')
-        plt.ylabel('Mass (g)')
-        
-        # Create appropriate title based on operation type
-        if operation_type == "reservoir":
-            title = f'Reservoir Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"reservoir_mass_plot_{vial_name}{additional_info}_{timestamp_str}.png"
-        elif operation_type == "aspiration":
-            title = f'Mass vs Time During Aspiration\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"aspiration_mass_plot_{vial_name}_{timestamp_str}.png"
-        else:  # dispense
-            title = f'Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"mass_plot_{vial_name}_{timestamp_str}.png"
-            
-        plt.title(title)
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        
-        # Save the plot
-        plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
-        plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
-        plt.close()  # Close the figure to free memory
-        self.logger.info(f"Saved {operation_type} mass vs time plot to {plot_filepath}")
+        scale.mark_end()
+        readings = scale.stop()
+
+         #Track the added volume in the dataframe
+        self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
+        self.PIPET_FLUID_VOLUME -= amount_mL
+        self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
+        self.save_robot_status()
+
+        return readings, dispense_speed
+
+    def _analyze_mass_readings(self, readings, operation, vial_label, target_mL, stability_info,
+                               save, file_prefix, file_stem):
+        """Mass from recorded scale readings (pipetting_data/mass_analysis.py): logs the result,
+        updates stability_info in place, and saves the CSV and plot if save is set.
+        Files go to output/mass_measurements/<log name or date>/<prefix>data_<stem>_<time>.csv
+        (and <prefix>plot_...png). Returns the mass in g (0.0 with too few readings)."""
+        result = analyze_mass_readings(readings, operation)
+        stability_info.update(result['stability'])
+        stats = result['stability']
+        if result['pre_baseline_g'] is None:
+            self.logger.warning("Insufficient continuous data for baseline calculation")
+        else:
+            self.logger.info(f"{operation} mass - pre-baseline: {result['pre_method']} avg={result['pre_baseline_g']:.6f}g, "
+                             f"post-baseline: {result['post_method']} avg={result['post_baseline_g']:.6f}g, "
+                             f"mass difference: {result['mass_g']:.6f}g")
+            self.logger.info(f"Reading summary: {stats['pre_total_count']} pre-readings ({stats['pre_stable_count']} stable), "
+                             f"{stats['post_total_count']} post-readings ({stats['post_stable_count']} stable)")
+            self.logger.info(f"Baseline variability: pre_std={stats['pre_baseline_std']:.6f}g, "
+                             f"post_std={stats['post_baseline_std']:.6f}g")
+            self.logger.info(f"Target: {target_mL:.3f} mL = ~{target_mL*1.0:.6f} g for water")
+        if save and readings:
+            if hasattr(self, 'log_filename') and self.log_filename:
+                log_folder = self.log_filename.replace('.log', '')
+            else:
+                log_folder = time.strftime("%Y-%m-%d")
+            timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+            save_mass_readings(readings, result, operation, vial_label, target_mL,
+                               os.path.join("output", "mass_measurements", log_folder),
+                               f"{file_prefix}data_{file_stem}_{timestamp_str}.csv",
+                               f"{file_prefix}plot_{file_stem}_{timestamp_str}.png", self.logger)
+        return result['mass_g']
 
     def monitor_weight_over_time(self, time_s):
         """
@@ -3376,22 +3366,35 @@ class North_Robot(North_Base):
         return plate_type
 
     def select_wellplate_grid(self, well_plate_type=None):
+        """The Locator grid for well_plate_type (wellplates.yaml; None: the plate on the deck)."""
         well_plate_type = self._resolve_pipetting_plate(well_plate_type)
         return getattr(Locator, self.WELLPLATES[well_plate_type]["name_in_Locator"])
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
     def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, liquid=None, well_plate_type=None):
         """
-        Dispenses specified amounts into a series of wells in a well plate.
+        Unit operation: dispense from the held tip into one or more wells of the plate in the pipetting area.
+        Usually one well: dispense_into_wellplate([well], [volume_mL]).
+
         Args:
-            dest_wp_num_array (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
-            amount_mL_array (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
-            parameters (PipettingParameters, optional): Manual parameter overrides (uses defaults if None)
-            liquid (str, optional): Liquid type for automatic parameter optimization
-            well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
+            dest_wp_num_array (list or range): well indices, 0 to the plate's num_wells - 1 (wellplates.yaml)
+            amount_mL_array (list[float]): mL into each well, same length as dest_wp_num_array.
+                0 skips that well. Each well's total (this dose plus what is already recorded in it)
+                must be at most the plate's max_volume_per_well (wellplates.yaml).
+            parameters (PipettingParameters, optional): Manual parameter overrides (None: calibrated/default)
+            liquid (str, optional): liquids.yaml name for calibrated parameters and the +/- uncertainty
+            well_plate_type (str, optional): expected plate type. None: the type of the plate in the
+                pipetting area (plate inventory). The type used is logged.
+
+        Checked before anything moves (ValueError): list lengths match, well indices fit the plate,
+        volumes are numbers in mL (not missing, not negative) and each well stays within its maximum.
+        Warns, without stopping, if the doses add up to more than the tracked liquid in the tip.
         """
+        requested_type = well_plate_type
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, dest_wp_num_array)
-        # Default well plate type if not specified
+        self.logger.info(f"Pipetting plate: {well_plate_type} "
+                         f"({'as given' if requested_type else 'from the plate inventory'})")
+        self._check_wellplate_dispense_inputs(dest_wp_num_array, amount_mL_array, well_plate_type)
 
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
@@ -3441,8 +3444,26 @@ class North_Robot(North_Base):
             self._track_dispense(self._well_container_id(dest_wp_num_array[i]), amount_mL, liquid)
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
-        self.save_robot_status()    
+        self.save_robot_status()
         return True
+
+    def _check_wellplate_dispense_inputs(self, wells, amounts_mL, well_plate_type):
+        """Inputs of dispense_into_wellplate, checked before anything moves (see its docstring)."""
+        wells, amounts_mL = list(wells), list(amounts_mL)
+        if len(wells) != len(amounts_mL):
+            raise ValueError(f"Wellplate dispense refused before moving: {len(wells)} wells but "
+                             f"{len(amounts_mL)} volumes; give one volume (mL) per well")
+        # Same check as the wellplate flow: one column per dose, so a well listed twice adds up
+        plan = pd.DataFrame(0.0, index=list(dict.fromkeys(wells)),
+                            columns=[f"dose {n + 1}" for n in range(len(wells))], dtype=object)
+        for n, (well, amount) in enumerate(zip(wells, amounts_mL)):
+            plan.at[well, f"dose {n + 1}"] = amount
+        checked = self._checked_wellplate_plan(plan, well_plate_type)
+        total_mL = float(checked.to_numpy().sum())
+        in_tip_mL = getattr(self, "PIPET_FLUID_VOLUME", None)
+        if in_tip_mL is not None and total_mL > float(in_tip_mL) + 1e-6:
+            self.logger.warning(f"Dispensing {total_mL:.3f} mL into the wellplate but the tip is tracked "
+                                f"as holding {float(in_tip_mL):.3f} mL")
 
     def dispense_from_vials_into_wellplate(self, well_plate_df, parameters=None, liquid=None, well_plate_type=None):
         """
@@ -3606,142 +3627,83 @@ class North_Robot(North_Base):
 
     #Prime the line from the reservoir to the vial. In theory this could happen automatically. Probably good to do it if you are using a reservoir. 
     def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=0.5):
+        """Prime the reservoir line by dispensing volume (mL, > 0; default 0.5) into overflow_vial
+        (dispense_into_vial_from_reservoir). Refused before moving like that method."""
+        self._check_reservoir_inputs(reservoir_index, volume)
         overflow_vial = self.normalize_vial_index(overflow_vial) #Convert to int if needed
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
-    def dispense_into_vial_from_reservoir(self, reservoir_index, vial_index, volume, reservoir_params=None, liquid=None, measure_weight=False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
+    def _reservoir_carousel_position(self, reservoir_index):
+        """(carousel_angle, carousel_height) for the reservoir from syringe_pumps.yaml; None for a missing one."""
+        return (self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False),
+                self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False))
+
+    def _check_reservoir_inputs(self, reservoir_index, volume):
+        """ValueError before moving unless volume is a number > 0 mL and the reservoir has carousel settings."""
+        try:
+            positive = float(volume) > 0  # also refuses NaN
+        except (TypeError, ValueError):
+            positive = False
+        if not positive:
+            raise ValueError(f"Reservoir dispense refused before moving: volume must be > 0 mL, got {volume!r}")
+        if None in self._reservoir_carousel_position(reservoir_index):
+            raise ValueError(f"Reservoir dispense refused before moving: reservoir {reservoir_index!r} has no "
+                             f"carousel_angle and carousel_height in syringe_pumps.yaml (pump 0 is the pipetting pump)")
+
+    def dispense_from_reservoir_into_clamp_vial(self, reservoir_index, vial_name, volume, reservoir_params=None,
+                                                liquid=None, record_scale=False):
         """
-        Dispense liquid from reservoir into a vial.
-        
+        Unit operation: dispense volume (mL) from a reservoir into the open vial already in the clamp.
+        Moves the carousel to the reservoir, runs the pump strokes, and moves the carousel home.
+        Does not move, uncap or recap the vial (dispense_into_vial_from_reservoir does that).
+
         Args:
-            reservoir_index: Index of the reservoir to dispense from
-            vial_index: Index/name of destination vial
-            volume: Volume to dispense in mL
-            reservoir_params (ReservoirParameters, optional): Liquid handling parameters (uses defaults if None)
-            liquid (str, optional): Liquid type for calibrated parameter optimization (future feature)
-            measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
-            continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
-            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+            reservoir_index (int): pump in syringe_pumps.yaml
+            vial_name (str or int): the vial in the clamp; must be open
+            volume (float): mL to dispense; the vial must have room (vial_volume in vial_positions.yaml)
+            reservoir_params (ReservoirParameters or dict, optional): overrides of the defaults
+            liquid (str, optional): liquids.yaml name (recorded with the transfer)
+            record_scale (bool): record the balance around the pump strokes
+
+        Refused before moving (ValueError): volume not > 0 mL, a reservoir without carousel settings in
+        syringe_pumps.yaml, or a vial not in the clamp, not open, or without room.
+        Returns the scale readings (empty unless recorded); analyze them with
+        pipetting_data/mass_analysis.py.
         """
-        vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
-        
-        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
+        self._check_reservoir_inputs(reservoir_index, volume)
+        vial_index = self.normalize_vial_index(vial_name)
         reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
-        
-        
-        self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume:.3f} mL")
-        self.logger.debug(f"Reservoir parameters: aspirate_speed={reservoir_params.aspirate_speed}, dispense_speed={reservoir_params.dispense_speed}, overaspirate={reservoir_params.overaspirate_vol:.3f} mL")
-        measured_mass = None
-        stability_info = None
-
-
-        dest_vial_clamped = self.get_vial_info(vial_index,'location')=='clamp' #Is the destination vial clamped?
-        dest_vial_volume = self.get_vial_info(vial_index,'vial_volume') #What is the current vial volume?
-
-        # Check if dispensing would exceed vial capacity
-        dest_vial_location = self.get_vial_info(vial_index, 'location')
-        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
-        if max_vial_volume is not None:
-            post_dispense_volume = dest_vial_volume + volume
-            if post_dispense_volume > max_vial_volume:
-                self.pause_after_error(f"Cannot dispense {volume:.3f} mL into vial {self.get_vial_info(vial_index, 'vial_name')}: from reservoir {reservoir_index} - current volume {dest_vial_volume:.3f} mL + dispense volume {volume:.3f} mL = {post_dispense_volume:.3f} mL, which "
-                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
-                return
-
-        #Step 1: move the vial to the clamp
-        if not self.get_vial_info(vial_index,'location')=='clamp':
-            # Safety is now handled in move_vial_to_location method
-            self.move_vial_to_location(vial_index,'clamp',0)
+        if self.get_vial_info(vial_index, 'location') != 'clamp':
+            raise ValueError(f"Reservoir dispense refused before moving: vial {vial_name} is not in the clamp "
+                             f"(use dispense_into_vial_from_reservoir to move it there)")
         if not self.is_vial_pipetable(vial_index):
-            self.uncap_clamp_vial()
-        self.move_home()
+            raise ValueError(f"Reservoir dispense refused before moving: vial {vial_name} is not open "
+                             f"(use dispense_into_vial_from_reservoir to uncap it)")
+        max_vial_volume = self.get_config_parameter('vial_positions', 'clamp', 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None and self.get_vial_info(vial_index, 'vial_volume') + volume > max_vial_volume:
+            raise ValueError(f"Reservoir dispense refused before moving: {volume:.3f} mL would overfill vial "
+                             f"{vial_name} ({max_vial_volume:.3f} mL max)")
+        return self._dispense_from_reservoir_into_clamp_vial(reservoir_index, vial_index, volume, reservoir_params,
+                                                             liquid, record_scale)
 
-        # Initialize for continuous monitoring if requested
-        if continuous_mass_monitoring or measure_weight:
-            initial_mass = None
-            continuous_mass_data = []
-            stability_info = {
-                'pre_stable_count': 0,
-                'pre_total_count': 0, 
-                'post_stable_count': 0,
-                'post_total_count': 0,
-                'pre_baseline_std': 0.0,
-                'post_baseline_std': 0.0
-            }
-            
-            if not self.simulate:
-                initial_mass = self.read_steady_scale()
-            else:
-                initial_mass = 0.0
-
+    def _dispense_from_reservoir_into_clamp_vial(self, reservoir_index, vial_index, volume, reservoir_params,
+                                                 liquid, record_scale):
+        """The liquid step of a reservoir dispense, with parameters resolved and the vial open in the clamp.
+        Returns the scale readings."""
         #Step 2: move the carousel to reservoir position
-        carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
-        carousel_height = self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False)
-        
-        if carousel_angle is not None and carousel_height is not None:
-            self.c9.move_carousel(carousel_angle, carousel_height)
-        else:
-            self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
-            
-        #Step 3: aspirate and dispense from the reservoir
-        max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
+        carousel_angle, carousel_height = self._reservoir_carousel_position(reservoir_index)  # checked by callers
+        self.c9.move_carousel(carousel_angle, carousel_height)
 
-        # Set up continuous monitoring if requested
-        if continuous_mass_monitoring:
-            import threading
-            monitoring_active = threading.Event()
-            dispense_start_time = None
-            dispense_end_time = None
-            
-            def read_scale_continuous():
-                """Inner function to continuously read scale weight"""
-                start_time = time.time()
-                while monitoring_active.is_set():
-                    try:
-                        if not self.simulate:
-                            steady_status, weight = self.read_scale()  # Actually returns (steady_status, weight)
-                        else:
-                            weight, steady_status = 0.0, True
-                            
-                        current_time = time.time()
-                        time_relative = current_time - start_time
-                        
-                        # Determine phase based on dispense timing
-                        if dispense_start_time is None:
-                            phase = 'baseline_pre'
-                        elif dispense_end_time is None or current_time < dispense_end_time:
-                            phase = 'dispensing'
-                        else:
-                            phase = 'baseline_post'
-                        
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                    if not self.simulate:
-                        time.sleep(0.2)  # 5 Hz maximum rate
-            
-            # Start monitoring with pre-dispense baseline
-            self.logger.info("Starting continuous mass monitoring for reservoir dispensing")
-            start_time = time.time()
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            
-            # Wait for pre-dispense baseline
-            if not self.simulate:
-                time.sleep(2.0)
-        
-        # Record when dispensing starts
-        if continuous_mass_monitoring:
-            dispense_start_time = time.time()
+        #Step 3: aspirate and dispense from the reservoir
+        max_volume = (self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False)
+                      or self.get_config_parameter('robot_hardware', 'reservoir_defaults', 'pump_volume_mL',
+                                                   error_on_missing=True))
+
+        # Scale recording (the vial is in the clamp); nothing in simulation
+        scale = self.start_scale_recording(record_scale, 'dispensing', settle=False)
+
+        scale.mark_start()
         
         # Perform actual dispensing with parameterized control
         total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
@@ -3789,21 +3751,9 @@ class North_Robot(North_Base):
         if not self.simulate:
             time.sleep(1)
         
-        # Record when dispensing ends 
-        if continuous_mass_monitoring:
-            dispense_end_time = time.time()
-            dispense_duration = dispense_end_time - dispense_start_time
-            self.logger.info(f"Reservoir dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
-            
-            # Collect post-dispense baseline
-            if not self.simulate:
-                time.sleep(2.0)
-            
-            # Stop monitoring
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-        
+        scale.mark_end()
+        readings = scale.stop()
+
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
         self.save_robot_status()
@@ -3812,119 +3762,88 @@ class North_Robot(North_Base):
         #Step 4: Return the vial back to home
         self.move_carousel_to('home')
 
-        # Analyze continuous monitoring data or do traditional measurement
-        if continuous_mass_monitoring and continuous_mass_data:
-            # Process continuous mass data (similar to dispense_into_vial)
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using stability status
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                
-                measured_mass = post_baseline - pre_baseline
-                self.logger.info(f"Reservoir dispensing - Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings)
-                post_stable_count = len(post_stable_readings)
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-                
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                import matplotlib.pyplot as plt
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"reservoir_mass_data_{vial_index}_res{reservoir_index}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} reservoir mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot (same as regular dispense method)
-                if len(continuous_mass_data) > 4:
-                    plt.figure(figsize=(10, 6))
-                    
-                    # Plot all data points
-                    plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'b.-', alpha=0.7, markersize=2, linewidth=1)
-                    
-                    # Add phase coloring
-                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
-                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
-                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
-                    
-                    if len(pre_data) > 0:
-                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
-                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
-                    if len(dispense_data) > 0:
-                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
-                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
-                    if len(post_data) > 0:
-                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
-                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
-                
-                    # Add horizontal lines for averaged baselines
-                    plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
-                    plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
-                    
-                    plt.xlabel('Time (seconds)')
-                    plt.ylabel('Mass (g)')
-                    plt.title(f'Reservoir Mass vs Time During Dispense\\nVial: {vial_index}, Target: {volume:.3f} mL, Measured: {measured_mass:.4f} g')
-                    plt.legend()
-                    plt.grid(True, alpha=0.3)
-                    
-                    # Save the plot
-                    plot_filename = f"reservoir_mass_plot_{vial_index}_res{reservoir_index}_{timestamp_str}.png"
-                    plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
-                    plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
-                    plt.close()  # Close the figure to free memory
-                    self.logger.info(f"Saved reservoir mass vs time plot to {plot_filepath}")
+        return readings
+
+    def dispense_into_vial_from_reservoir(self, reservoir_index, vial_index, volume, reservoir_params=None, liquid=None, measure_weight=False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
+        """
+        Flow: dispense liquid from a reservoir into a vial, getting the vial ready and putting it back.
+
+        Checks the vial has room, moves it to the clamp and uncaps it if needed, homes the arm,
+        optionally weighs it, runs the liquid step (dispense_from_reservoir_into_clamp_vial),
+        analyzes the mass if recorded, recaps the vial and (return_home=True) returns it home.
+        With return_home=False the vial is left capped in the clamp.
         
+        Args:
+            reservoir_index: Index of the reservoir to dispense from
+            vial_index: Index/name of destination vial
+            volume: Volume to dispense in mL
+            reservoir_params (ReservoirParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization (future feature)
+            measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
+            continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
+            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+
+        Refused before moving (ValueError): volume not > 0 mL, or a reservoir without carousel_angle and
+        carousel_height in syringe_pumps.yaml (e.g. pump 0, the pipetting pump).
+        """
+        self._check_reservoir_inputs(reservoir_index, volume)
+        vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
+        
+        # Use intelligent parameter resolution: defaults â†’ liquid-calibrated â†’ user overrides
+        reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
+        
+        
+        self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume:.3f} mL")
+        self.logger.debug(f"Reservoir parameters: aspirate_speed={reservoir_params.aspirate_speed}, dispense_speed={reservoir_params.dispense_speed}, overaspirate={reservoir_params.overaspirate_vol:.3f} mL")
+        measured_mass = None
+        stability_info = None
+
+
+        dest_vial_clamped = self.get_vial_info(vial_index,'location')=='clamp' #Is the destination vial clamped?
+        dest_vial_volume = self.get_vial_info(vial_index,'vial_volume') #What is the current vial volume?
+
+        # Check if dispensing would exceed vial capacity
+        dest_vial_location = self.get_vial_info(vial_index, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + volume
+            if post_dispense_volume > max_vial_volume:
+                self.pause_after_error(f"Cannot dispense {volume:.3f} mL into vial {self.get_vial_info(vial_index, 'vial_name')}: from reservoir {reservoir_index} - current volume {dest_vial_volume:.3f} mL + dispense volume {volume:.3f} mL = {post_dispense_volume:.3f} mL, which "
+                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                return
+
+        #Step 1: move the vial to the clamp
+        if not self.get_vial_info(vial_index,'location')=='clamp':
+            # Safety is now handled in move_vial_to_location method
+            self.move_vial_to_location(vial_index,'clamp',0)
+        if not self.is_vial_pipetable(vial_index):
+            self.uncap_clamp_vial()
+        self.move_home()
+
+        # Initialize for continuous monitoring if requested
+        if continuous_mass_monitoring or measure_weight:
+            initial_mass = None
+            continuous_mass_data = []
+            stability_info = empty_stability()
+            
+            if not self.simulate:
+                initial_mass = self.read_steady_scale()
+            else:
+                initial_mass = 0.0
+
+        # The liquid step (same as dispense_from_reservoir_into_clamp_vial, parameters already resolved)
+        continuous_mass_data = self._dispense_from_reservoir_into_clamp_vial(
+            reservoir_index, vial_index, volume, reservoir_params, liquid, continuous_mass_monitoring)
+
+
+        # Analyze continuous monitoring data or do traditional measurement
+        if continuous_mass_monitoring and continuous_mass_data:  # pipetting_data/mass_analysis.py
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'reservoir', vial_index, volume, stability_info,
+                save=save_mass_data, file_prefix="reservoir_mass_", file_stem=f"{vial_index}_res{reservoir_index}")
+
+        elif continuous_mass_monitoring and self.simulate:
+            measured_mass = 0.0  # No scale readings in simulation
         elif measure_weight: # Traditional before/after measurement
             if not self.simulate:
                 final_mass = self.read_steady_scale()
@@ -3957,6 +3876,7 @@ class North_Robot(North_Base):
         """
         
 
+        _check_optional_speed(self, 'return_vial_home', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         home_location = self.get_vial_info(vial_index,'home_location')
         home_location_index = self.get_vial_info(vial_index,'home_location_index')
@@ -3970,6 +3890,9 @@ class North_Robot(North_Base):
 
     #Drop off a vial at a location that you already have
     def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
+        """Put the held vial down at location / location_index (vial_positions.yaml).
+        Pauses with an error if the spot holds another vial. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
+        _check_optional_speed(self, 'drop_off_vial', 'move_speed', move_speed)
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
@@ -4008,7 +3931,10 @@ class North_Robot(North_Base):
         self.save_robot_status() #Update in memory
 
     def grab_vial(self,vial_name, move_speed=None):
+        """Pick up the vial (recapping it first if its cap is held). Pauses with an error if the gripper
+        is full or the vial cannot be moved (not capped or not 8 mL). move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         
+        _check_optional_speed(self, 'grab_vial', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         
         self.logger.debug(f"Grabbing vial {vial_name} with index {vial_index}")
@@ -4049,14 +3975,16 @@ class North_Robot(North_Base):
             vial_name (str): Name of the vial to move
             location (str): Description of the location to move to (e.g., 'clamp', 'photoreactor_array', 'main_8mL_rack', 'heater')
             location_index (int): Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
+            move_speed (float, optional): percent of max velocity, 1-100 (None: the default speed); refused before moving outside that range
          """
         
+        _check_optional_speed(self, 'move_vial_to_location', 'move_speed', move_speed)
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
         # Safety check: If holding a pipet, ensure the movement path is safe
         if self.HELD_PIPET_TYPE is not None:
             if not self.is_vial_movement_safe_with_pipet(vial_index, location, location_index):
-                self.pause_after_error(f"Cannot move vial {vial_name} while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe")
+                self.pause_after_error(f"Cannot move vial {vial_name} while holding pipet - only tip_held_move_indices in vial_positions.yaml are safe (rack 0-5, clamp 0)")
 
         vial_location = self.get_vial_info(vial_index,'location')
         vial_location_index = self.get_vial_info(vial_index,'location_index')
@@ -4070,6 +3998,7 @@ class North_Robot(North_Base):
         self.drop_off_vial(vial_index,location,location_index, move_speed=move_speed) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):
+        """Index of the vial at location_name / location_index, or None."""
         # Filter rows where both conditions match
         mask = (self.VIAL_DF['location'] == location_name) & (self.VIAL_DF['location_index'] == location_index)
         
@@ -4080,7 +4009,13 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=3.0, move_speed=None):
+    def uncap_clamp_vial(self, revs=None, move_speed=None):
+        """Take the cap off the vial in the clamp (revs: unscrewing turns; None: capping.uncap_revs in
+        robot_hardware.yaml, 3.0) and hold it.
+        Pauses with an error if the gripper is full, the clamp is empty or the vial is open. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
+        _check_optional_speed(self, 'uncap_clamp_vial', 'move_speed', move_speed)
+        if revs is None:
+            revs = self.get_config_parameter('robot_hardware', 'capping', 'uncap_revs', error_on_missing=True)
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -4122,7 +4057,16 @@ class North_Robot(North_Base):
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
-    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
+    def recap_clamp_vial(self, revs=None, torque_thresh=None, move_speed=None):
+        """Screw the held cap onto the vial in the clamp (revs: turns; torque_thresh: C9 torque limit;
+        None: capping.recap_revs / recap_torque_thresh in robot_hardware.yaml, 1.8 and 550). Pauses with an error if no cap is held, the clamp is empty or the vial
+        is capped. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
+        _check_optional_speed(self, 'recap_clamp_vial', 'move_speed', move_speed)
+        if revs is None:
+            revs = self.get_config_parameter('robot_hardware', 'capping', 'recap_revs', error_on_missing=True)
+        if torque_thresh is None:
+            torque_thresh = self.get_config_parameter('robot_hardware', 'capping', 'recap_torque_thresh',
+                                                      error_on_missing=True)
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -4155,12 +4099,16 @@ class North_Robot(North_Base):
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location, move_speed=None):
-        difference_threshold = 50
+        """Move to location (Locator position) unless already within 50 counts. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
+        _check_optional_speed(self, 'goto_location_if_not_there', 'move_speed', move_speed)
+        difference_threshold = self.get_config_parameter('robot_hardware', 'physical_constants',
+                                                         'already_there_counts', error_on_missing=True)
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
             self.c9.goto_safe(location, vel=move_speed if move_speed is not None else self.get_speed('fast_approach'))
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
+        """Sum of the axis differences (counts) between two Locator positions; 0 in simulation."""
         if self.simulate:
             return 0
         difference = np.sum(np.absolute(np.array(loc_2)[1:4] - np.array(loc_1)[1:4]))
@@ -4173,15 +4121,20 @@ class North_Robot(North_Base):
         Lift and vortex a vial, then safely transport and release it.
         Args:
             `vial_name` (str): Name of the vial to vortex
-            `vortex_time` (float): Time (in seconds) to vortex
-            `vortex_speed` (float): Speed of vortexing (default is 70)
+            `vortex_time` (float): seconds, within vortex_limits min_time_s-max_time_s (robot_hardware.yaml)
+            `vortex_speed` (float): normalized 0-100 speed, within vortex_limits min_speed-max_speed.
+                Default 70. The speed used is logged.
             `return_location` (tuple[str, int] | None): Destination name and
                 index, e.g. ("main_8mL_rack", 25). None returns the vial to its
                 home location, so the call ends state-preserving. An explicit
                 destination avoids intermediate release and regripping; it does
                 not change the safe transport approach.
+
+        A time or speed that is missing, not a number or out of range is refused (ValueError)
+        before the vial is picked up.
         """
-        
+        self._check_vortex_inputs(vortex_time, vortex_speed)  # values passed on unchanged
+
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
         if return_location is not None:
@@ -4203,7 +4156,8 @@ class North_Robot(North_Base):
                 self.logger.error(message)
                 raise ValueError(message)
 
-        self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')}")
+        self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')} "
+                         f"for {vortex_time:g} s at speed {vortex_speed:g}")
         
         #Check to see if the vial is capped
         if self.GRIPPER_VIAL_INDEX == vial_index  and self.GRIPPER_STATUS == "Cap":
@@ -4223,6 +4177,14 @@ class North_Robot(North_Base):
             location, location_index = return_location
 
         self.drop_off_vial(vial_index, location, location_index)
+
+    def _check_vortex_inputs(self, vortex_time, vortex_speed):
+        """ValueError if the time or speed is not a number or is outside vortex_limits (robot_hardware.yaml)."""
+        limits = _hardware_limits(self, 'vortex_limits')
+        _check_in_range('Vortex', 'vortex_time', vortex_time, limits['min_time_s'], limits['max_time_s'], ' s',
+                        'vortex_limits')
+        _check_in_range('Vortex', 'vortex_speed', vortex_speed, limits['min_speed'], limits['max_speed'], '',
+                        'vortex_limits')
 
     # ---- Unit operations: tip conditioning and small-tip staging ----
     def _present_vial_locations(self):
@@ -4509,6 +4471,8 @@ class North_Robot(North_Base):
     #This may end up deprecated
     #Error check list is as follows error_check[0] is the value, error_check[1] is the target value, error_check[2] is the error message
     def check_for_errors(self, error_check_list, stop_after_error=False):
+        """For each [value, expected, message], log a warning if value != expected, and pause with
+        the message if stop_after_error. Returns True if any check failed."""
         error_occured = False
         for error_check in error_check_list:
             if error_check[0] != error_check[1]:
@@ -4524,6 +4488,7 @@ class North_Robot(North_Base):
 
    #Check to see if we can move the vial         
     def is_vial_movable(self, vial_name):
+        """True if the vial is capped and an 8 mL vial (the gripper can move it)."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if neede
 
@@ -4533,6 +4498,7 @@ class North_Robot(North_Base):
     
     #Check to see if the pipet can have liquids added/removed
     def is_vial_pipetable(self, vial_name):
+        """True if the vial is uncapped or has an open cap."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
@@ -4553,16 +4519,11 @@ class North_Robot(North_Base):
         Returns:
             bool: True if location is safe with pipet, False otherwise
         """
-        # Safe positions when holding a pipet:
-        # - main_8mL_rack positions 0-5
-        # - clamp position 0
-        if location == 'main_8mL_rack' and location_index is not None:
-            return location_index <= 5
-        elif location == 'clamp' and location_index is not None:
-            return location_index == 0
-        
-        # All other locations are unsafe when holding a pipet
-        return False
+        # Safe positions: tip_held_move_indices in vial_positions.yaml (rack 0-5 and the clamp);
+        # every other location is unsafe when holding a pipet
+        positions = getattr(self, 'VIAL_POSITIONS', None) or _read_yaml_quietly(self.VIAL_POSITIONS_FILE)
+        safe = (positions.get(location) or {}).get('tip_held_move_indices')
+        return bool(safe) and location_index is not None and location_index in safe
 
     #Check if a vial movement path is safe while holding a pipet tip
     def is_vial_movement_safe_with_pipet(self, vial_name, dest_location, dest_location_index):
@@ -4610,6 +4571,9 @@ class North_Robot(North_Base):
         self.c9.close_clamp()
 
     def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
+        """Move the arm by x, y, z distances (mm) from where it is. vel: percent of max velocity, 1-100
+        (None: standard_xy). Refused before moving (ValueError) outside that range."""
+        _check_optional_speed(self, 'move_rel_xyz', 'vel', vel)
         if vel is None:
             vel = self.get_speed('standard_xy')
         self.logger.debug(f"Moving robot relative to current position by x: {x_distance}, y: {y_distance}, z: {z_distance} mm, vel: {vel}")
@@ -4632,6 +4596,7 @@ class North_Robot(North_Base):
 
     #Move the robot to the home position    
     def move_home(self):
+        """Move the arm and the carousel home."""
         self.logger.info("Moving robot to home position")
         self.c9.goto_safe(home)
         self.move_carousel_to('home')
@@ -4647,6 +4612,7 @@ class North_Robot(North_Base):
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
     def get_vial_info(self,vial_name,column_name):
+        """The value of column_name (vial table) for the vial, or None."""
         
         # Check if vial data is available
         if not self._vials_available():
@@ -4662,6 +4628,7 @@ class North_Robot(North_Base):
             return None  # Handle case where no match is found    
 
     def get_vial_index_from_name(self,vial_name):
+        """Index of the vial called vial_name, or None."""
         # Check if vial data is available
         if not self._vials_available():
             self.logger.warning(f"Cannot get vial index for '{vial_name}' - no vial data loaded")
@@ -4675,6 +4642,7 @@ class North_Robot(North_Base):
 
     #Physical method that get's hard-coded minimum heights for pipetting    
     def get_min_pipetting_height(self,vial_name):
+        """Lowest pipetting height (mm) at the vial's location (min_pipetting_height, vial_positions.yaml)."""
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         #The height at which the pipet touches the ground for the 1 mL pipet
@@ -4689,6 +4657,7 @@ class North_Robot(North_Base):
 
     #Get the position of a vial right now
     def get_vial_location(self,vial_name,use_pipet):
+        """Locator position of the vial (pipetting position if use_pipet, else gripping position)."""
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         location_name = self.get_vial_info(vial_index,'location')
         location_index = self.get_vial_info(vial_index,'location_index')
@@ -4696,6 +4665,8 @@ class North_Robot(North_Base):
 
     #Translate the location names and indexes to hard-coded locations for pipets or gripping vials
     def get_location(self, use_pipet, location_name, location_index):
+        """Locator position for location_name / location_index (vial_positions.yaml): the pipetting
+        position if use_pipet, else the gripping position. Pauses with an error for an unknown location or index."""
         # Get the appropriate position source from YAML configuration
         param_key = 'pipetting_positions_in_Locator' if use_pipet else 'vial_positions_in_Locator'
         position_source = self.get_config_parameter('vial_positions', location_name, param_key, error_on_missing=True)

@@ -793,10 +793,13 @@ class Lash_E:
         """Flow: dispense powder into a vial at the clamp. Returns the mass dispensed (mg).
 
         Like dispense_into_vial_from_reservoir: the vial goes to the clamp, a closed cap is taken
-        off (powder goes through an open cap), and it is recapped after.
+        off (powder goes through an open cap), and it is recapped after. mass_mg must be > 0 and at
+        most 1000 mg (powder_limits in robot_hardware.yaml) and the channel listed in
+        powder_channels.yaml; otherwise refused before the vial moves (ValueError).
         """
         if self.powder_dispenser is None:
             raise RuntimeError("Powder dispenser isn't started: create Lash_E with initialize_p2=True")
+        self.powder_dispenser.check_powder_dispense(mass_mg, channel)  # refuse before the vial moves
         robot = self.nr_robot
         self.logger.info(f"Dispensing into vial: {vial} with mass: {mass_mg:.3f} mg")
         if robot.get_vial_info(vial, 'location') != 'clamp':

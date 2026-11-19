@@ -1,5 +1,6 @@
 main_8mL_rack:
   rack_present: true
+  tip_held_move_indices: [0, 1, 2, 3, 4, 5]  # Only these can be reached moving a vial with a tip held (height)
   release_height_offset_mm: 4.0  # Positive raises release above the Locator pickup position
   vial_positions_in_Locator: rack  # Variable name in Locator.py for gripper positions
   pipetting_positions_in_Locator: rack_pip  # Variable name in Locator.py for pipetting positions
@@ -99,6 +100,7 @@ photoreactor_array:
 
 clamp:
   rack_present: true
+  tip_held_move_indices: [0]  # Safe to move a vial to or from with a tip held
   release_height_offset_mm: 1.0
   vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper
   pipetting_positions_in_Locator: vial_clamp_pip  # Single clamp position for pipetting

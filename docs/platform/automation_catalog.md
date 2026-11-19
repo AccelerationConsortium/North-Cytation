@@ -26,14 +26,16 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 |---|---|
 | `move_home` | Park the arm and home the carousel |
 | `home_robot_components` | Home all axes, pumps and carousel (startup) |
-| `goto_location_if_not_there` | Move the arm to a named location |
-| `move_rel_xyz` | Relative XYZ move |
+| `goto_location_if_not_there` | Move the arm to a named location. Like every method taking `move_speed` (vial moves, cap/uncap, dispenses), refuses a speed outside 1-100 percent (`speed_limits`) before moving |
+| `move_rel_xyz` | Relative XYZ move (mm); `vel` 1-100 percent, refused outside |
 | `pipet_aspirate` | Pump draws a volume (no motion) |
 | `pipet_dispense` | Pump expels a volume (no motion) |
-| `adjust_pump_speed` | Set the pump speed |
+| `adjust_pump_speed` | Set the pump speed code (1-40, lower is faster; outside pauses with an error) |
 | `get_current_height` | Read the Z position |
 | `open_vial_gripper` / `close_vial_gripper` | Open / close the vial gripper (output set in `robot_hardware.yaml`) |
 | `open_clamp` / `close_clamp` | Open / close the vial clamp |
+
+Liquid-handling parameters (speeds, waits, air and blowout volumes, cycles) are checked against `parameter_limits` in `robot_hardware.yaml` when they are resolved (defaults, calibration and overrides combined), before any aspirate, dispense or reservoir move. `retract_speed` is an arm velocity (1-100 percent).
 
 ### Shared by all North classes (`North_Base`)
 
@@ -51,16 +53,16 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `open_gripper` / `close_gripper` | Open / close the track gripper |
 | `origin` | Park the track |
 | `move_through_path` | Move along named waypoints |
-| `set_horizontal_speed` / `set_vertical_speed` | Set the track speeds (currently unused) |
+| `set_horizontal_speed` / `set_vertical_speed` | No effect (nothing reads the values; currently unused). Track moves use `speeds` in `track_positions.yaml`: percent of max velocity, refused outside 1-100 (`speed_limits` in `robot_hardware.yaml`, also used for the arm's `movement_speeds`) |
 
 ### North_Temp
 
 | Primitive | What it does |
 |---|---|
-| `set_temp` / `get_temp` | Set / read the heater temperature |
+| `set_temp` / `get_temp` | Set / read the heater temperature. `set_temp` refuses a temperature outside 0-250 °C or a channel outside 0-7 (`heater_limits` in `robot_hardware.yaml`) before sending; warns above 100 °C |
 | `turn_off_heating` | Turn off the heater |
-| `turn_on_stirring` / `turn_off_stirring` | Turn stirring on / off |
-| `autotune` | Autotune the heater (currently unused) |
+| `turn_on_stirring` / `turn_off_stirring` | Turn stirring on / off. Speed in motor counts/s (default 10000), refused outside 1-100000 (`stirrer_limits`) |
+| `autotune` | Autotune the heater (currently unused); same checks as `set_temp` |
 
 ### North_Powder
 
@@ -74,7 +76,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Primitive | What it does |
 |---|---|
-| `set_speed` / `stop_spin` | Spin / stop |
+| `set_speed` / `stop_spin` | Spin / stop. Speed in motor counts/s, refused outside 1-100000 (`spinner_limits`) |
 | `open_lid` / `close_lid` | Lid pneumatic (output set in `robot_hardware.yaml`) |
 | `turn_on_vacuum` / `turn_off_vacuum` | Vacuum pneumatic (output set in `robot_hardware.yaml`) |
 
@@ -121,12 +123,16 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Unit operation | What it does | State after |
 |---|---|---|
-| `dispense_into_wellplate` | Dispense into wells | Tip empty (still attached) |
-| `pipet_from_wellplate` | Draw liquid from a well | Tip full |
-| `mix_well_in_wellplate` | Mix a well by pipetting up and down | Tip still attached |
-| `prime_reservoir_line` | Prime a reservoir line | Line primed |
-
-`aspirate_from_vial`, `dispense_into_vial`, `dispense_into_vial_from_reservoir` and `mix_vial` are not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
+| `dispense_into_wellplate` | Dispense into wells. Refuses bad inputs before moving: one volume (mL) per well, no missing or negative volumes, each well within `max_volume_per_well` (`wellplates.yaml`). Warns if the doses exceed the tracked tip volume; logs the plate type used | Tip empty (still attached) |
+| `pipet_from_wellplate` | Draw liquid from a well (or dispense into it with `aspirate=False`). Refuses a volume that is not > 0 mL before moving | Tip full |
+| `mix_well_in_wellplate` | Mix a well by pipetting up and down. Refuses volume not > 0 mL or repeats not a whole number >= 1 before moving | Tip still attached |
+| `prime_reservoir_line` | Prime a reservoir line (`dispense_into_vial_from_reservoir`, same checks) | Line primed |
+| `aspirate_from_open_vial` | Aspirate from a vial that is already open, with the right tip held. Refuses (before moving) a closed vial or the wrong tip; does not get a tip or move the vial. Can record the scale (`start_scale_recording`); returns the readings | Tip full |
+| `aspirate_from_vial` | Combined unit operation: get the right tip, make the vial accessible (move to the clamp and uncap if needed), then `aspirate_from_open_vial`; with scale recording, analyze the mass (mass analyzer). Same arguments and behaviour as before the split | Tip full; vial may be left in the clamp, uncapped |
+| `dispense_into_open_vial` | Dispense from the held tip into a vial that is already open. Refuses (before moving) a closed vial, no tip, or a vial without room (`vial_volume` in `vial_positions.yaml`); does not move the vial or write a dispense-recording row. Can record the scale; returns the readings | Tip empty (still attached) |
+| `dispense_into_vial` | Combined unit operation: make the vial accessible (move to the clamp and uncap if needed), check it has room, then `dispense_into_open_vial`. Around it: optional before/after weighing, scale recording with mass analysis, and the dispense-recording row. Same arguments and behaviour as before the split | Tip empty; vial may be left in the clamp, uncapped |
+| `dispense_from_reservoir_into_clamp_vial` | Dispense from a reservoir into the open vial already in the clamp: carousel to the reservoir, pump strokes, carousel home. Refuses (before moving) a volume that is not > 0 mL, a reservoir without carousel settings in `syringe_pumps.yaml` (e.g. pump 0), or a vial not in the clamp, not open, or without room; does not move, uncap or recap the vial. Can record the scale; returns the readings. Uses default reservoir settings unless given (calibration not connected yet: `docs/plans/reservoir_calibration_alignment.md`) | Vial filled, still open in the clamp; carousel home |
+| `mix_vial` | Combined unit operation: mix a vial by pipetting up and down with one tip kept low in the liquid (like `mix_well_in_wellplate`). `aspirate_from_vial` (gets the tip, makes the vial accessible), then `dispense_into_open_vial` / `aspirate_from_open_vial` in place for each repeat. Refuses (before moving) volume not > 0 mL or repeats not a whole number >= 1. No dispense-recording rows | Tip empty (still attached); vial open where it was mixed (may be the clamp) |
 
 ### North_Robot: tip conditioning and staging
 
@@ -141,6 +147,9 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | Unit operation | What it does | State after |
 |---|---|---|
 | `monitor_weight_over_time` | Record the mass over time | Unchanged (data recorded) |
+| `start_scale_recording` | Record the balance in the background around one liquid step (settle, 2 s before, mark start/end, 2 s after; timings in `scale_recording`, `robot_hardware.yaml`). No readings and no waits in simulation. Used by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` | Unchanged (readings recorded) |
+
+**Mass analyzer** (`pipetting_data/mass_analysis.py`, not robot code): turns scale readings recorded around an aspirate or dispense into a mass and stability summary, and saves the CSV and plot. Shared by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir`.
 
 ### North_Track: wellplates
 
@@ -155,23 +164,10 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Unit operation | Class | What it does | State after |
 |---|---|---|---|
-| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder (shake and weigh until reached; settings in `powder_settings.yaml`). Refuses a channel not listed in `powder_channels.yaml` before moving | Powder dispensed; returns the mass dispensed |
+| `dispense_powder_mg` | North_Powder | Dispense a target mass of powder (shake and weigh until reached; settings in `powder_settings.yaml`). Refuses (before moving) a mass not > 0 or above 1000 mg (`powder_limits` in `robot_hardware.yaml`), or a channel not listed in `powder_channels.yaml` | Powder dispensed; returns the mass dispensed |
 | `run_plate` | Biotek_Wrapper | Read a plate that is already loaded in the Cytation | Data produced; plate still inside |
 | `move_wellplate_to_cytation` | Lash_E | Move a plate from the deck into the Cytation | Plate inside the Cytation |
 | `move_wellplate_back_from_cytation` | Lash_E | Move a plate from the Cytation back to the deck | Plate on the deck |
-
-### Neither unit operation nor flow (fix later)
-
-These methods mix the task itself with flow-level sequencing and with data analysis, so they fit neither definition. A unit operation should hold the logic for doing one task safely (checks, heights, speeds, failure detection). The ordering of steps belongs in a flow, and analysis and saving belong in an analyzer. These methods are not being refactored now; they are noted here to fix later.
-
-| Method | Why it is neither |
-|---|---|
-| `aspirate_from_vial` | The aspirate step is a unit operation, but the method can also get a tip and move and uncap the vial (via `_ensure_vial_accessible_for_pipetting`). It also runs continuous scale monitoring, baseline analysis, CSV saving and plotting. |
-| `dispense_into_vial` | Can move and uncap the vial, and includes the same scale monitoring, analysis, saving and plotting. |
-| `dispense_into_vial_from_reservoir` | Moves the vial, homes the robot and analyzes the mass within one method. |
-| `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
-
-Possible direction for later: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
 
 ## Flows
 
@@ -181,18 +177,19 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 |---|---|---|---|
 | `dispense_from_vial_into_vial` | North_Robot | (condition fresh tip if the liquid needs it) > aspirate > dispense > remove tip > recap > return vial | No tip, vials home |
 | `dispense_from_vials_into_wellplate` | North_Robot | Input: a table (columns = source vials, rows = well indices, values = mL) and `liquid=` as one name or `{vial: liquid}`. Checked before moving: no missing or negative volumes, each well's total within the plate's `max_volume_per_well`, a liquid for every vial, a tip for every dose. Then: stage small-tip vials if needed > per vial and tip group: condition if needed, dispense > fresh tip per vial > return vials home | No tip, vials home |
-| `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override) | Vial home |
+| `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override). Refuses a time or speed outside `vortex_limits` (`robot_hardware.yaml`: 1-60 s, speed 1-99) before moving; logs the time and speed used | Vial home |
+| `dispense_into_vial_from_reservoir` | North_Robot | Check room > vial to clamp, uncap if needed > home arm > (weigh) > `dispense_from_reservoir_into_clamp_vial` > (analyze mass) > recap > return vial home. `return_home=False` leaves the vial capped in the clamp (then it is a unit operation). Refuses a volume that is not > 0 mL or a reservoir without carousel settings before moving | Vial home, capped; carousel home |
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |
-| `mass_dispense_into_vial` | Lash_E | vial to clamp (if not there) > take off a closed cap (powder goes through an open cap) > robot home > dispense powder > put the cap back > return vial. Needs `initialize_p2=True`; returns the mass dispensed | Vial home, capped as before |
+| `mass_dispense_into_vial` | Lash_E | vial to clamp (if not there) > take off a closed cap (powder goes through an open cap) > robot home > dispense powder > put the cap back > return vial. Needs `initialize_p2=True`; refuses a bad mass or channel before the vial moves; returns the mass dispensed | Vial home, capped as before |
 | `run_photoreactor` | Lash_E | move vial > run reactor > return vial | Vial home |
 
 Notes:
 - `refill_vial` and `create_substock` take their sources as arguments. Each container's contents are now stored (see [Sample tracking](#sample-tracking-what-a-workflow-needs-to-do)), so picking a source automatically (for example, a vial with matching contents) is possible but not built yet; `refill_vial` raises `NotImplementedError` if no source is given.
 - `create_substock` returns the vial home after each addition. Keeping the vial on the clamp to weigh every addition is a possible improvement.
 - `vortex_vial` now returns the vial home by default. Previously it returned the vial to where it was picked up.
-- `refill_vial`'s reservoir path depends on `dispense_into_vial_from_reservoir`, and the vial-to-vial flows depend on `aspirate_from_vial` and `dispense_into_vial` (see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later)).
+- `refill_vial`'s reservoir path uses `dispense_into_vial_from_reservoir`, and the vial-to-vial flows use `aspirate_from_vial` and `dispense_into_vial`.
 
 ### Workflow-file functions now covered by North_Safe
 
@@ -208,7 +205,7 @@ Existing workflows have not been changed; new workflows should use the North_Saf
 
 ### To do
 
-- **Staging for moving vials while a tip is held:** done 2026-11-18. `stage_vials` puts closed vials in rack 0-5 and both flows call it, so `create_substock` and `refill_vial` work with closed vials anywhere. Still to do: remove the old workarounds that temporarily rehome vials (`safe_pipet` in `Degradation_serena.py`, rack 4/5; `dispense_vial_to_vial` in `fluorescence_calibration_workflow.py`, rack 0/1), and move the hard-coded 0-5 limit (`is_location_safe_for_vial_movement_with_pipet`) into YAML.
+- **Staging for moving vials while a tip is held:** done 2026-11-18. `stage_vials` puts closed vials in rack 0-5 and both flows call it, so `create_substock` and `refill_vial` work with closed vials anywhere. Still to do: remove the old workarounds that temporarily rehome vials (`safe_pipet` in `Degradation_serena.py`, rack 4/5; `dispense_vial_to_vial` in `fluorescence_calibration_workflow.py`, rack 0/1). The 0-5 limit is now `tip_held_move_indices` in `vial_positions.yaml` (2026-11-19).
 - **Embedded validation.** `validate_pipetting_accuracy` and `validate_reservoir_accuracy` (`pipetting_data/embedded_calibration_validation.py`) are flows, but they also contain analysis, plotting, CSV saving and parameter updates. Separate the flow from the analysis and improve them.
 - **`measure_wellplate_async`** (Lash_E) has not been used yet. Examine it later. It looks like a flow split into two halves: the start moves the plate in and begins the read, and `MeasurementHandle.complete()` returns the plate.
 

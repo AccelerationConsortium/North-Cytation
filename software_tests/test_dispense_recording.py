@@ -38,7 +38,8 @@ def robot(monkeypatch, tmp_path):
     robot._get_optimized_parameters = lambda volume, liquid, params: params or PipettingParameters()
     robot._get_optimized_reservoir_parameters = lambda volume, liquid, params=None: params or ReservoirParameters()
     robot._ensure_vial_accessible_for_pipetting = MagicMock(return_value=True)
-    robot.get_config_parameter = lambda config, key, field, **kw: 2.5 if config == 'pumps' and field == 'volume' else None
+    pump = {'volume': 2.5, 'carousel_angle': 45, 'carousel_height': 70}
+    robot.get_config_parameter = lambda config, key, field, **kw: pump.get(field) if config == 'pumps' else None
     robot.get_vial_location = MagicMock(return_value=[0, 0, 0, 0])
     robot.get_height_at_location = MagicMock(return_value=0)
     robot.adjust_height_based_on_pipet_held = lambda height: height
@@ -50,7 +51,7 @@ def robot(monkeypatch, tmp_path):
     robot.is_vial_pipetable = MagicMock(return_value=True)
     robot.recap_clamp_vial = MagicMock()
     robot.return_vial_home = MagicMock()
-    robot._create_mass_vs_time_plot = MagicMock(side_effect=AssertionError('Unexpected plot'))
+    monkeypatch.setattr(north, 'save_mass_readings', MagicMock(side_effect=AssertionError('Unexpected plot')))
     robot.balance = 10.
     robot.mass_increment = .1
     robot.c9.read_scale.side_effect = lambda: (True, robot.balance)
@@ -63,8 +64,7 @@ def robot(monkeypatch, tmp_path):
     class Poller:
         def __init__(self, target, daemon):
             self.target = target
-            closure = dict(zip(target.__code__.co_freevars, target.__closure__))
-            self.event = closure['monitoring_active'].cell_contents
+            self.event = target.__self__._running  # ScaleRecording's stop flag
             self.joined = False
 
         def sample(self):
@@ -273,13 +273,39 @@ def test_recording_on_matches_off_motion_and_return(robot):
 
 def test_mixing_does_not_record(robot):
     robot.aspirate_from_vial = MagicMock()
-    robot.plan_vial_transfer = MagicMock(return_value=(.1, 1, PipettingParameters(), 'small_tip'))
-    robot.get_vial_in_location = MagicMock(return_value=None)
-    robot.remove_pipet = MagicMock()
+    robot.resolve_pipetting_setup = MagicMock(return_value=(PipettingParameters(), 'small_tip'))
+    robot.check_if_aspiration_volume_unacceptable = MagicMock()
+    robot.get_current_height = MagicMock(return_value=0)
+    robot.pipet_aspirate = MagicMock()
+    robot.VIAL_DF.at[1, 'vial_volume'] = 1.
     robot.mix_vial('dest', .1, repeats=3, liquid='water')
     assert robot.pipet_dispense.call_count == 3
     assert not robot.pollers
     assert not recording.MASTER_MEASUREMENTS.exists()
+
+
+def test_mix_vial_uses_one_tip_and_stays_in_the_liquid(robot):
+    calls = []
+    for name in ['aspirate_from_vial', 'aspirate_from_open_vial', 'dispense_into_open_vial',
+                 'dispense_into_vial', 'dispense_from_vial_into_vial', 'remove_pipet']:
+        setattr(robot, name, MagicMock(side_effect=lambda *a, _n=name, **kw: calls.append((_n, kw))))
+    robot.mix_vial('dest', .1, repeats=3)
+    assert [n for n, _ in calls] == ['aspirate_from_vial', 'dispense_into_open_vial',
+                                     'aspirate_from_open_vial', 'dispense_into_open_vial',
+                                     'aspirate_from_open_vial', 'dispense_into_open_vial']
+    assert calls[0][1]['move_up'] is False and calls[0][1]['track_height'] is False
+    assert all(kw['initial_move'] is False for n, kw in calls if n == 'dispense_into_open_vial')
+    assert all(kw['move_to_aspirate'] is False and kw['move_up'] is False
+               for n, kw in calls if n == 'aspirate_from_open_vial')
+
+
+@pytest.mark.parametrize('volume, repeats', [(0, 3), (-.1, 3), (float('nan'), 3), ('a', 3),
+                                             (.1, 0), (.1, 1.5), (.1, None)])
+def test_mix_vial_refuses_bad_inputs_before_moving(robot, volume, repeats):
+    robot.aspirate_from_vial = MagicMock()
+    with pytest.raises(ValueError, match='refused before moving'):
+        robot.mix_vial('dest', volume, repeats=repeats)
+    robot.aspirate_from_vial.assert_not_called()
 
 
 def test_reservoir_is_unchanged_and_does_not_record(robot):
@@ -432,3 +458,137 @@ def test_real_thread_collects_and_stops(robot, monkeypatch):
     info = json.loads(rows().stability_info.iloc[0])
     assert info['pre_total_count'] >= 2
     assert info['post_total_count'] >= 2
+
+
+def test_simulated_reservoir_dispense_with_scale_recording_reads_nothing(robot):
+    from pipetting_data.mass_analysis import empty_stability
+    robot.simulate = True
+    robot.move_carousel_to = MagicMock()
+    robot._track_reservoir_dispense = MagicMock()
+    result = robot.dispense_into_vial_from_reservoir(1, 'dest', 0.5, measure_weight=True,
+                                                    continuous_mass_monitoring=True)
+    assert result == (0.0, empty_stability())
+    robot.c9.read_scale.assert_not_called()
+    assert robot.pollers == []  # no recording thread
+
+
+# ---- aspirate_from_open_vial: the slim aspirate unit operation ----
+
+def open_vial_robot(robot):
+    params = PipettingParameters(overaspirate_vol=.01)
+    robot.resolve_pipetting_setup = lambda *args: (params, 'small_tip')
+    robot.get_tip_if_needed = MagicMock(side_effect=AssertionError('fetched a tip'))
+    robot._ensure_vial_accessible_for_pipetting = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.check_if_aspiration_volume_unacceptable = MagicMock()
+    robot.get_aspirate_height = MagicMock(return_value=0)
+    robot.get_tip_dependent_aspirate_speed = MagicMock(return_value=7)
+    robot.PIPET_TIPS = {'small_tip': {'volume': .2}}
+    return robot
+
+
+def test_aspirate_from_open_vial_aspirates_without_getting_ready(robot):
+    robot = open_vial_robot(robot)
+    assert robot.aspirate_from_open_vial('source', .1) == []
+    robot.c9.aspirate_ml.assert_called_with(0, pytest.approx(.11))
+    assert robot.VIAL_DF.at[0, 'vial_volume'] == pytest.approx(9.9)
+    assert robot.PIPET_FLUID_VOLUME == pytest.approx(10.1)
+
+
+def test_aspirate_from_open_vial_refuses_a_closed_vial_or_wrong_tip(robot):
+    robot = open_vial_robot(robot)
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open for pipetting'):
+        robot.aspirate_from_open_vial('source', .1)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.HELD_PIPET_TYPE = 'large_tip'
+    with pytest.raises(ValueError, match='needs small_tip, holding large_tip'):
+        robot.aspirate_from_open_vial('source', .1)
+    robot.c9.aspirate_ml.assert_not_called()
+    robot.c9.goto_xy_safe.assert_not_called()
+
+
+# ---- dispense_into_open_vial: the slim dispense unit operation ----
+
+def test_dispense_into_open_vial_dispenses_without_getting_ready_or_recording(robot):
+    robot._ensure_vial_accessible_for_pipetting = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.get_tip_dependent_aspirate_speed = MagicMock(return_value=7)
+    robot._track_dispense = MagicMock()
+    assert robot.dispense_into_open_vial('dest', .1, liquid='water') == []
+    robot.pipet_dispense.assert_called_once()
+    assert robot.VIAL_DF.at[1, 'vial_volume'] == pytest.approx(.1)
+    assert robot.PIPET_FLUID_VOLUME == pytest.approx(9.9)
+    assert not recording.MASTER_MEASUREMENTS.exists()  # no dispense-recording row
+    robot.c9.read_scale.assert_not_called()
+
+
+def test_dispense_into_open_vial_refuses_closed_vial_no_tip_or_overfill(robot):
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open for pipetting'):
+        robot.dispense_into_open_vial('dest', .1)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.HELD_PIPET_TYPE = None
+    with pytest.raises(ValueError, match='no tip held'):
+        robot.dispense_into_open_vial('dest', .1)
+    robot.HELD_PIPET_TYPE = 'small_tip'
+    robot.get_config_parameter = lambda config, key, field, **kw: 8.0 if field == 'vial_volume' else None
+    with pytest.raises(ValueError, match='would exceed capacity'):
+        robot.dispense_into_open_vial('dest', 8.5)
+    robot.pipet_dispense.assert_not_called()
+    robot.c9.goto_xy_safe.assert_not_called()
+
+
+# ---- dispense_from_reservoir_into_clamp_vial: the slim reservoir unit operation ----
+
+def test_reservoir_unit_op_dispenses_without_moving_the_vial(robot):
+    robot.move_carousel_to = MagicMock()
+    robot._track_reservoir_dispense = MagicMock()
+    robot.move_vial_to_location = MagicMock(side_effect=AssertionError('moved the vial'))
+    robot.uncap_clamp_vial = MagicMock(side_effect=AssertionError('uncapped'))
+    assert robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5) == []
+    robot.c9.dispense_ml.assert_called_once_with(1, pytest.approx(0.5))
+    robot.move_carousel_to.assert_called_once_with('home')
+    robot.recap_clamp_vial.assert_not_called()
+    robot.return_vial_home.assert_not_called()
+    assert robot.VIAL_DF.at[1, 'vial_volume'] == pytest.approx(0.5)
+
+
+def test_reservoir_unit_op_refuses_vial_not_ready_or_overfill(robot):
+    robot.VIAL_DF.at[1, 'location'] = 'main_8mL_rack'
+    with pytest.raises(ValueError, match='not in the clamp'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5)
+    robot.VIAL_DF.at[1, 'location'] = 'clamp'
+    robot.is_vial_pipetable = MagicMock(return_value=False)
+    with pytest.raises(ValueError, match='not open'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 0.5)
+    robot.is_vial_pipetable = MagicMock(return_value=True)
+    robot.get_config_parameter = lambda config, key, field, **kw: 8.0 if field == 'vial_volume' else 2.5
+    with pytest.raises(ValueError, match='would overfill'):
+        robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', 8.5)
+    robot.c9.dispense_ml.assert_not_called()
+    robot.c9.move_carousel.assert_not_called()
+
+
+@pytest.mark.parametrize('volume', [0, -1., float('nan'), 'a', None])
+def test_reservoir_refuses_bad_volume_before_moving(robot, volume):
+    robot.move_vial_to_location = MagicMock()
+    for call_it in [lambda: robot.dispense_into_vial_from_reservoir(1, 'dest', volume),
+                    lambda: robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', volume),
+                    lambda: robot.prime_reservoir_line(1, 'dest', volume)]:
+        with pytest.raises(ValueError, match='refused before moving: volume must be > 0 mL'):
+            call_it()
+    robot.move_vial_to_location.assert_not_called()
+    robot.c9.move_carousel.assert_not_called()
+    robot.c9.dispense_ml.assert_not_called()
+
+
+def test_reservoir_refuses_pump_without_carousel_settings_before_moving(robot):
+    robot.get_config_parameter = lambda config, key, field, **kw: (
+        {0: {'volume': 1.0, 'carousel_angle': None, 'carousel_height': None}}.get(key, {}).get(field)
+        if config == 'pumps' else None)
+    for reservoir in [0, 5]:
+        with pytest.raises(ValueError, match=f'reservoir {reservoir} has no carousel_angle'):
+            robot.dispense_into_vial_from_reservoir(reservoir, 'dest', 1.)
+        with pytest.raises(ValueError, match=f'reservoir {reservoir} has no carousel_angle'):
+            robot.dispense_from_reservoir_into_clamp_vial(reservoir, 'dest', 1.)
+    robot.c9.move_carousel.assert_not_called()
+    robot.c9.dispense_ml.assert_not_called()

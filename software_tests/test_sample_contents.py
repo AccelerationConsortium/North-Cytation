@@ -4,6 +4,7 @@ The worked example is the one in Integration_Plan/SAMPLE_CONTENTS_DESIGN.md: 50 
 (small tip) and 200 µL of water (large tip) into one well gives 2.00 ± 0.045 mM, ± 0.011 mM within
 the run, the same as the log-based calculation already checked against real validation data.
 """
+import logging
 import math
 from pathlib import Path
 
@@ -179,6 +180,22 @@ def test_robot_transfer_stores_the_mix_and_keeps_the_stock_vial_a_stock(session)
     assert mix["stocks"] == ["SDS-001"]
     assert store.get("vial-aaaaaaaaaaaa") is None  # still just its stock: no record needed
     assert not (ROOT / "status" / "container_contents.csv").exists()  # real file untouched
+
+
+def test_simulated_mix_vial_keeps_one_tip_and_the_volume(session, caplog):
+    root, vials, tmp_path = session
+    with state.workflow_state(root, "mix"):
+        lash = master_usdl_coordinator.Lash_E(vial_file=str(vials), simulate=True, initialize_biotek=False,
+                                              initialize_track=False, show_gui=False,
+                                              logging_folder=str(tmp_path / "logs"))
+        robot = lash.nr_robot
+        with caplog.at_level(logging.WARNING):
+            robot.mix_vial("stock", 0.3, repeats=3, liquid="water")
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert robot.HELD_PIPET_TYPE is not None  # same tip, still attached
+        assert robot.get_vial_info("stock", "vial_volume") == pytest.approx(5.0)
+        assert robot.PIPET_FLUID_VOLUME == pytest.approx(0.0)
+        robot.remove_pipet()
 
 
 def test_the_tip_carries_its_contents_through_robot_status(session):

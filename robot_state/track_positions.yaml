@@ -78,13 +78,14 @@ limits:
   max_safe_height: 0           # Maximum safe height (Z-axis minimum)
   max_stack_height: 20000      # Maximum safe height for stacks
 
-# Movement speeds (units/second)
+# Movement speeds (percent of max velocity, 1-100: speed_limits in robot_hardware.yaml)
 speeds:
   default_x: 50               # Default X-axis speed
   default_z: 50               # Default Z-axis speed  
   cytation_movement: 25       # Speed for cytation tray movements
   return_movement: 50         # Speed for returning wellplates
   slow_movement: 20           # Speed for careful movements (pickup/dropoff)
+missing_speed_fallback: 50    # Used, with a warning, for a speed name not listed above
 
 # Timing parameters
 timing:
