@@ -35,6 +35,29 @@ def _read_yaml_quietly(file_path):
     return _QUIET_YAML_CACHE[file_path]
 
 
+ROBOT_HARDWARE_PATH = "robot_state/robot_hardware.yaml"
+
+
+def _hardware_limits(owner, section):
+    """The `section` limits from robot_hardware.yaml (KeyError if missing)."""
+    hardware = getattr(owner, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(ROBOT_HARDWARE_PATH)
+    return hardware[section]
+
+
+def _check_in_range(action, name, value, low, high, unit, section, whole=False):
+    """ValueError "<action> refused before moving" unless value is a number within [low, high]
+    (and a whole number if whole). Returns nothing: callers pass the original value on."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is not a number") from None
+    if not low <= number <= high:  # also refuses NaN
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is outside "
+                         f"{low}-{high}{unit} ({section} in robot_hardware.yaml)")
+    if whole and number != int(number):
+        raise ValueError(f"{action} refused before moving: {name} {value!r} is not a whole number")
+
+
 class ScaleRecording:
     """Scale readings taken in the background around one liquid step (see North_Base.start_scale_recording).
 
@@ -48,8 +71,7 @@ class ScaleRecording:
         self._thread = None
         if not self.active:
             return
-        hardware = getattr(robot, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(robot.ROBOT_HARDWARE_PATH)
-        self.settings = hardware['scale_recording']
+        self.settings = _hardware_limits(robot, 'scale_recording')
         if settle:
             robot.logger.info(f"Waiting {self.settings['settle_s']:.1f}s for the scale to settle after positioning...")
             time.sleep(self.settings['settle_s'])
@@ -105,7 +127,7 @@ class ScaleRecording:
 class North_Base:
     """Base class for North robot components with shared functionality"""
 
-    ROBOT_HARDWARE_PATH = "robot_state/robot_hardware.yaml"
+    ROBOT_HARDWARE_PATH = ROBOT_HARDWARE_PATH
     CAROUSEL_POSITIONS_PATH = "robot_state/carousel_positions.yaml"
 
     def _hardware_setting(self, section, key, default):
@@ -935,7 +957,20 @@ class North_Temp:
         else:
             self.t8 = MagicMock()
     
+    def _check_heater_inputs(self, action, target_temp, channel):
+        """Refuse a temperature or channel outside heater_limits (robot_hardware.yaml); warn when hot."""
+        limits = _hardware_limits(self, 'heater_limits')
+        first, last = limits['channels']
+        _check_in_range(action, 'channel', channel, first, last, '', 'heater_limits', whole=True)
+        _check_in_range(action, 'target_temp', target_temp, limits['min_c'], limits['max_c'], ' C', 'heater_limits')
+        if float(target_temp) > limits['warn_above_c']:
+            self.logger.warning(f"Heater channel {channel} set to {target_temp} C, above {limits['warn_above_c']} C "
+                                f"(heater_limits in robot_hardware.yaml)")
+
     def autotune(self,target_temp,channel=0):
+        """Autotune heater channel (0-7) at target_temp (C, 0-250; heater_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; warns above warn_above_c."""
+        self._check_heater_inputs('Autotune', target_temp, channel)
         self.logger.debug(f"Autotuning channel {channel} to target temperature {target_temp}C")
         self.t8.disable_channel(channel)
         self.t8.set_temp(channel, target_temp)
@@ -943,6 +978,9 @@ class North_Temp:
         self.t8.temp_autotune(channel, True)
 
     def set_temp(self,target_temp,channel=0):
+        """Heat channel (0-7) to target_temp (C, 0-250; heater_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; warns above warn_above_c."""
+        self._check_heater_inputs('Heater', target_temp, channel)
         self.logger.debug(f"Setting channel {channel} to target temperature {target_temp}C")
         self.t8.set_temp(channel, target_temp)
         self.t8.enable_channel(channel)
@@ -3940,18 +3978,11 @@ class North_Robot(North_Base):
 
     def _check_vortex_inputs(self, vortex_time, vortex_speed):
         """ValueError if the time or speed is not a number or is outside vortex_limits (robot_hardware.yaml)."""
-        hardware = getattr(self, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(self.ROBOT_HARDWARE_PATH)
-        limits = hardware['vortex_limits']
-        for name, value, low, high, unit in [
-                ('vortex_time', vortex_time, limits['min_time_s'], limits['max_time_s'], ' s'),
-                ('vortex_speed', vortex_speed, limits['min_speed'], limits['max_speed'], '')]:
-            try:
-                number = float(value)
-            except (TypeError, ValueError):
-                raise ValueError(f"Vortex refused before moving: {name} {value!r} is not a number") from None
-            if not low <= number <= high:  # also refuses NaN
-                raise ValueError(f"Vortex refused before moving: {name} {value!r} is outside "
-                                 f"{low}-{high}{unit} (vortex_limits in robot_hardware.yaml)")
+        limits = _hardware_limits(self, 'vortex_limits')
+        _check_in_range('Vortex', 'vortex_time', vortex_time, limits['min_time_s'], limits['max_time_s'], ' s',
+                        'vortex_limits')
+        _check_in_range('Vortex', 'vortex_speed', vortex_speed, limits['min_speed'], limits['max_speed'], '',
+                        'vortex_limits')
 
     # ---- Unit operations: tip conditioning and small-tip staging ----
     def _present_vial_locations(self):

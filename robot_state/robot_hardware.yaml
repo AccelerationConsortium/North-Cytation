@@ -52,6 +52,13 @@ vortex_limits:
   min_speed: 1    # Speeds are normalized 0-100; 0 would not move
   max_speed: 99
 
+# Allowed North_Temp.set_temp / autotune inputs; values outside are refused before sending
+heater_limits:
+  min_c: 0
+  max_c: 250          # Technical max of the heater
+  warn_above_c: 100   # Allowed, but logs a warning
+  channels: [0, 7]    # First and last T8 channel
+
 # Scale recording around an aspirate or dispense (North_Base.start_scale_recording); no waits in simulation
 scale_recording:
   settle_s: 1.0          # Wait after positioning, before recording (aspirate and dispense; not reservoir)
