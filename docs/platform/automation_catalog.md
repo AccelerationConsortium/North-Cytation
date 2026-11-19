@@ -51,16 +51,16 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `open_gripper` / `close_gripper` | Open / close the track gripper |
 | `origin` | Park the track |
 | `move_through_path` | Move along named waypoints |
-| `set_horizontal_speed` / `set_vertical_speed` | Set the track speeds (currently unused) |
+| `set_horizontal_speed` / `set_vertical_speed` | No effect (nothing reads the values; currently unused). Track moves use `speeds` in `track_positions.yaml`: percent of max velocity, refused outside 1-100 (`speed_limits` in `robot_hardware.yaml`, also used for the arm's `movement_speeds`) |
 
 ### North_Temp
 
 | Primitive | What it does |
 |---|---|
-| `set_temp` / `get_temp` | Set / read the heater temperature |
+| `set_temp` / `get_temp` | Set / read the heater temperature. `set_temp` refuses a temperature outside 0-250 °C or a channel outside 0-7 (`heater_limits` in `robot_hardware.yaml`) before sending; warns above 100 °C |
 | `turn_off_heating` | Turn off the heater |
-| `turn_on_stirring` / `turn_off_stirring` | Turn stirring on / off |
-| `autotune` | Autotune the heater (currently unused) |
+| `turn_on_stirring` / `turn_off_stirring` | Turn stirring on / off. Speed in motor counts/s (default 10000), refused outside 1-100000 (`stirrer_limits`) |
+| `autotune` | Autotune the heater (currently unused); same checks as `set_temp` |
 
 ### North_Powder
 
@@ -74,7 +74,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Primitive | What it does |
 |---|---|
-| `set_speed` / `stop_spin` | Spin / stop |
+| `set_speed` / `stop_spin` | Spin / stop. Speed in motor counts/s, refused outside 1-100000 (`spinner_limits`) |
 | `open_lid` / `close_lid` | Lid pneumatic (output set in `robot_hardware.yaml`) |
 | `turn_on_vacuum` / `turn_off_vacuum` | Vacuum pneumatic (output set in `robot_hardware.yaml`) |
 
@@ -122,14 +122,14 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | Unit operation | What it does | State after |
 |---|---|---|
 | `dispense_into_wellplate` | Dispense into wells. Refuses bad inputs before moving: one volume (mL) per well, no missing or negative volumes, each well within `max_volume_per_well` (`wellplates.yaml`). Warns if the doses exceed the tracked tip volume; logs the plate type used | Tip empty (still attached) |
-| `pipet_from_wellplate` | Draw liquid from a well | Tip full |
-| `mix_well_in_wellplate` | Mix a well by pipetting up and down | Tip still attached |
-| `prime_reservoir_line` | Prime a reservoir line | Line primed |
+| `pipet_from_wellplate` | Draw liquid from a well (or dispense into it with `aspirate=False`). Refuses a volume that is not > 0 mL before moving | Tip full |
+| `mix_well_in_wellplate` | Mix a well by pipetting up and down. Refuses volume not > 0 mL or repeats not a whole number >= 1 before moving | Tip still attached |
+| `prime_reservoir_line` | Prime a reservoir line (`dispense_into_vial_from_reservoir`, same checks) | Line primed |
 | `aspirate_from_open_vial` | Aspirate from a vial that is already open, with the right tip held. Refuses (before moving) a closed vial or the wrong tip; does not get a tip or move the vial. Can record the scale (`start_scale_recording`); returns the readings | Tip full |
 | `aspirate_from_vial` | Combined unit operation: get the right tip, make the vial accessible (move to the clamp and uncap if needed), then `aspirate_from_open_vial`; with scale recording, analyze the mass (mass analyzer). Same arguments and behaviour as before the split | Tip full; vial may be left in the clamp, uncapped |
 | `dispense_into_open_vial` | Dispense from the held tip into a vial that is already open. Refuses (before moving) a closed vial, no tip, or a vial without room (`vial_volume` in `vial_positions.yaml`); does not move the vial or write a dispense-recording row. Can record the scale; returns the readings | Tip empty (still attached) |
 | `dispense_into_vial` | Combined unit operation: make the vial accessible (move to the clamp and uncap if needed), check it has room, then `dispense_into_open_vial`. Around it: optional before/after weighing, scale recording with mass analysis, and the dispense-recording row. Same arguments and behaviour as before the split | Tip empty; vial may be left in the clamp, uncapped |
-| `dispense_from_reservoir_into_clamp_vial` | Dispense from a reservoir into the open vial already in the clamp: carousel to the reservoir, pump strokes, carousel home. Refuses (before moving) a vial not in the clamp, not open, or without room; does not move, uncap or recap the vial. Can record the scale; returns the readings. Uses default reservoir settings unless given (calibration not connected yet: `docs/plans/reservoir_calibration_alignment.md`) | Vial filled, still open in the clamp; carousel home |
+| `dispense_from_reservoir_into_clamp_vial` | Dispense from a reservoir into the open vial already in the clamp: carousel to the reservoir, pump strokes, carousel home. Refuses (before moving) a volume that is not > 0 mL, a reservoir without carousel settings in `syringe_pumps.yaml` (e.g. pump 0), or a vial not in the clamp, not open, or without room; does not move, uncap or recap the vial. Can record the scale; returns the readings. Uses default reservoir settings unless given (calibration not connected yet: `docs/plans/reservoir_calibration_alignment.md`) | Vial filled, still open in the clamp; carousel home |
 | `mix_vial` | Combined unit operation: mix a vial by pipetting up and down with one tip kept low in the liquid (like `mix_well_in_wellplate`). `aspirate_from_vial` (gets the tip, makes the vial accessible), then `dispense_into_open_vial` / `aspirate_from_open_vial` in place for each repeat. Refuses (before moving) volume not > 0 mL or repeats not a whole number >= 1. No dispense-recording rows | Tip empty (still attached); vial open where it was mixed (may be the clamp) |
 
 ### North_Robot: tip conditioning and staging
@@ -176,7 +176,7 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 | `dispense_from_vial_into_vial` | North_Robot | (condition fresh tip if the liquid needs it) > aspirate > dispense > remove tip > recap > return vial | No tip, vials home |
 | `dispense_from_vials_into_wellplate` | North_Robot | Input: a table (columns = source vials, rows = well indices, values = mL) and `liquid=` as one name or `{vial: liquid}`. Checked before moving: no missing or negative volumes, each well's total within the plate's `max_volume_per_well`, a liquid for every vial, a tip for every dose. Then: stage small-tip vials if needed > per vial and tip group: condition if needed, dispense > fresh tip per vial > return vials home | No tip, vials home |
 | `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override). Refuses a time or speed outside `vortex_limits` (`robot_hardware.yaml`: 1-60 s, speed 1-99) before moving; logs the time and speed used | Vial home |
-| `dispense_into_vial_from_reservoir` | North_Robot | Check room > vial to clamp, uncap if needed > home arm > (weigh) > `dispense_from_reservoir_into_clamp_vial` > (analyze mass) > recap > return vial home. `return_home=False` leaves the vial capped in the clamp (then it is a unit operation) | Vial home, capped; carousel home |
+| `dispense_into_vial_from_reservoir` | North_Robot | Check room > vial to clamp, uncap if needed > home arm > (weigh) > `dispense_from_reservoir_into_clamp_vial` > (analyze mass) > recap > return vial home. `return_home=False` leaves the vial capped in the clamp (then it is a unit operation). Refuses a volume that is not > 0 mL or a reservoir without carousel settings before moving | Vial home, capped; carousel home |
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |
