@@ -130,8 +130,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `dispense_into_open_vial` | Dispense from the held tip into a vial that is already open. Refuses (before moving) a closed vial, no tip, or a vial without room (`vial_volume` in `vial_positions.yaml`); does not move the vial or write a dispense-recording row. Can record the scale; returns the readings | Tip empty (still attached) |
 | `dispense_into_vial` | Combined unit operation: make the vial accessible (move to the clamp and uncap if needed), check it has room, then `dispense_into_open_vial`. Around it: optional before/after weighing, scale recording with mass analysis, and the dispense-recording row. Same arguments and behaviour as before the split | Tip empty; vial may be left in the clamp, uncapped |
 | `dispense_from_reservoir_into_clamp_vial` | Dispense from a reservoir into the open vial already in the clamp: carousel to the reservoir, pump strokes, carousel home. Refuses (before moving) a vial not in the clamp, not open, or without room; does not move, uncap or recap the vial. Can record the scale; returns the readings. Uses default reservoir settings unless given (calibration not connected yet: `docs/plans/reservoir_calibration_alignment.md`) | Vial filled, still open in the clamp; carousel home |
-
-`mix_vial` is not listed here; see [Neither unit operation nor flow](#neither-unit-operation-nor-flow-fix-later) below.
+| `mix_vial` | Combined unit operation: mix a vial by pipetting up and down with one tip kept low in the liquid (like `mix_well_in_wellplate`). `aspirate_from_vial` (gets the tip, makes the vial accessible), then `dispense_into_open_vial` / `aspirate_from_open_vial` in place for each repeat. Refuses (before moving) volume not > 0 mL or repeats not a whole number >= 1. No dispense-recording rows | Tip empty (still attached); vial open where it was mixed (may be the clamp) |
 
 ### North_Robot: tip conditioning and staging
 
@@ -148,7 +147,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `monitor_weight_over_time` | Record the mass over time | Unchanged (data recorded) |
 | `start_scale_recording` | Record the balance in the background around one liquid step (settle, 2 s before, mark start/end, 2 s after; timings in `scale_recording`, `robot_hardware.yaml`). No readings and no waits in simulation. Used by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` | Unchanged (readings recorded) |
 
-**Mass analyzer** (`pipetting_data/mass_analysis.py`, not robot code): turns scale readings recorded around an aspirate or dispense into a mass and stability summary, and saves the CSV and plot. Shared by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` (step 1 of splitting them, below).
+**Mass analyzer** (`pipetting_data/mass_analysis.py`, not robot code): turns scale readings recorded around an aspirate or dispense into a mass and stability summary, and saves the CSV and plot. Shared by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir`.
 
 ### North_Track: wellplates
 
@@ -167,16 +166,6 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 | `run_plate` | Biotek_Wrapper | Read a plate that is already loaded in the Cytation | Data produced; plate still inside |
 | `move_wellplate_to_cytation` | Lash_E | Move a plate from the deck into the Cytation | Plate inside the Cytation |
 | `move_wellplate_back_from_cytation` | Lash_E | Move a plate from the Cytation back to the deck | Plate on the deck |
-
-### Neither unit operation nor flow (fix later)
-
-These methods mix the task itself with flow-level sequencing and with data analysis, so they fit neither definition. A unit operation should hold the logic for doing one task safely (checks, heights, speeds, failure detection). The ordering of steps belongs in a flow, and analysis and saving belong in an analyzer. They are being split up one at a time (see below).
-
-| Method | Why it is neither |
-|---|---|
-| `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` (now combined unit operations) and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
-
-Done: the mass analysis and the scale recording are now shared (Mass analyzer and `start_scale_recording` above). `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` are now split (`aspirate_from_open_vial`, `dispense_into_open_vial`, `dispense_from_reservoir_into_clamp_vial` above). Still to do: `mix_vial`. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
 
 ## Flows
 

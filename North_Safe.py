@@ -2806,21 +2806,39 @@ class North_Robot(North_Base):
     #Mix in a vial
     def mix_vial(self, vial_name, volume, repeats=3, parameters=None, liquid=None):
         """
-        Mix a vial by aspirating and dispensing repeatedly.
-        
+        Combined unit operation: mix a vial by pipetting up and down with one tip, the tip kept low
+        in the liquid (like mix_well_in_wellplate).
+
+        Gets the right tip and makes the vial accessible (aspirate_from_vial: moves it to the clamp
+        and uncaps it if needed), then repeats aspirate_from_open_vial / dispense_into_open_vial in
+        place. No dispense-recording rows.
+
         Args:
             vial_name: Name or index of the vial to mix
-            volume: Volume to use for mixing in mL
-            repeats: Number of mixing cycles (default: 3)
+            volume (float): mL drawn up each cycle, > 0 (must fit the tip and be in the vial)
+            repeats (int): number of up-and-down cycles, >= 1 (default: 3)
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
             liquid (str, optional): Liquid type for calibrated parameter optimization
+
+        Refused before moving (ValueError): volume not > 0, or repeats not a whole number >= 1.
+        State after: tip still attached (empty); vial open where it was mixed (may be the clamp).
         """
+        try:
+            ok = float(volume) > 0 and float(repeats) >= 1 and float(repeats) == int(repeats)
+        except (TypeError, ValueError, OverflowError):
+            ok = False
+        if not ok:  # also refuses NaN
+            raise ValueError(f"Mix refused before moving: need volume > 0 mL and a whole number of repeats >= 1, "
+                             f"got volume={volume!r}, repeats={repeats!r}")
+        repeats = int(repeats)
         self.logger.info(f"Mixing vial {vial_name} with volume {volume:.3f} mL for {repeats} repeats")
         vial_index = self.normalize_vial_index(vial_name)
         self.aspirate_from_vial(vial_index, volume, parameters=parameters, liquid=liquid, move_up=False, track_height=False)
-        self.dispense_into_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False, record_measurement=False)
+        self.dispense_into_open_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False)
         for i in range(1, repeats):
-            self.dispense_from_vial_into_vial(vial_index, vial_index, volume, parameters=parameters, liquid=liquid, record_measurement=False)
+            self.aspirate_from_open_vial(vial_index, volume, parameters=parameters, liquid=liquid,
+                                         move_to_aspirate=False, track_height=False, move_up=False)
+            self.dispense_into_open_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False)
 
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,

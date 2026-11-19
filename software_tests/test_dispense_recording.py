@@ -272,13 +272,39 @@ def test_recording_on_matches_off_motion_and_return(robot):
 
 def test_mixing_does_not_record(robot):
     robot.aspirate_from_vial = MagicMock()
-    robot.plan_vial_transfer = MagicMock(return_value=(.1, 1, PipettingParameters(), 'small_tip'))
-    robot.get_vial_in_location = MagicMock(return_value=None)
-    robot.remove_pipet = MagicMock()
+    robot.resolve_pipetting_setup = MagicMock(return_value=(PipettingParameters(), 'small_tip'))
+    robot.check_if_aspiration_volume_unacceptable = MagicMock()
+    robot.get_current_height = MagicMock(return_value=0)
+    robot.pipet_aspirate = MagicMock()
+    robot.VIAL_DF.at[1, 'vial_volume'] = 1.
     robot.mix_vial('dest', .1, repeats=3, liquid='water')
     assert robot.pipet_dispense.call_count == 3
     assert not robot.pollers
     assert not recording.MASTER_MEASUREMENTS.exists()
+
+
+def test_mix_vial_uses_one_tip_and_stays_in_the_liquid(robot):
+    calls = []
+    for name in ['aspirate_from_vial', 'aspirate_from_open_vial', 'dispense_into_open_vial',
+                 'dispense_into_vial', 'dispense_from_vial_into_vial', 'remove_pipet']:
+        setattr(robot, name, MagicMock(side_effect=lambda *a, _n=name, **kw: calls.append((_n, kw))))
+    robot.mix_vial('dest', .1, repeats=3)
+    assert [n for n, _ in calls] == ['aspirate_from_vial', 'dispense_into_open_vial',
+                                     'aspirate_from_open_vial', 'dispense_into_open_vial',
+                                     'aspirate_from_open_vial', 'dispense_into_open_vial']
+    assert calls[0][1]['move_up'] is False and calls[0][1]['track_height'] is False
+    assert all(kw['initial_move'] is False for n, kw in calls if n == 'dispense_into_open_vial')
+    assert all(kw['move_to_aspirate'] is False and kw['move_up'] is False
+               for n, kw in calls if n == 'aspirate_from_open_vial')
+
+
+@pytest.mark.parametrize('volume, repeats', [(0, 3), (-.1, 3), (float('nan'), 3), ('a', 3),
+                                             (.1, 0), (.1, 1.5), (.1, None)])
+def test_mix_vial_refuses_bad_inputs_before_moving(robot, volume, repeats):
+    robot.aspirate_from_vial = MagicMock()
+    with pytest.raises(ValueError, match='refused before moving'):
+        robot.mix_vial('dest', volume, repeats=repeats)
+    robot.aspirate_from_vial.assert_not_called()
 
 
 def test_reservoir_is_unchanged_and_does_not_record(robot):
