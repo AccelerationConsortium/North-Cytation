@@ -331,3 +331,101 @@ def test_vial_to_vial_conditions_fresh_tip_for_flagged_liquid(robot, liquid, hel
     assert robot.condition_tip.called is expected
     if expected:
         robot.condition_tip.assert_called_once_with('stock', volume_per_cycle_mL=0.5, specified_tip='large_tip')
+
+
+# ---- dispense_into_wellplate: inputs checked before moving ----
+
+@pytest.fixture
+def well_robot(plate_robot):
+    from types import SimpleNamespace
+    del plate_robot.dispense_into_wellplate  # use the real unit operation
+    plate_robot.PIPET_FLUID_VOLUME = 0.2
+    plate_robot.select_wellplate_grid = MagicMock(return_value={i: f'well_{i}' for i in range(96)})
+    plate_robot._get_optimized_parameters = MagicMock(return_value=SimpleNamespace(
+        dispense_wait_time=0, blowout_vol=0, dispense_speed=10,
+        overaspirate_vol=0, pre_asp_air_vol=0, post_asp_air_vol=0))
+    for name in ['adjust_pump_speed', 'get_height_at_location', 'adjust_height_based_on_pipet_held',
+                 'get_speed', 'pipet_dispense', '_track_dispense', '_well_container_id',
+                 'save_robot_status']:
+        setattr(plate_robot, name, MagicMock())
+    plate_robot._contents_store = MagicMock(return_value=None)
+    return plate_robot
+
+
+def test_single_well_dispense_still_works(well_robot, caplog):
+    caplog.set_level(logging.INFO)
+    assert well_robot.dispense_into_wellplate([5], [0.2], liquid='water') is True
+    well_robot.pipet_dispense.assert_called_once()
+    assert 'Pipetting plate: 96 WELL PLATE (from the plate inventory)' in caplog.text
+    assert 'tip is tracked' not in caplog.text
+    assert well_robot.PIPET_FLUID_VOLUME == pytest.approx(0.0)
+
+
+def test_multi_well_dispense_skips_zero(well_robot):
+    well_robot.dispense_into_wellplate([0, 1, 2], [0.1, 0.0, 0.1])
+    assert well_robot.pipet_dispense.call_count == 2
+
+
+@pytest.mark.parametrize('wells, volumes, message', [
+    ([0, 1], [0.1], '2 wells but 1 volumes'),
+    ([0], [float('nan')], 'volume missing'),
+    ([0], [-0.05], 'negative volume'),
+    ([0], ['lots'], 'is not a volume in mL'),
+    ([0], [0.35], r'well 0: 0.35 mL planned'),            # 96-well plate: 0.3 mL per well
+    ([3, 3], [0.2, 0.15], r'well 3: 0.35 mL planned'),    # same well twice adds up
+])
+def test_wellplate_dispense_refuses_bad_inputs_before_moving(well_robot, wells, volumes, message):
+    with pytest.raises(ValueError, match=message):
+        well_robot.dispense_into_wellplate(wells, volumes)
+    well_robot.c9.goto_xy_safe.assert_not_called()
+    well_robot.pipet_dispense.assert_not_called()
+
+
+def test_wellplate_dispense_counts_what_is_already_in_the_well(well_robot):
+    well_robot._well_container_id = MagicMock(side_effect=lambda well: f'plate1:{well}')
+    store = MagicMock()
+    store.get.side_effect = lambda cid: {'volume_mL': 0.25} if cid == 'plate1:4' else None
+    well_robot._contents_store = MagicMock(return_value=store)
+    with pytest.raises(ValueError, match=r'0.1 mL planned \+ 0.25 mL already in it'):
+        well_robot.dispense_into_wellplate([4], [0.1])
+    well_robot.dispense_into_wellplate([5], [0.1])  # an empty well is fine
+
+
+def test_wellplate_dispense_warns_but_runs_when_tip_holds_less(well_robot, caplog):
+    caplog.set_level(logging.INFO)
+    well_robot.PIPET_FLUID_VOLUME = 0.05
+    well_robot.dispense_into_wellplate([0], [0.1], well_plate_type='96 WELL PLATE')
+    assert 'tip is tracked as holding 0.050 mL' in caplog.text
+    assert '(as given)' in caplog.text
+    well_robot.pipet_dispense.assert_called_once()
+
+
+# ---- vortex_vial: time and speed checked against robot_hardware.yaml before moving ----
+
+def test_vortex_limits_are_in_robot_hardware_yaml():
+    limits = yaml.safe_load(open('robot_state/robot_hardware.yaml', encoding='utf-8'))['vortex_limits']
+    assert (limits['min_time_s'], limits['max_time_s'], limits['min_speed'], limits['max_speed']) == (1, 60, 1, 99)
+
+
+def test_vortex_passes_values_to_the_motor_unchanged(robot, caplog):
+    caplog.set_level(logging.INFO)
+    robot.get_config_parameter.return_value = 0
+    robot.vortex_vial('stock', 5)
+    robot.c9.move_axis.assert_called_once_with(0, 1000 * 5 * 70, vel=70, accel=10000)
+    assert 'for 5 s at speed 70' in caplog.text
+
+
+@pytest.mark.parametrize('time_s, speed, message', [
+    (0, 70, 'vortex_time 0 is outside 1-60 s'),
+    (-5, 70, 'vortex_time -5 is outside'),
+    (500, 70, 'vortex_time 500 is outside'),
+    (float('nan'), 70, 'vortex_time nan is outside'),
+    (None, 70, 'vortex_time None is not a number'),
+    (5, 0, 'vortex_speed 0 is outside 1-99'),
+    (5, 100, 'vortex_speed 100 is outside'),
+])
+def test_vortex_refuses_bad_time_or_speed_before_moving(robot, time_s, speed, message):
+    with pytest.raises(ValueError, match=message):
+        robot.vortex_vial('stock', time_s, vortex_speed=speed)
+    robot.grab_vial.assert_not_called()
+    robot.c9.move_axis.assert_not_called()

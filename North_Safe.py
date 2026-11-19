@@ -3382,16 +3382,28 @@ class North_Robot(North_Base):
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
     def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, liquid=None, well_plate_type=None):
         """
-        Dispenses specified amounts into a series of wells in a well plate.
+        Unit operation: dispense from the held tip into one or more wells of the plate in the pipetting area.
+        Usually one well: dispense_into_wellplate([well], [volume_mL]).
+
         Args:
-            dest_wp_num_array (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
-            amount_mL_array (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
-            parameters (PipettingParameters, optional): Manual parameter overrides (uses defaults if None)
-            liquid (str, optional): Liquid type for automatic parameter optimization
-            well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
+            dest_wp_num_array (list or range): well indices, 0 to the plate's num_wells - 1 (wellplates.yaml)
+            amount_mL_array (list[float]): mL into each well, same length as dest_wp_num_array.
+                0 skips that well. Each well's total (this dose plus what is already recorded in it)
+                must be at most the plate's max_volume_per_well (wellplates.yaml).
+            parameters (PipettingParameters, optional): Manual parameter overrides (None: calibrated/default)
+            liquid (str, optional): liquids.yaml name for calibrated parameters and the +/- uncertainty
+            well_plate_type (str, optional): expected plate type. None: the type of the plate in the
+                pipetting area (plate inventory). The type used is logged.
+
+        Checked before anything moves (ValueError): list lengths match, well indices fit the plate,
+        volumes are numbers in mL (not missing, not negative) and each well stays within its maximum.
+        Warns, without stopping, if the doses add up to more than the tracked liquid in the tip.
         """
+        requested_type = well_plate_type
         well_plate_type = self._resolve_pipetting_plate(well_plate_type, dest_wp_num_array)
-        # Default well plate type if not specified
+        self.logger.info(f"Pipetting plate: {well_plate_type} "
+                         f"({'as given' if requested_type else 'from the plate inventory'})")
+        self._check_wellplate_dispense_inputs(dest_wp_num_array, amount_mL_array, well_plate_type)
 
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
@@ -3441,8 +3453,26 @@ class North_Robot(North_Base):
             self._track_dispense(self._well_container_id(dest_wp_num_array[i]), amount_mL, liquid)
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
-        self.save_robot_status()    
+        self.save_robot_status()
         return True
+
+    def _check_wellplate_dispense_inputs(self, wells, amounts_mL, well_plate_type):
+        """Inputs of dispense_into_wellplate, checked before anything moves (see its docstring)."""
+        wells, amounts_mL = list(wells), list(amounts_mL)
+        if len(wells) != len(amounts_mL):
+            raise ValueError(f"Wellplate dispense refused before moving: {len(wells)} wells but "
+                             f"{len(amounts_mL)} volumes; give one volume (mL) per well")
+        # Same check as the wellplate flow: one column per dose, so a well listed twice adds up
+        plan = pd.DataFrame(0.0, index=list(dict.fromkeys(wells)),
+                            columns=[f"dose {n + 1}" for n in range(len(wells))], dtype=object)
+        for n, (well, amount) in enumerate(zip(wells, amounts_mL)):
+            plan.at[well, f"dose {n + 1}"] = amount
+        checked = self._checked_wellplate_plan(plan, well_plate_type)
+        total_mL = float(checked.to_numpy().sum())
+        in_tip_mL = getattr(self, "PIPET_FLUID_VOLUME", None)
+        if in_tip_mL is not None and total_mL > float(in_tip_mL) + 1e-6:
+            self.logger.warning(f"Dispensing {total_mL:.3f} mL into the wellplate but the tip is tracked "
+                                f"as holding {float(in_tip_mL):.3f} mL")
 
     def dispense_from_vials_into_wellplate(self, well_plate_df, parameters=None, liquid=None, well_plate_type=None):
         """
@@ -4173,15 +4203,20 @@ class North_Robot(North_Base):
         Lift and vortex a vial, then safely transport and release it.
         Args:
             `vial_name` (str): Name of the vial to vortex
-            `vortex_time` (float): Time (in seconds) to vortex
-            `vortex_speed` (float): Speed of vortexing (default is 70)
+            `vortex_time` (float): seconds, within vortex_limits min_time_s-max_time_s (robot_hardware.yaml)
+            `vortex_speed` (float): normalized 0-100 speed, within vortex_limits min_speed-max_speed.
+                Default 70. The speed used is logged.
             `return_location` (tuple[str, int] | None): Destination name and
                 index, e.g. ("main_8mL_rack", 25). None returns the vial to its
                 home location, so the call ends state-preserving. An explicit
                 destination avoids intermediate release and regripping; it does
                 not change the safe transport approach.
+
+        A time or speed that is missing, not a number or out of range is refused (ValueError)
+        before the vial is picked up.
         """
-        
+        self._check_vortex_inputs(vortex_time, vortex_speed)  # values passed on unchanged
+
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
         if return_location is not None:
@@ -4203,7 +4238,8 @@ class North_Robot(North_Base):
                 self.logger.error(message)
                 raise ValueError(message)
 
-        self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')}")
+        self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')} "
+                         f"for {vortex_time:g} s at speed {vortex_speed:g}")
         
         #Check to see if the vial is capped
         if self.GRIPPER_VIAL_INDEX == vial_index  and self.GRIPPER_STATUS == "Cap":
@@ -4223,6 +4259,21 @@ class North_Robot(North_Base):
             location, location_index = return_location
 
         self.drop_off_vial(vial_index, location, location_index)
+
+    def _check_vortex_inputs(self, vortex_time, vortex_speed):
+        """ValueError if the time or speed is not a number or is outside vortex_limits (robot_hardware.yaml)."""
+        hardware = getattr(self, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(self.ROBOT_HARDWARE_PATH)
+        limits = hardware['vortex_limits']
+        for name, value, low, high, unit in [
+                ('vortex_time', vortex_time, limits['min_time_s'], limits['max_time_s'], ' s'),
+                ('vortex_speed', vortex_speed, limits['min_speed'], limits['max_speed'], '')]:
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"Vortex refused before moving: {name} {value!r} is not a number") from None
+            if not low <= number <= high:  # also refuses NaN
+                raise ValueError(f"Vortex refused before moving: {name} {value!r} is outside "
+                                 f"{low}-{high}{unit} (vortex_limits in robot_hardware.yaml)")
 
     # ---- Unit operations: tip conditioning and small-tip staging ----
     def _present_vial_locations(self):

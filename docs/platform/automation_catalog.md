@@ -121,7 +121,7 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 
 | Unit operation | What it does | State after |
 |---|---|---|
-| `dispense_into_wellplate` | Dispense into wells | Tip empty (still attached) |
+| `dispense_into_wellplate` | Dispense into wells. Refuses bad inputs before moving: one volume (mL) per well, no missing or negative volumes, each well within `max_volume_per_well` (`wellplates.yaml`). Warns if the doses exceed the tracked tip volume; logs the plate type used | Tip empty (still attached) |
 | `pipet_from_wellplate` | Draw liquid from a well | Tip full |
 | `mix_well_in_wellplate` | Mix a well by pipetting up and down | Tip still attached |
 | `prime_reservoir_line` | Prime a reservoir line | Line primed |
@@ -181,7 +181,7 @@ A flow ends in the same state it started in: no tip held, gripper empty, and via
 |---|---|---|---|
 | `dispense_from_vial_into_vial` | North_Robot | (condition fresh tip if the liquid needs it) > aspirate > dispense > remove tip > recap > return vial | No tip, vials home |
 | `dispense_from_vials_into_wellplate` | North_Robot | Input: a table (columns = source vials, rows = well indices, values = mL) and `liquid=` as one name or `{vial: liquid}`. Checked before moving: no missing or negative volumes, each well's total within the plate's `max_volume_per_well`, a liquid for every vial, a tip for every dose. Then: stage small-tip vials if needed > per vial and tip group: condition if needed, dispense > fresh tip per vial > return vials home | No tip, vials home |
-| `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override) | Vial home |
+| `vortex_vial` | North_Robot | grab > vortex > drop off at home (`return_location` can override). Refuses a time or speed outside `vortex_limits` (`robot_hardware.yaml`: 1-60 s, speed 1-99) before moving; logs the time and speed used | Vial home |
 | `refill_vial` | North_Robot | Top a vial up to a target volume from a specified reservoir or source vial | No tip, vials home |
 | `create_substock` | North_Robot | Add each component (reservoir additions first, then pipetted), then optionally vortex | No tip, vials home |
 | `measure_wellplate` | Lash_E | robot home > plate into Cytation > read > plate back | Plate back on deck |

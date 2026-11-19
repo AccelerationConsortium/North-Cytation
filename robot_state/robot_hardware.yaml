@@ -45,6 +45,13 @@ gripper_timing:
   uncap_grip_settle_time_s: 1.0  # After closing, before unscrewing; beyond the SDK delay
   recap_position_settle_time_s: 0.5  # Before screwing the held cap onto the vial
 
+# Allowed vortex_vial inputs; values outside are refused before the vial is picked up
+vortex_limits:
+  min_time_s: 1
+  max_time_s: 60
+  min_speed: 1    # Speeds are normalized 0-100; 0 would not move
+  max_speed: 99
+
 # Physical constants
 physical_constants:
   safe_height_z: 292    # Safe height for general robot movements
