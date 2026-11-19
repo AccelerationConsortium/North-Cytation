@@ -73,3 +73,62 @@ def test_robot_helper_saves_csv_only_when_too_few_readings(tmp_path, monkeypatch
                                         file_prefix="mass_", file_stem="water") == 0.0
     saved = [p.name for p in (tmp_path / 'output' / 'mass_measurements').rglob('*.*')]
     assert len(saved) == 1 and saved[0].startswith('mass_data_water_')
+
+
+# ---- Scale recorder (North_Base.start_scale_recording) ----
+
+import time
+from unittest.mock import MagicMock
+
+import yaml
+
+
+def scale_robot(simulate, timings=None):
+    robot = object.__new__(North_Robot)
+    robot.logger = logging.getLogger(__name__)
+    robot.simulate = simulate
+    robot.read_scale = MagicMock(return_value=(True, 10.0))
+    if timings is not None:
+        robot.ROBOT_HARDWARE = {'scale_recording': timings}
+    return robot
+
+
+def test_scale_recording_timings_are_in_robot_hardware_yaml():
+    timings = yaml.safe_load(open('robot_state/robot_hardware.yaml', encoding='utf-8'))['scale_recording']
+    assert timings == {'settle_s': 1.0, 'pre_baseline_s': 2.0, 'post_baseline_s': 2.0,
+                       'read_interval_s': 0.2, 'stop_timeout_s': 2.0}
+
+
+def test_recorder_labels_readings_before_during_and_after():
+    robot = scale_robot(False, {'settle_s': 0.0, 'pre_baseline_s': 0.1, 'post_baseline_s': 0.1,
+                                'read_interval_s': 0.01, 'stop_timeout_s': 1.0})
+    scale = robot.start_scale_recording(True, 'dispensing')
+    scale.mark_start()
+    time.sleep(0.1)
+    scale.mark_end()
+    data = scale.stop()
+    phases = [r['phase'] for r in data]
+    assert phases[0] == 'baseline_pre' and phases[-1] == 'baseline_post' and 'dispensing' in phases
+    order = {'baseline_pre': 0, 'dispensing': 1, 'baseline_post': 2}
+    assert [order[p] for p in phases] == sorted(order[p] for p in phases)
+    assert set(data[0]) == {'timestamp', 'time_relative', 'mass_g', 'phase', 'steady_status'}
+    count = len(data)
+    time.sleep(0.05)
+    assert len(scale.readings) == count  # stopped
+
+
+def test_recorder_does_nothing_and_never_waits_in_simulation(monkeypatch):
+    monkeypatch.setattr(time, 'sleep', MagicMock(side_effect=AssertionError('waited in simulation')))
+    robot = scale_robot(True)  # no timings needed: never read
+    scale = robot.start_scale_recording(True, 'aspiration')
+    scale.mark_start()
+    scale.mark_end()
+    assert scale.stop() == []
+    robot.read_scale.assert_not_called()
+
+
+def test_recorder_not_requested_does_nothing(monkeypatch):
+    monkeypatch.setattr(time, 'sleep', MagicMock(side_effect=AssertionError('waited')))
+    robot = scale_robot(False)
+    assert robot.start_scale_recording(False, 'dispensing').stop() == []
+    robot.read_scale.assert_not_called()

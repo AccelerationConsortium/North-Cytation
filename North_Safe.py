@@ -35,6 +35,73 @@ def _read_yaml_quietly(file_path):
     return _QUIET_YAML_CACHE[file_path]
 
 
+class ScaleRecording:
+    """Scale readings taken in the background around one liquid step (see North_Base.start_scale_recording).
+
+    Phases: 'baseline_pre' until mark_start(), then the operation phase until mark_end(), then
+    'baseline_post'. Inactive (not requested, or simulation): takes no readings and never waits."""
+
+    def __init__(self, robot, active, phase, settle):
+        self.robot, self.phase, self.readings = robot, phase, []
+        self.active = bool(active) and not robot.simulate
+        self._start = self._end = None
+        self._thread = None
+        if not self.active:
+            return
+        hardware = getattr(robot, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(robot.ROBOT_HARDWARE_PATH)
+        self.settings = hardware['scale_recording']
+        if settle:
+            robot.logger.info(f"Waiting {self.settings['settle_s']:.1f}s for the scale to settle after positioning...")
+            time.sleep(self.settings['settle_s'])
+        self._running = threading.Event()
+        self._running.set()
+        self._t0 = time.time()
+        self._thread = threading.Thread(target=self._record, daemon=True)
+        self._thread.start()
+        robot.logger.info(f"Started continuous mass monitoring with pre-{phase} baseline")
+        time.sleep(self.settings['pre_baseline_s'])
+
+    def _record(self):
+        while self._running.is_set():
+            try:
+                now = time.time()
+                steady_status, weight = self.robot.read_scale()
+                if self._start is None or now < self._start:
+                    phase = 'baseline_pre'
+                elif self._end is None or now < self._end:
+                    phase = self.phase
+                else:
+                    phase = 'baseline_post'
+                self.readings.append({'timestamp': now, 'time_relative': now - self._t0, 'mass_g': weight,
+                                      'phase': phase, 'steady_status': steady_status})
+                self.robot.logger.debug(f'Mass: {weight:.4f}g at {now - self._t0:.3f}s ({phase}) steady={steady_status}')
+            except Exception as e:
+                self.robot.logger.warning(f"Scale reading failed: {e}")
+            time.sleep(self.settings['read_interval_s'])
+
+    def mark_start(self):
+        """The liquid step starts now."""
+        if self.active:
+            self._start = time.time()
+
+    def mark_end(self):
+        """The liquid step ended now."""
+        if self.active:
+            self._end = time.time()
+            self.robot.logger.info(f"{self.phase.capitalize()} took {self._end - self._start:.3f}s, "
+                                   f"collecting post-{self.phase} baseline")
+
+    def stop(self):
+        """Record the post-baseline, then stop. Returns the readings."""
+        if self.active and self._thread is not None:
+            time.sleep(self.settings['post_baseline_s'])
+            self._running.clear()
+            self._thread.join(timeout=self.settings['stop_timeout_s'])
+            self._thread = None
+            self.robot.logger.info(f"Stopped continuous mass monitoring. Collected {len(self.readings)} data points")
+        return self.readings
+
+
 class North_Base:
     """Base class for North robot components with shared functionality"""
 
@@ -55,6 +122,15 @@ class North_Base:
     def read_steady_scale(self):
         """Primitive: wait for a steady balance reading and return the mass (g)."""
         return self.c9.read_steady_scale()
+
+    def start_scale_recording(self, active, phase, settle=True):
+        """Unit operation: record the scale in the background around one liquid step.
+
+        Waits settle_s (if settle), starts recording, waits pre_baseline_s; call mark_start() and
+        mark_end() around the step, then stop() (waits post_baseline_s, returns the readings).
+        Timings: scale_recording in robot_hardware.yaml. Does nothing (no readings, no waits) if not
+        active or in simulation. Analyze the readings with pipetting_data/mass_analysis.py."""
+        return ScaleRecording(self, active, phase, settle)
 
     def zero_scale(self):
         """Primitive: tare the balance."""
@@ -2368,64 +2444,13 @@ class North_Robot(North_Base):
 
         self.adjust_pump_speed(0,10)
 
-        # Setup continuous mass monitoring if requested
-        monitoring_active = threading.Event()
-        aspiration_start_time = None 
-        aspiration_end_time = None
-        
-        def read_scale_continuous():
-            """Continuously read scale at maximum rate (5 Hz) during aspiration"""
-            while monitoring_active.is_set():
-                if not self.simulate and source_vial_clamped:
-                    try:
-                        current_time = time.time()
-                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
-                        
-                        # Determine phase based on timing
-                        time_relative = current_time - start_time
-                        if time_relative < 1.0:
-                            phase = 'baseline_pre'
-                        elif aspiration_start_time is None or current_time < aspiration_start_time:
-                            phase = 'baseline_pre'  # Still in pre-baseline
-                        elif aspiration_end_time is None or current_time < aspiration_end_time:
-                            phase = 'aspiration'
-                        else:
-                            phase = 'baseline_post'
-                        
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status  # Track if scale says reading is stable
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                if not self.simulate:
-                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
-
         #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
             
-        # Start continuous monitoring if requested (includes pre-aspiration baseline)
-        if continuous_mass_monitoring and source_vial_clamped:
-            self.logger.info(f"Short wait time, allowing scale to settle after robot positioning...")
-            if not self.simulate:
-                time.sleep(1.0)  # 1 second settling delay
-            
-            start_time = time.time()
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            self.logger.info("Started continuous mass monitoring with pre-aspiration baseline")
-            
-            # Wait for 2.0s baseline before aspiration for better stability
-            if not self.simulate:
-                time.sleep(2.0)
+        # Scale recording: only with the vial in the clamp; nothing in simulation
+        scale = self.start_scale_recording(continuous_mass_monitoring and source_vial_clamped, 'aspiration')
 
-        
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
             self.c9.move_z(disp_height)
@@ -2433,9 +2458,7 @@ class North_Robot(North_Base):
         
         self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
 
-        # Record when actual aspiration starts
-        if continuous_mass_monitoring and source_vial_clamped:
-            aspiration_start_time = time.time()
+        scale.mark_start()
 
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
@@ -2444,12 +2467,8 @@ class North_Robot(North_Base):
             self.pipet_dispense(amount_mL+overaspirate_vol, wait_time=0)
         self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
-        # Record when aspiration ends
-        if continuous_mass_monitoring and source_vial_clamped:
-            aspiration_end_time = time.time()
-            aspiration_duration = aspiration_end_time - aspiration_start_time
-            self.logger.info(f"Aspiration took {aspiration_duration:.3f}s, collecting post-aspiration baseline")
-        
+        scale.mark_end()
+
         #Step 3: Retract and aspirate air if needed
         if post_asp_shake:
             None
@@ -2465,17 +2484,7 @@ class North_Robot(North_Base):
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
-        # Stop continuous monitoring and analyze data if requested
-        if continuous_mass_monitoring and source_vial_clamped:
-            # Let monitoring thread continue for post-baseline period
-            if not self.simulate:
-                time.sleep(2.0)  # 2.0s post-aspiration baseline for better data
-            
-            # Stop continuous monitoring after collecting post-baseline data
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-
+        continuous_mass_data = scale.stop()
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -2867,86 +2876,22 @@ class North_Robot(North_Base):
         if initial_move:
             self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
 
-        # Setup continuous mass monitoring if requested
-        monitoring_active = threading.Event()
-
-        def read_scale_continuous():
-            """Continuously read scale at maximum rate (5 Hz) during dispensing"""
-            while monitoring_active.is_set():
-                if not self.simulate and dest_vial_clamped:
-                    try:
-                        current_time = time.time()
-                        steady_status, weight = self.read_scale()  # Get BOTH stability and weight
-
-                        # Determine phase based on timing
-                        time_relative = current_time - start_time
-                        if time_relative < 1.0:
-                            phase = 'baseline_pre'
-                        elif dispense_start_time is None or current_time < dispense_start_time:
-                            phase = 'baseline_pre'  # Still in pre-baseline
-                        elif dispense_end_time is None or current_time < dispense_end_time:
-                            phase = 'dispensing'
-                        else:
-                            phase = 'baseline_post'
-
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status  # NEW: Track if scale says reading is stable
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                if not self.simulate:
-                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
-
         #Pipet into the vial
         if initial_move:
             self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
 
-        # Start continuous monitoring if requested (includes pre-dispense baseline)
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            # Conditional settling based on dispense wait time
-            self.logger.info(f"Short wait time ({1.0:.1f}s), allowing scale to settle after robot positioning...")
-            if not self.simulate:
-                time.sleep(1.0)  # 2 second settling delay for short wait times
-            
-            start_time = time.time()
-            dispense_start_time = None  # Will be set when dispensing starts
-            dispense_end_time = None    # Will be set when dispensing ends
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            self.logger.info("Started continuous mass monitoring with pre-dispense baseline")
-            
-            # Wait for 1.0s baseline before dispensing for better stability
-            if not self.simulate:
-                time.sleep(2.0)
-            
-        # Record when actual dispensing starts
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            dispense_start_time = time.time()
+        # Scale recording: only with the vial in the clamp; nothing in simulation
+        scale = self.start_scale_recording(measure_weight and continuous_mass_monitoring and dest_vial_clamped,
+                                           'dispensing')
+
+        scale.mark_start()
         
         # Perform the actual dispensing
         self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
         
-        # Record when dispensing ends and wait for post-dispense baseline
-        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
-            dispense_end_time = time.time()
-            dispense_duration = dispense_end_time - dispense_start_time
-            self.logger.info(f"Dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
-            
-            # Let monitoring thread continue for post-baseline period
-            if not self.simulate:
-                time.sleep(2.0)  # 1.0s post-dispense baseline for better data
-            
-            # Stop continuous monitoring after collecting post-baseline data
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-        
+        scale.mark_end()
+        continuous_mass_data = scale.stop()
+
          #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
         self.PIPET_FLUID_VOLUME -= amount_mL
@@ -3454,61 +3399,10 @@ class North_Robot(North_Base):
         #Step 3: aspirate and dispense from the reservoir
         max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
 
-        # Set up continuous monitoring if requested
-        if continuous_mass_monitoring:
-            import threading
-            monitoring_active = threading.Event()
-            dispense_start_time = None
-            dispense_end_time = None
-            
-            def read_scale_continuous():
-                """Inner function to continuously read scale weight"""
-                start_time = time.time()
-                while monitoring_active.is_set():
-                    try:
-                        if not self.simulate:
-                            steady_status, weight = self.read_scale()  # Actually returns (steady_status, weight)
-                        else:
-                            weight, steady_status = 0.0, True
-                            
-                        current_time = time.time()
-                        time_relative = current_time - start_time
-                        
-                        # Determine phase based on dispense timing
-                        if dispense_start_time is None:
-                            phase = 'baseline_pre'
-                        elif dispense_end_time is None or current_time < dispense_end_time:
-                            phase = 'dispensing'
-                        else:
-                            phase = 'baseline_post'
-                        
-                        continuous_mass_data.append({
-                            'timestamp': current_time,
-                            'time_relative': time_relative,
-                            'mass_g': weight,
-                            'phase': phase,
-                            'steady_status': steady_status
-                        })
-                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
-                    except Exception as e:
-                        self.logger.warning(f"Scale reading failed: {e}")
-                    if not self.simulate:
-                        time.sleep(0.2)  # 5 Hz maximum rate
-            
-            # Start monitoring with pre-dispense baseline
-            self.logger.info("Starting continuous mass monitoring for reservoir dispensing")
-            start_time = time.time()
-            monitoring_active.set()
-            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
-            monitor_thread.start()
-            
-            # Wait for pre-dispense baseline
-            if not self.simulate:
-                time.sleep(2.0)
-        
-        # Record when dispensing starts
-        if continuous_mass_monitoring:
-            dispense_start_time = time.time()
+        # Scale recording (the vial is in the clamp); nothing in simulation
+        scale = self.start_scale_recording(continuous_mass_monitoring, 'dispensing', settle=False)
+
+        scale.mark_start()
         
         # Perform actual dispensing with parameterized control
         total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
@@ -3556,21 +3450,9 @@ class North_Robot(North_Base):
         if not self.simulate:
             time.sleep(1)
         
-        # Record when dispensing ends 
-        if continuous_mass_monitoring:
-            dispense_end_time = time.time()
-            dispense_duration = dispense_end_time - dispense_start_time
-            self.logger.info(f"Reservoir dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
-            
-            # Collect post-dispense baseline
-            if not self.simulate:
-                time.sleep(2.0)
-            
-            # Stop monitoring
-            monitoring_active.clear()
-            monitor_thread.join(timeout=2.0)
-            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
-        
+        scale.mark_end()
+        continuous_mass_data = scale.stop()
+
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
         self.save_robot_status()
@@ -3585,6 +3467,8 @@ class North_Robot(North_Base):
                 continuous_mass_data, 'reservoir', vial_index, volume, stability_info,
                 save=save_mass_data, file_prefix="reservoir_mass_", file_stem=f"{vial_index}_res{reservoir_index}")
 
+        elif continuous_mass_monitoring and self.simulate:
+            measured_mass = 0.0  # No scale readings in simulation
         elif measure_weight: # Traditional before/after measurement
             if not self.simulate:
                 final_mass = self.read_steady_scale()

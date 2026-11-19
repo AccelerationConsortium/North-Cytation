@@ -50,7 +50,7 @@ def robot(monkeypatch, tmp_path):
     robot.is_vial_pipetable = MagicMock(return_value=True)
     robot.recap_clamp_vial = MagicMock()
     robot.return_vial_home = MagicMock()
-    robot._create_mass_vs_time_plot = MagicMock(side_effect=AssertionError('Unexpected plot'))
+    monkeypatch.setattr(north, 'save_mass_readings', MagicMock(side_effect=AssertionError('Unexpected plot')))
     robot.balance = 10.
     robot.mass_increment = .1
     robot.c9.read_scale.side_effect = lambda: (True, robot.balance)
@@ -63,8 +63,7 @@ def robot(monkeypatch, tmp_path):
     class Poller:
         def __init__(self, target, daemon):
             self.target = target
-            closure = dict(zip(target.__code__.co_freevars, target.__closure__))
-            self.event = closure['monitoring_active'].cell_contents
+            self.event = target.__self__._running  # ScaleRecording's stop flag
             self.joined = False
 
         def sample(self):
@@ -432,3 +431,15 @@ def test_real_thread_collects_and_stops(robot, monkeypatch):
     info = json.loads(rows().stability_info.iloc[0])
     assert info['pre_total_count'] >= 2
     assert info['post_total_count'] >= 2
+
+
+def test_simulated_reservoir_dispense_with_scale_recording_reads_nothing(robot):
+    from pipetting_data.mass_analysis import empty_stability
+    robot.simulate = True
+    robot.move_carousel_to = MagicMock()
+    robot._track_reservoir_dispense = MagicMock()
+    result = robot.dispense_into_vial_from_reservoir(1, 'dest', 0.5, measure_weight=True,
+                                                    continuous_mass_monitoring=True)
+    assert result == (0.0, empty_stability())
+    robot.c9.read_scale.assert_not_called()
+    assert robot.pollers == []  # no recording thread

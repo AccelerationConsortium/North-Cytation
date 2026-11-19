@@ -52,6 +52,14 @@ vortex_limits:
   min_speed: 1    # Speeds are normalized 0-100; 0 would not move
   max_speed: 99
 
+# Scale recording around an aspirate or dispense (North_Base.start_scale_recording); no waits in simulation
+scale_recording:
+  settle_s: 1.0          # Wait after positioning, before recording (aspirate and dispense; not reservoir)
+  pre_baseline_s: 2.0    # Record this long before the liquid step
+  post_baseline_s: 2.0   # Record this long after it
+  read_interval_s: 0.2   # 5 Hz
+  stop_timeout_s: 2.0    # Wait this long for the recording thread to finish
+
 # Physical constants
 physical_constants:
   safe_height_z: 292    # Safe height for general robot movements
