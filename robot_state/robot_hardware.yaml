@@ -78,6 +78,24 @@ speed_limits:
 powder_limits:
   max_mg: 1000
 
+# Allowed liquid-handling parameters (PipettingParameters / ReservoirParameters, after defaults,
+# calibration and overrides are combined); None uses the default. Refused before moving.
+# Ranges cover every calibrated value and optimizer bound in use (2026-11-19).
+parameter_limits:
+  aspirate_speed: {min: 1, max: 40, unit: (pump speed code)}
+  dispense_speed: {min: 1, max: 40, unit: (pump speed code)}
+  blowout_speed: {min: 1, max: 40, unit: (pump speed code)}
+  retract_speed: {min: 1, max: 100, unit: '%'}     # Arm velocity, percent of max (like speed_limits)
+  aspirate_wait_time: {min: 0, max: 60, unit: s}
+  dispense_wait_time: {min: 0, max: 60, unit: s}
+  post_retract_wait_time: {min: 0, max: 60, unit: s}
+  valve_switch_delay: {min: 0, max: 60, unit: s}
+  overaspirate_vol: {min: -1, max: 1, unit: mL}  # Negative values are used for some liquids
+  pre_asp_air_vol: {min: 0, max: 1, unit: mL}
+  post_asp_air_vol: {min: 0, max: 1, unit: mL}
+  blowout_vol: {min: 0, max: 1, unit: mL}
+  asp_disp_cycles: {min: 0, max: 10, whole: true}
+
 # Scale recording around an aspirate or dispense (North_Base.start_scale_recording); no waits in simulation
 scale_recording:
   settle_s: 1.0          # Wait after positioning, before recording (aspirate and dispense; not reservoir)

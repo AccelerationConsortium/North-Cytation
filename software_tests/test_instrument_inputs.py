@@ -175,3 +175,42 @@ def test_good_and_default_move_speeds_pass_the_check():
     robot = _bare_robot()
     for speed in [None, 1, 10, 100, 7.5]:
         _check_optional_speed(robot, 'x', 'move_speed', speed)
+
+
+# ---- liquid-handling parameters (after defaults, calibration and overrides are combined) ----
+
+def test_parameter_limits_cover_the_defaults():
+    from North_Safe import _check_parameter_limits
+    from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
+    robot = _bare_robot()
+    _check_parameter_limits(robot, 'Pipetting', PipettingParameters())
+    _check_parameter_limits(robot, 'Reservoir dispense', ReservoirParameters())
+
+
+@pytest.mark.parametrize('field, value, message', [
+    ('retract_speed', 150, 'outside 1-100 %'), ('aspirate_speed', 0, 'outside 1-40'),
+    ('dispense_speed', 41, 'outside 1-40'), ('aspirate_wait_time', -1, 'outside 0-60 s'),
+    ('post_retract_wait_time', 61, 'outside 0-60 s'), ('overaspirate_vol', 1.5, 'outside -1-1 mL'),
+    ('pre_asp_air_vol', -0.1, 'outside 0-1 mL'), ('blowout_vol', float('nan'), 'outside'),
+    ('asp_disp_cycles', 2.5, 'not a whole number'), ('asp_disp_cycles', 11, 'outside 0-10')])
+def test_bad_pipetting_parameters_are_refused(field, value, message):
+    from North_Safe import _check_parameter_limits
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    with pytest.raises(ValueError, match=f'Pipetting refused before moving: {field}.*{message}'):
+        _check_parameter_limits(_bare_robot(), 'Pipetting', PipettingParameters(**{field: value}))
+
+
+def test_none_uses_the_default_and_is_not_checked():
+    from North_Safe import _check_parameter_limits
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    _check_parameter_limits(_bare_robot(), 'Pipetting',
+                            PipettingParameters(aspirate_speed=None, dispense_speed=None, retract_speed=None))
+
+
+def test_resolvers_refuse_bad_overrides_before_moving():
+    from pipetting_data.pipetting_parameters import ReservoirParameters
+    robot = _bare_robot()
+    with pytest.raises(ValueError, match='Reservoir dispense refused before moving: valve_switch_delay'):
+        robot._get_optimized_reservoir_parameters(1.0, None, {'valve_switch_delay': 100})
+    assert robot._get_optimized_reservoir_parameters(1.0, None, ReservoirParameters(dispense_speed=20)).dispense_speed == 20
+    assert robot.c9.mock_calls == []

@@ -53,6 +53,16 @@ def _check_optional_speed(owner, action, name, speed):
                         'speed_limits')
 
 
+def _check_parameter_limits(owner, action, parameters):
+    """Each resolved PipettingParameters / ReservoirParameters value (None: the default) must be within
+    parameter_limits (robot_hardware.yaml); ValueError before moving otherwise."""
+    for name, limit in _hardware_limits(owner, 'parameter_limits').items():
+        value = getattr(parameters, name, None)
+        if value is not None:
+            _check_in_range(action, name, value, limit['min'], limit['max'], f" {limit.get('unit', '')}".rstrip(),
+                            'parameter_limits', whole=limit.get('whole', False))
+
+
 def _check_speed_percent(owner, action, speed_name, speed, source):
     """A configured move speed must be a percent of max velocity within speed_limits (robot_hardware.yaml);
     the C9 reads 0-100 as percent and larger values as counts/s."""
@@ -2195,6 +2205,7 @@ class North_Robot(North_Base):
         self.logger.debug("Liquid review context: " + json.dumps({
             "liquid": liquid, "target_volume_ml": volume,
         }))
+        _check_parameter_limits(self, 'Pipetting', optimized)
         return optimized
 
     def resolve_pipetting_setup(self, volume, liquid=None, user_parameters=None,
@@ -2336,7 +2347,8 @@ class North_Robot(North_Base):
                         if user_value is not None:  # Only override if user explicitly set a value
                             setattr(optimized, param_name, user_value)
                             self.logger.debug(f"Applied reservoir user param {param_name}={user_value}")
-        
+
+        _check_parameter_limits(self, 'Reservoir dispense', optimized)
         return optimized
 
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
