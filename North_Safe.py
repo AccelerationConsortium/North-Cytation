@@ -993,6 +993,11 @@ class North_Temp:
         self.t8.disable_channel(channel)
 
     def turn_on_stirring(self,speed=10000):
+        """Stir at speed (motor counts/s, 1-100000; stirrer_limits in robot_hardware.yaml; default 10000).
+        Refused before sending (ValueError) outside those limits; stop with turn_off_stirring."""
+        limits = _hardware_limits(self, 'stirrer_limits')
+        _check_in_range('Stirring', 'speed', speed, limits['min_speed'], limits['max_speed'], ' cts/s',
+                        'stirrer_limits')
         self.logger.debug(f"Turning on stirring at speed {speed}")
         self.c8.spin_axis(1, speed)
 
@@ -1011,7 +1016,12 @@ class North_Spin(North_Base):
         self.logger.debug("Initializing centrifuge controller...")
     
     def set_speed(self,speed):
-        self.logger.debug(f"Setting centrifuge speed to {speed} RPM")
+        """Spin the centrifuge at speed (motor counts/s, 1-100000; spinner_limits in robot_hardware.yaml).
+        Refused before sending (ValueError) outside those limits; stop with stop_spin."""
+        limits = _hardware_limits(self, 'spinner_limits')
+        _check_in_range('Spin', 'speed', speed, limits['min_speed'], limits['max_speed'], ' cts/s',
+                        'spinner_limits')
+        self.logger.debug(f"Setting centrifuge speed to {speed} cts/s")
         self.c8.spin_axis(2, speed)
 
     def stop_spin(self):

@@ -54,3 +54,40 @@ def test_heater_does_not_warn_at_100_c(temp, caplog):
     with caplog.at_level(logging.WARNING):
         temp.set_temp(100)
     assert 'above' not in caplog.text
+
+
+# ---- stirrer and centrifuge (spin_axis takes motor counts/s) ----
+
+@pytest.fixture
+def spin():
+    from North_Safe import North_Spin
+    return North_Spin(MagicMock(), MagicMock(), simulate=True, logger=logging.getLogger(__name__))
+
+
+def test_speed_limits_are_the_hardware_max():
+    for section in ['stirrer_limits', 'spinner_limits']:
+        assert HARDWARE[section] == {'min_speed': 1, 'max_speed': 100000}
+
+
+def test_stirring_sends_the_speed_unchanged(temp):
+    temp.turn_on_stirring()
+    temp.turn_on_stirring(speed=1000)
+    temp.turn_off_stirring()
+    assert temp.c8.spin_axis.call_args_list == [call(1, 10000), call(1, 1000), call(1, 0)]
+
+
+def test_spinner_sends_the_speed_unchanged(spin):
+    spin.set_speed(20000)
+    spin.stop_spin()
+    assert spin.c8.spin_axis.call_args_list == [call(2, 20000), call(2, 0)]
+
+
+@pytest.mark.parametrize('speed, message', [(0, 'outside 1-100000'), (100001, 'outside 1-100000'),
+                                            (-5, 'outside'), (float('nan'), 'outside'), ('fast', 'not a number')])
+def test_stirring_and_spinner_refuse_bad_speeds_before_sending(temp, spin, speed, message):
+    with pytest.raises(ValueError, match=f'refused before moving.*{message}'):
+        temp.turn_on_stirring(speed)
+    with pytest.raises(ValueError, match=f'refused before moving.*{message}'):
+        spin.set_speed(speed)
+    temp.c8.spin_axis.assert_not_called()
+    spin.c8.spin_axis.assert_not_called()

@@ -59,6 +59,15 @@ heater_limits:
   warn_above_c: 100   # Allowed, but logs a warning
   channels: [0, 7]    # First and last T8 channel
 
+# Allowed stirrer (North_Temp.turn_on_stirring) and centrifuge (North_Spin.set_speed) speeds, in motor
+# counts/s (spin_axis takes counts/s, not a percentage; 100000 is the hardware max); 0 stops via the stop methods
+stirrer_limits:
+  min_speed: 1
+  max_speed: 100000
+spinner_limits:
+  min_speed: 1
+  max_speed: 100000
+
 # Scale recording around an aspirate or dispense (North_Base.start_scale_recording); no waits in simulation
 scale_recording:
   settle_s: 1.0          # Wait after positioning, before recording (aspirate and dispense; not reservoir)
