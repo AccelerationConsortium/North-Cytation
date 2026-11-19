@@ -13,6 +13,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirPa
 from pipetting_data.pipetting_wizard import PipettingWizard, NEAR_EXTRAPOLATION_FRACTION
 from pipetting_data.dispense_recording import recording_density, record_dispense, capture_aspiration
 from pipetting_data.liquid_registry import liquid_conditions_tip
+from pipetting_data.mass_analysis import analyze_mass_readings, empty_stability, save_mass_readings
 import matplotlib.patches as patches
 import threading
 import json
@@ -2347,14 +2348,7 @@ class North_Robot(North_Base):
         # Initialize mass monitoring if requested
         measured_mass = None
         continuous_mass_data = []
-        stability_info = {
-            'pre_stable_count': 0,
-            'pre_total_count': 0, 
-            'post_stable_count': 0,
-            'post_total_count': 0,
-            'pre_baseline_std': 0.0,
-            'post_baseline_std': 0.0
-        }
+        stability_info = empty_stability()
         
         source_vial_clamped = self.get_vial_info(source_vial_num,'location')=='clamp' #Is the source vial clamped?
 
@@ -2496,100 +2490,13 @@ class North_Robot(North_Base):
         if getattr(self, 'dispense_recording', 'off') == 'auto':
             capture_aspiration(self, parameters, source_vial_num, aspirate_speed, retract_speed)
 
-        # Analyze continuous mass data after monitoring is stopped
+        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
         if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using STABILITY instead of time phases
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
-                
-                # Calculate final result (NOTE: For aspiration, mass should DECREASE, so we reverse the sign)
-                measured_mass = pre_baseline - post_baseline  # Reversed for aspiration
-                self.logger.info(f"ASPIRATION MASS calculation:")
-                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
-                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-                
-                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
-                               f"{post_count} post-readings ({post_stable_count} stable)")
-                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
-                               f"post_std={stability_info['post_baseline_std']:.6f}g")
-                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-            
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"aspiration_mass_data_{self.get_vial_info(source_vial_num, 'vial_name')}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                # Ensure log-specific directory exists
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                
-                # Convert to DataFrame and save
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} aspiration mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot using helper method
-                self._create_mass_vs_time_plot(
-                    continuous_mass_data, pre_baseline, post_baseline,
-                    self.get_vial_info(source_vial_num, 'vial_name'), amount_mL, measured_mass, "aspiration",
-                    log_folder, timestamp_str
-                )
-        
+            source_name = self.get_vial_info(source_vial_num, 'vial_name')
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'aspiration', source_name, amount_mL, stability_info,
+                save=save_mass_data, file_prefix="aspiration_mass_", file_stem=source_name)
+
         # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
         if continuous_mass_monitoring and source_vial_clamped:
             return measured_mass, stability_info
@@ -2901,14 +2808,7 @@ class North_Robot(North_Base):
 
         measured_mass = None
         continuous_mass_data = []
-        stability_info = {
-            'pre_stable_count': 0,
-            'pre_total_count': 0,
-            'post_stable_count': 0,
-            'post_total_count': 0,
-            'pre_baseline_std': 0.0,
-            'post_baseline_std': 0.0
-        }
+        stability_info = empty_stability()
 
         self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
 
@@ -3053,109 +2953,11 @@ class North_Robot(North_Base):
         self._track_dispense(self._vial_container_id(dest_vial_num), amount_mL, liquid, vial_index=dest_vial_num)
         self.save_robot_status()
 
-        # Analyze continuous mass data after monitoring is stopped
+        # Analyze continuous mass data after monitoring is stopped (pipetting_data/mass_analysis.py)
         if measure_weight and continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using STABILITY instead of time phases
-                
-                # OLD WAY: Use arbitrary time phases (might include unstable readings)
-                # pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                # post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                
-                # NEW WAY: Use actual stability status from scale hardware
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Calculate mass difference using INDEPENDENT baseline analysis
-                # Each baseline uses stable readings if available, otherwise falls back to time-based
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
-                
-                # Calculate final result
-                measured_mass = post_baseline - pre_baseline
-                self.logger.info(f"INDEPENDENT BASELINE calculation:")
-                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Log comparison info
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
-                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-                
-                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
-                               f"{post_count} post-readings ({post_stable_count} stable)")
-                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
-                               f"post_std={stability_info['post_baseline_std']:.6f}g")
-                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-            
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"mass_data_{dest_vial_name}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                # Ensure log-specific directory exists
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                
-                # Convert to DataFrame and save
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot using helper method
-                self._create_mass_vs_time_plot(
-                    continuous_mass_data, pre_baseline, post_baseline,
-                    dest_vial_name, amount_mL, measured_mass, "dispense",
-                    log_folder, timestamp_str
-                )  
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'dispense', dest_vial_name, amount_mL, stability_info,
+                save=save_mass_data, file_prefix="mass_", file_stem=dest_vial_name)
 
         # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
         elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
@@ -3185,95 +2987,37 @@ class North_Robot(North_Base):
             return original_result
         return measured_mass, stability_info
 
-    def _create_mass_vs_time_plot(self, continuous_mass_data, pre_baseline, post_baseline, 
-                                 vial_name, target_volume, measured_mass, operation_type, 
-                                 log_folder, timestamp_str, additional_info=""):
-        """
-        Create and save a mass vs time plot for continuous monitoring data.
-        
-        Args:
-            continuous_mass_data: List of mass measurement dictionaries
-            pre_baseline: Pre-operation baseline mass
-            post_baseline: Post-operation baseline mass  
-            vial_name: Name of the vial being monitored
-            target_volume: Target volume for the operation (mL)
-            measured_mass: Measured mass difference (g)
-            operation_type: "dispense", "aspiration", or "reservoir"
-            log_folder: Folder name for saving files
-            timestamp_str: Timestamp string for unique filenames
-            additional_info: Additional info for filename (e.g., "_res1")
-        """
-        import matplotlib.pyplot as plt
-        
-        mass_df = pd.DataFrame(continuous_mass_data)
-        plt.figure(figsize=(12, 6))
-        
-        # Plot one continuous line
-        plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'k-', linewidth=2, label='Mass readings', zorder=3)
-        
-        # Add scatter overlay to show stable vs unstable readings
-        stable_data = mass_df[mass_df['steady_status'] == True]
-        unstable_data = mass_df[mass_df['steady_status'] == False]
-        
-        if len(stable_data) > 0:
-            plt.scatter(stable_data['time_relative'], stable_data['mass_g'], 
-                      c='green', s=20, alpha=0.7, label='Stable readings', zorder=4)
-        if len(unstable_data) > 0:
-            plt.scatter(unstable_data['time_relative'], unstable_data['mass_g'], 
-                      c='red', s=20, alpha=0.7, label='Unstable readings', zorder=4)
-        
-        # Add phase background shading
-        if len(mass_df) > 0:
-            # Get phase transition points
-            pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
-            if operation_type == "aspiration":
-                operation_data = mass_df[mass_df['phase'] == 'aspiration']
-                operation_color = 'orange'
-                operation_label = 'Aspiration'
-            else:  # dispense or reservoir
-                operation_data = mass_df[mass_df['phase'] == 'dispensing']
-                operation_color = 'blue'
-                operation_label = 'Dispensing'
-            post_data = mass_df[mass_df['phase'] == 'baseline_post']
-            
-            # Shade background regions
-            if len(pre_data) > 0:
-                plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
-                           alpha=0.2, color='green', label='Pre-baseline', zorder=1)
-            if len(operation_data) > 0:
-                plt.axvspan(operation_data['time_relative'].min(), operation_data['time_relative'].max(), 
-                           alpha=0.2, color=operation_color, label=operation_label, zorder=1)
-            if len(post_data) > 0:
-                plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
-                           alpha=0.2, color='red', label='Post-baseline', zorder=1)
-        
-        # Add horizontal lines for averaged baselines
-        plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
-        plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
-        
-        plt.xlabel('Time (seconds)')
-        plt.ylabel('Mass (g)')
-        
-        # Create appropriate title based on operation type
-        if operation_type == "reservoir":
-            title = f'Reservoir Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"reservoir_mass_plot_{vial_name}{additional_info}_{timestamp_str}.png"
-        elif operation_type == "aspiration":
-            title = f'Mass vs Time During Aspiration\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"aspiration_mass_plot_{vial_name}_{timestamp_str}.png"
-        else:  # dispense
-            title = f'Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
-            plot_filename = f"mass_plot_{vial_name}_{timestamp_str}.png"
-            
-        plt.title(title)
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        
-        # Save the plot
-        plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
-        plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
-        plt.close()  # Close the figure to free memory
-        self.logger.info(f"Saved {operation_type} mass vs time plot to {plot_filepath}")
+    def _analyze_mass_readings(self, readings, operation, vial_label, target_mL, stability_info,
+                               save, file_prefix, file_stem):
+        """Mass from recorded scale readings (pipetting_data/mass_analysis.py): logs the result,
+        updates stability_info in place, and saves the CSV and plot if save is set.
+        Files go to output/mass_measurements/<log name or date>/<prefix>data_<stem>_<time>.csv
+        (and <prefix>plot_...png). Returns the mass in g (0.0 with too few readings)."""
+        result = analyze_mass_readings(readings, operation)
+        stability_info.update(result['stability'])
+        stats = result['stability']
+        if result['pre_baseline_g'] is None:
+            self.logger.warning("Insufficient continuous data for baseline calculation")
+        else:
+            self.logger.info(f"{operation} mass - pre-baseline: {result['pre_method']} avg={result['pre_baseline_g']:.6f}g, "
+                             f"post-baseline: {result['post_method']} avg={result['post_baseline_g']:.6f}g, "
+                             f"mass difference: {result['mass_g']:.6f}g")
+            self.logger.info(f"Reading summary: {stats['pre_total_count']} pre-readings ({stats['pre_stable_count']} stable), "
+                             f"{stats['post_total_count']} post-readings ({stats['post_stable_count']} stable)")
+            self.logger.info(f"Baseline variability: pre_std={stats['pre_baseline_std']:.6f}g, "
+                             f"post_std={stats['post_baseline_std']:.6f}g")
+            self.logger.info(f"Target: {target_mL:.3f} mL = ~{target_mL*1.0:.6f} g for water")
+        if save and readings:
+            if hasattr(self, 'log_filename') and self.log_filename:
+                log_folder = self.log_filename.replace('.log', '')
+            else:
+                log_folder = time.strftime("%Y-%m-%d")
+            timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+            save_mass_readings(readings, result, operation, vial_label, target_mL,
+                               os.path.join("output", "mass_measurements", log_folder),
+                               f"{file_prefix}data_{file_stem}_{timestamp_str}.csv",
+                               f"{file_prefix}plot_{file_stem}_{timestamp_str}.png", self.logger)
+        return result['mass_g']
 
     def monitor_weight_over_time(self, time_s):
         """
@@ -3691,14 +3435,7 @@ class North_Robot(North_Base):
         if continuous_mass_monitoring or measure_weight:
             initial_mass = None
             continuous_mass_data = []
-            stability_info = {
-                'pre_stable_count': 0,
-                'pre_total_count': 0, 
-                'post_stable_count': 0,
-                'post_total_count': 0,
-                'pre_baseline_std': 0.0,
-                'post_baseline_std': 0.0
-            }
+            stability_info = empty_stability()
             
             if not self.simulate:
                 initial_mass = self.read_steady_scale()
@@ -3843,118 +3580,11 @@ class North_Robot(North_Base):
         self.move_carousel_to('home')
 
         # Analyze continuous monitoring data or do traditional measurement
-        if continuous_mass_monitoring and continuous_mass_data:
-            # Process continuous mass data (similar to dispense_into_vial)
-            if len(continuous_mass_data) >= 4:
-                mass_df = pd.DataFrame(continuous_mass_data)
-                
-                # Calculate baselines using stability status
-                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
-                                             (mass_df['steady_status'] == True)]
-                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
-                                              (mass_df['steady_status'] == True)]
-                
-                # Pre-baseline calculation
-                if len(pre_stable_readings) > 0:
-                    pre_baseline = pre_stable_readings['mass_g'].mean()
-                    pre_method = "STABLE"
-                else:
-                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
-                    pre_method = "TIME-BASED"
-                
-                # Post-baseline calculation  
-                if len(post_stable_readings) > 0:
-                    post_baseline = post_stable_readings['mass_g'].mean()
-                    post_method = "STABLE"
-                else:
-                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
-                    post_method = "TIME-BASED"
-                
-                measured_mass = post_baseline - pre_baseline
-                self.logger.info(f"Reservoir dispensing - Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
-                
-                # Update stability info
-                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
-                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
-                
-                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
-                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
-                pre_stable_count = len(pre_stable_readings)
-                post_stable_count = len(post_stable_readings)
-                
-                stability_info.update({
-                    'pre_stable_count': pre_stable_count,
-                    'pre_total_count': pre_count,
-                    'post_stable_count': post_stable_count, 
-                    'post_total_count': post_count,
-                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
-                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
-                })
-            else:
-                self.logger.warning("Insufficient continuous data for baseline calculation")
-                measured_mass = 0.0
-                
-            # Save mass data if requested
-            if save_mass_data and continuous_mass_data:
-                import os
-                import matplotlib.pyplot as plt
-                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-                
-                # Use log filename for folder organization instead of date
-                if hasattr(self, 'log_filename') and self.log_filename:
-                    # Remove .log extension and use as folder name
-                    log_folder = self.log_filename.replace('.log', '')
-                else:
-                    # Fallback to date if log filename not available
-                    log_folder = time.strftime("%Y-%m-%d")
-                
-                filename = f"reservoir_mass_data_{vial_index}_res{reservoir_index}_{timestamp_str}.csv"
-                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
-                
-                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
-                mass_df = pd.DataFrame(continuous_mass_data)
-                mass_df.to_csv(filepath, index=False)
-                self.logger.info(f"Saved {len(continuous_mass_data)} reservoir mass measurements to {filepath}")
-                
-                # Create and save mass vs time plot (same as regular dispense method)
-                if len(continuous_mass_data) > 4:
-                    plt.figure(figsize=(10, 6))
-                    
-                    # Plot all data points
-                    plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'b.-', alpha=0.7, markersize=2, linewidth=1)
-                    
-                    # Add phase coloring
-                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
-                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
-                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
-                    
-                    if len(pre_data) > 0:
-                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
-                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
-                    if len(dispense_data) > 0:
-                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
-                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
-                    if len(post_data) > 0:
-                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
-                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
-                
-                    # Add horizontal lines for averaged baselines
-                    plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
-                    plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
-                    
-                    plt.xlabel('Time (seconds)')
-                    plt.ylabel('Mass (g)')
-                    plt.title(f'Reservoir Mass vs Time During Dispense\\nVial: {vial_index}, Target: {volume:.3f} mL, Measured: {measured_mass:.4f} g')
-                    plt.legend()
-                    plt.grid(True, alpha=0.3)
-                    
-                    # Save the plot
-                    plot_filename = f"reservoir_mass_plot_{vial_index}_res{reservoir_index}_{timestamp_str}.png"
-                    plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
-                    plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
-                    plt.close()  # Close the figure to free memory
-                    self.logger.info(f"Saved reservoir mass vs time plot to {plot_filepath}")
-        
+        if continuous_mass_monitoring and continuous_mass_data:  # pipetting_data/mass_analysis.py
+            measured_mass = self._analyze_mass_readings(
+                continuous_mass_data, 'reservoir', vial_index, volume, stability_info,
+                save=save_mass_data, file_prefix="reservoir_mass_", file_stem=f"{vial_index}_res{reservoir_index}")
+
         elif measure_weight: # Traditional before/after measurement
             if not self.simulate:
                 final_mass = self.read_steady_scale()

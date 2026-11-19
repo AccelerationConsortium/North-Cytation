@@ -142,6 +142,8 @@ Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files
 |---|---|---|
 | `monitor_weight_over_time` | Record the mass over time | Unchanged (data recorded) |
 
+**Mass analyzer** (`pipetting_data/mass_analysis.py`, not robot code): turns scale readings recorded around an aspirate or dispense into a mass and stability summary, and saves the CSV and plot. Shared by `aspirate_from_vial`, `dispense_into_vial` and `dispense_into_vial_from_reservoir` (step 1 of splitting them, below).
+
 ### North_Track: wellplates
 
 | Unit operation | What it does | State after |
@@ -171,7 +173,7 @@ These methods mix the task itself with flow-level sequencing and with data analy
 | `dispense_into_vial_from_reservoir` | Moves the vial, homes the robot and analyzes the mass within one method. |
 | `mix_vial` | Built on `aspirate_from_vial` / `dispense_into_vial` and calls `dispense_from_vial_into_vial` (a flow), so it inherits the same problem. |
 
-Possible direction for later: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
+Done: the mass analysis is now shared (see Mass analyzer above). Still to do, in order: a shared scale recorder (unit operation), then a slim aspirate or dispense unit operation. Original direction: a slim aspirate or dispense unit operation (task and checks only), a separate scale-monitoring unit operation (see `monitor_weight_over_time`) plus a mass analyzer, and flows for the sequencing. Keeping the current method names as flows built from those parts would keep existing workflows working.
 
 ## Flows
 
