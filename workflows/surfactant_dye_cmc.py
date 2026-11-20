@@ -80,7 +80,7 @@ WATER_VIAL_FILL_ML = 7.5
 # Volumes
 TOTAL_VOLUME_UL = 200.0             # includes the dye
 DYE_VOLUME_UL = 25.0                # fixed dye-solution volume in every water well (substocks at 8x final)
-DYE_SOLVENT_EVAPORATES = True       # ethanol evaporates first: water + SDS fill TOTAL_VOLUME_UL on their own
+DYE_SOLVENT_EVAPORATES = True       # volatile dye solvent (ethanol): water + SDS fill TOTAL_VOLUME_UL; False for DMSO
 WELL_MIN_UL = 5.0                   # smallest variable-volume transfer into a well
 WELL_MAX_UL = 195.0                 # largest (small tip 200 uL less its 5 uL margin)
 SURFACTANT_PREFERRED_MIN_UL = 75.0  # surfactant wells aim for at least this (more substocks if higher)
@@ -191,7 +191,7 @@ _CONFIG_DOCS = {
                         "unit": "uL", "affects": ["liquids"]},
     "DYE_SOLVENT_EVAPORATES": {"description": "Dye solvent evaporates before reading: water + surfactant fill TOTAL_VOLUME_UL "
                                               "and the dye solution goes on top; concentrations are over TOTAL_VOLUME_UL. "
-                                              "Needs dye first in DISPENSE_ORDER and a pause after dye in each water batch.",
+                                              "Volumes only; independent of DISPENSE_ORDER and DISPENSE_PAUSES.",
                                "unit": None, "affects": ["liquids", "duration"]},
     "DYE_VOLUME_UL": {"description": "Dye-solution volume in every water well (sets the solvent fraction).",
                       "unit": "uL", "affects": ["liquids", "vials"],
@@ -388,16 +388,6 @@ def validate_config(c):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
     validate_blocks(c)
     validate_pauses(c)
-    if c["DYE_SOLVENT_EVAPORATES"]:
-        # The solvent can only be gone before the aqueous parts if dye goes first and the
-        # run waits after it, in every batch that has water wells.
-        if c["DISPENSE_ORDER"][0] != "dye":
-            raise ValueError("DYE_SOLVENT_EVAPORATES needs \"dye\" first in DISPENSE_ORDER")
-        water_batches = {b["batch"] for b in c["BLOCKS"] if b["matrix"] == "water"}
-        missing = sorted(water_batches - {b for b, comp in ((p["batch"], p["after"]) for p in c["DISPENSE_PAUSES"])
-                                           if comp == "dye"})
-        if missing:
-            raise ValueError(f"DYE_SOLVENT_EVAPORATES needs a DISPENSE_PAUSES entry after dye in batch(es) {missing}")
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 

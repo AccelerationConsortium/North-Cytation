@@ -228,11 +228,12 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         kept = kept[kept.matrix == "water"]
         self.assertTrue(((kept.water_ul + kept.surfactant_ul + kept.dye_ul) - BASE["TOTAL_VOLUME_UL"]).abs().max() < 1e-9)
 
-    def test_evaporation_needs_dye_first_and_a_pause(self):
-        with self.assertRaisesRegex(ValueError, "dye\" first"):
-            build_plan(config(DISPENSE_ORDER=["water", "solvent", "surfactant", "dye"]))
-        with self.assertRaisesRegex(ValueError, r"after dye in batch\(es\) \[2\]"):
-            build_plan(config(DISPENSE_PAUSES=[]))
+    def test_evaporation_is_independent_of_order_and_pauses(self):
+        # Dye last, no pause: volumes are the same as dye first with a pause.
+        plain = build_plan(config(DISPENSE_ORDER=["water", "solvent", "surfactant", "dye"], DISPENSE_PAUSES=[]))
+        default = build_plan(config())
+        columns = ["well_index", "water_ul", "surfactant_ul", "dye_ul", "solvent_ul"]
+        pd.testing.assert_frame_equal(plain["wells"][columns], default["wells"][columns])
         with self.assertRaisesRegex(ValueError, "TOTAL_VOLUME_UL \\+ DYE_VOLUME_UL"):
             build_plan(config(TOTAL_VOLUME_UL=290.0))
 
