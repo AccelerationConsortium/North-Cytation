@@ -397,6 +397,10 @@ def finalize_run(tracker):
             snapshot(tracker.run_id, "end", tracker.vial_file, tracker.output_folder or None, logger=tracker.logger)
             write_well_contents(tracker.run_id, tracker.vial_file, tracker.output_folder or None,
                                 logger=tracker.logger)
+            if tracker.output_folder:
+                # Room temperature/humidity during the run, saved with its data. Never raises.
+                from experiment_tracking.environment_metadata import export_for_run
+                export_for_run(tracker, datetime_stopped)
     except Exception as e:
         # Never let logging failures crash the interpreter shutdown - just surface them.
         tracker.logger.error(f"experiment_run_logger failed to finalize run {tracker.run_id}: {e}")

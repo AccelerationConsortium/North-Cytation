@@ -54,7 +54,8 @@ from pipetting_data.validation_decisions import annotate_check_confirm, append_c
 
 
 # Environmental data tracking 
-MQTT_LOG_FILE = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
+from experiment_tracking.environment_metadata import load_settings as _environment_settings
+MQTT_LOG_FILE = _environment_settings()["log_file"]  # environment_log in robot_state/robot_hardware.yaml
 
 def _get_latest_environmental_data():
     """Get the most recent environmental data from MQTT log file.

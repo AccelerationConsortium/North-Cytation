@@ -25,7 +25,7 @@ Every workflow can run without the robot. Set `SIMULATE = True` in the workflow 
 
 <h2>Run tracking</h2>
 
-Every run gets a `run_id` and one row in `experiment_tracking/experiment_runs.csv` (workflow, start and stop times, status, log file, config file, output folder). The confirmed config of each run is saved as `logs/experiment_run_configs/<run_id>.yaml`. Workflows can call `lash.save_run_info(output_folder)` to put `config.yaml` and `run_info.yaml` in their own output folder.
+Every run gets a `run_id` and one row in `experiment_tracking/experiment_runs.csv` (workflow, start and stop times, status, log file, config file, output folder). The confirmed config of each run is saved as `logs/experiment_run_configs/<run_id>.yaml`. Workflows can call `lash.save_run_info(output_folder)` to put `config.yaml` and `run_info.yaml` in their own output folder; at the end of a live run, the room temperature and humidity during it are saved there too, in `environmental_metadata/` (`experiment_tracking/environment_metadata.py`).
 
 <h2>File List:</h2>
 

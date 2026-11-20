@@ -128,6 +128,19 @@ module_state:
     heater: heater
     photoreactor: photoreactor_array
 
+# Room environment log (M5Stack sensor over MQTT). Each live run saves the slice covering it
+# to <output folder>/environmental_metadata/ (experiment_tracking/environment_metadata.py).
+environment_log:
+  log_file: "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
+  timestamp_column: Timestamp
+  columns:              # Name in the log -> name in the saved slice
+    sht_temp_c: temp_c
+    sht_rh: humidity_pct
+    bmp_pa: pressure_pa
+  plotted: [temp_c, humidity_pct]   # Saved-slice names drawn in environment.png
+  padding_min: 30       # Minutes of log kept before the run starts and after it stops
+  gap_warning_min: 5    # Gaps between readings longer than this are listed in summary.yaml
+
 # Safe stop (Lash_E.safe_stop): instruments to switch off after an error or interrupt
 safe_stop:
   heater_channels: [0]            # North_Temp channels to turn off
