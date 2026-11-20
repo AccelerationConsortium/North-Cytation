@@ -294,7 +294,7 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         table = workflow.refill_table(c, pd.DataFrame(columns=["name", "component", "volume_ml"]))
         workflow.ensure_volume(lash, c, c["SURFACTANT_STOCK_VIAL"], 1.0, table)
         # Vial 1 gives down to its reserve, vial 2 the rest of the fill.
-        self.assertEqual(calls, [("SDS_refill_1", 1.0), ("SDS_refill_2", 2.5)])
+        self.assertEqual(calls, [("SDS_refill_1", 0.5), ("SDS_refill_2", 3.0)])  # 1 mL reserve
         self.assertAlmostEqual(volumes[c["SURFACTANT_STOCK_VIAL"]], c["STOCK_REFILL_TO_ML"])
 
     def test_check_counts_every_refill_vial(self):
@@ -307,8 +307,8 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         inventory.loc[c["WATER_VIAL"], "vial_volume"] = 8.0
         inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 8.0
         # The run needs ~2.2 mL from the refill vials (SDS_stock gives 8 - 4 mL itself).
-        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 1.7
-        workflow.check_vials(c, plan, inventory)  # 1.2 + 1.2 mL above reserve: enough together
+        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 2.2
+        workflow.check_vials(c, plan, inventory)  # 1.2 + 1.2 mL above the 1 mL reserve: enough together
         inventory.loc["SDS_refill_2", "vial_volume"] = 0.0  # 1.2 mL alone is not
         with self.assertRaisesRegex(ValueError, "SDS_refill_1, SDS_refill_2"):
             workflow.check_vials(c, plan, inventory)

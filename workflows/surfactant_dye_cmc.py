@@ -89,7 +89,7 @@ SURFACTANT_SUBSTOCK_ML = 6.0        # each SDS substock is made (and topped up) 
 SURFACTANT_SUBSTOCK_REFILL_ML = 4.0 # ...and topped up in its recipe's ratio below this
 DYE_SUBSTOCK_ML = 4.0
 DYE_SUBSTOCK_REFILL_ML = 2.0
-STOCK_RESERVE_ML = 0.5              # left in the dye stock and the refill vials
+STOCK_RESERVE_ML = 1.0              # left in the dye stock and the refill vials
 # Substocks left from earlier runs are reused when this record says what they hold
 # and they are younger than this (ethanol substocks concentrate as they evaporate).
 SUBSTOCK_MAX_AGE_HOURS = 72.0
