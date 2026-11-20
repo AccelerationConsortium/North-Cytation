@@ -26,10 +26,11 @@ from master_usdl_coordinator import Lash_E
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = None
 PROTOCOL_FILES = [
-    r"C:\Protocols\Coumarin_96.prt",
-    r"C:\Protocols\Coumarin_FluorSpectrum_96.prt",
-    r"C:\Protocols\Coumarin_AbsSpectrum_96.prt",
-]
+    r"C:\Protocols\Coumarin_96.prt",               # fluorescence 485/530 (used by the runs)
+    r"C:\Protocols\Coumarin_Abs_96.prt",           # absorbance 460 and 750 nm (used by the runs)
+    r"C:\Protocols\Coumarin_FluorSpectrum_96.prt", # optional: ex 450, em 480-650, 5 nm
+    r"C:\Protocols\Coumarin_AbsSpectrum_96.prt",   # optional: 400-750, 5 nm
+]  # a file that does not exist is skipped
 WELLS = [0, 1, 12]                  # well indices: A1, A2 and B1 (two rows, to see how rows are joined)
 CYTATION_PLATE_TYPE = "96 WELL PLATE"
 OUTPUT_ROOT = "output/cytation_protocol_preview"

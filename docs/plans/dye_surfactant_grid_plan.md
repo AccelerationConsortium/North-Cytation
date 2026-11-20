@@ -56,12 +56,16 @@ Rules:
 
 ## 2. Measurement (decided)
 
-**Current run (coumarin-6), at every read time, one plate trip:**
-- `FLUORESCENCE_PROTOCOL_FILE`: fixed read 485 / 530 plus an emission scan (ex 450, em
-  480-650 nm, 5 nm steps) in the same Gen5 protocol. Blank = the existing
-  `Coumarin_{plate}.prt` (fixed read only, no scan).
-- `ABSORBANCE_PROTOCOL_FILE`: scan 400-650 nm, 5 nm steps, plus 750 nm. Must be set: a live
-  run with stock-check (solvent) wells refuses to start without it.
+**Current run (coumarin-6), at every read time, one plate trip, two fixed reads:**
+- Fluorescence 485 / 530: `Coumarin_96.prt` (existing; `FLUORESCENCE_PROTOCOL_FILE` blank).
+- Absorbance 460 nm (peak) and 750 nm (scatter): `Coumarin_Abs_96.prt`
+  (`ABSORBANCE_PROTOCOL_FILE`; a live run with stock-check wells needs it).
+- Optional later, not read by the workflow yet: `Coumarin_FluorSpectrum_96.prt` (ex 450,
+  em 480-650, 5 nm) and `Coumarin_AbsSpectrum_96.prt` (400-750, 5 nm). A Gen5 protocol
+  with a spectrum returns wavelengths x wells, and the reader wrapper classifies a protocol
+  by its first read step: one read type per protocol.
+- `hardware_tests/cytation_protocol_preview.py` runs protocols without robot moves and
+  saves the raw output and its shape: run it on new protocols first.
 - Every column the reader returns is saved: raw file per read, and `results.csv` (one row
   per well per read, rewritten after every read, with `read_at` clock time).
 
