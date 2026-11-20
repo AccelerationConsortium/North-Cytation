@@ -57,6 +57,7 @@ _WORKFLOW_NAME = Path(__file__).stem
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/surfactant_dye_cmc_vials.csv"
 WELLPLATE_TYPE = "96 WELL PLATE"
+PLATE_KIND = "fluorescence"        # fluorescence = black PS, clear bottom; clear = clear PS. Recorded only
 
 # Liquids and stocks. Stock concentrations will come from status/stocks.csv once
 # it exists; until then they are set here.
@@ -131,7 +132,7 @@ RANDOMIZATION_SEED = 42
 VORTEX_SECONDS = 5
 
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "WELLPLATE_TYPE",
+    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "WELLPLATE_TYPE", "PLATE_KIND",
     "SURFACTANT", "SURFACTANT_STOCK_VIAL", "SURFACTANT_REFILL_VIAL", "SURFACTANT_STOCK_MM",
     "SURFACTANT_CMC_MM",
     "DYE", "DYE_STOCK_VIAL", "DYE_STOCK_UM", "DYE_SOLVENT", "DYE_SOLVENT_VIAL", "SOLVENT_REFILL_VIAL",
@@ -150,6 +151,9 @@ _CONFIG_DOCS = {
                  "unit": None, "affects": []},
     "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (repository-relative) for this run.",
                                "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "PLATE_KIND": {"description": "Which plate is loaded: fluorescence (black PS, clear bottom) or clear (clear PS). "
+                                  "Recorded with the run; does not change robot moves or reads.",
+                   "unit": None, "choices": ["fluorescence", "clear"], "affects": []},
     "WELLPLATE_TYPE": {"description": "Plate type (robot_state/wellplates.yaml); well count and volume limit come from there.",
                        "unit": None, "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
                        "affects": ["plates"], "shares": "plate_type"},
@@ -400,6 +404,8 @@ def validate_config(c):
     validate_blocks(c)
     validate_pauses(c)
     validate_refill_vials(c)
+    if c["PLATE_KIND"] not in ("fluorescence", "clear"):
+        raise ValueError("PLATE_KIND must be fluorescence (black, clear bottom) or clear")
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 
