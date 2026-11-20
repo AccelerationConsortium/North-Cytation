@@ -177,6 +177,50 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         self.assertEqual(reusable_substocks(c, inventory, loaded, now)[1], [])
         self.assertEqual(len(loaded), len(record))
 
+    # ---- pauses between components ----
+
+    def dispense_log(self, batch, **changes):
+        """Run dispense_batch on a fake robot; return the sequence of dispenses and pauses."""
+        from types import SimpleNamespace
+        from unittest import mock
+        c = config(**changes)
+        plan = build_plan(c)
+        wells = plan["wells"][plan["wells"].batch == batch]
+        events = []
+        robot = SimpleNamespace(dispense_from_vials_into_wellplate=lambda frame, **kw: events.append(
+            ("dispense", frame.columns[0])))
+        lash = SimpleNamespace(nr_robot=robot, simulate=True, logger=mock.Mock())
+        with mock.patch.object(workflow, "ensure_volume"), \
+                mock.patch.object(workflow, "pause", lambda l, b, comp, m: events.append(("pause", comp, m))):
+            workflow.dispense_batch(lash, c, wells, workflow.refill_table(c, plan["recipes"]), batch)
+        return c, events
+
+    def test_pause_after_dye_in_its_batch_only(self):
+        settings = dict(DISPENSE_ORDER=["dye", "water", "surfactant", "solvent"],
+                        DISPENSE_PAUSES=[{"batch": 2, "after": "dye", "minutes": 30}])
+        c, events = self.dispense_log(2, **settings)
+        pauses = [i for i, e in enumerate(events) if e[0] == "pause"]
+        self.assertEqual(len(pauses), 1)
+        self.assertEqual(events[pauses[0]], ("pause", "dye", 30.0))
+        before = {e[1] for e in events[:pauses[0]]}
+        after = {e[1] for e in events[pauses[0] + 1:]}
+        plan = build_plan(c)["wells"]
+        dye_sources = set(plan.loc[plan.batch == 2, "dye_source"].dropna())
+        self.assertEqual(before, dye_sources)  # only dye (and the ethanol blank) before the pause
+        self.assertFalse(after & dye_sources)
+        self.assertIn(c["WATER_VIAL"], after)
+        _, events = self.dispense_log(1, **settings)
+        self.assertFalse([e for e in events if e[0] == "pause"])
+
+    def test_invalid_pauses(self):
+        for bad, message in (([{"batch": 3, "after": "dye", "minutes": 30}], "batch with a schedule"),
+                             ([{"batch": 2, "after": "ethanol", "minutes": 30}], "after must be"),
+                             ([{"batch": 2, "after": "dye", "minutes": 0}], "positive"),
+                             ([{"batch": 2, "after": "dye"}], "entries are"),
+                             ([{"batch": 2, "after": "dye", "minutes": 5}] * 2, "Two DISPENSE_PAUSES")):
+            with self.assertRaisesRegex(ValueError, message):
+                build_plan(config(DISPENSE_PAUSES=bad))
+
     def test_fill_chunks_fit_one_vial_fill(self):
         volumes = pd.Series([0.19] * 60)
         chunks = fill_chunks(volumes, 5.5)

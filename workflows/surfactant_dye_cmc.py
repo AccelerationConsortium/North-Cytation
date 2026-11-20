@@ -121,6 +121,10 @@ FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
 ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
 
 DISPENSE_ORDER = ["water", "solvent", "surfactant", "dye"]
+# Waits between components, per batch: [{"batch": 2, "after": "dye", "minutes": 30}]
+# (e.g. dye-in-ethanol first, let the ethanol evaporate, then the aqueous parts:
+# also put "dye" first in DISPENSE_ORDER). Empty = no pauses.
+DISPENSE_PAUSES = []
 RANDOMIZED_ORDER = True
 RANDOMIZATION_SEED = 42
 VORTEX_SECONDS = 5
@@ -137,7 +141,7 @@ _CONFIG_KEYS = [
     "SURFACTANT_SUBSTOCK_ML", "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_ML",
     "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML", "SUBSTOCK_MAX_AGE_HOURS",
     "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE",
-    "DISPENSE_ORDER", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED", "VORTEX_SECONDS",
+    "DISPENSE_ORDER", "DISPENSE_PAUSES", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED", "VORTEX_SECONDS",
 ]
 
 _CONFIG_DOCS = {
@@ -226,6 +230,10 @@ _CONFIG_DOCS = {
                                  "unit": None, "affects": ["duration"]},
     "DISPENSE_ORDER": {"description": "Order of components: water, solvent, surfactant, dye.", "unit": None,
                        "affects": []},
+    "DISPENSE_PAUSES": {"description": "Waits between components: list of {batch, after (water/solvent/surfactant/dye), minutes}. "
+                                       "The wait starts after the last well gets that component.",
+                        "unit": "min", "affects": ["duration"],
+                        "effect": "each pause adds its minutes to the batch, before the first read"},
     "RANDOMIZED_ORDER": {"description": "Place each batch's wells at random free positions.", "unit": None,
                          "affects": []},
     "RANDOMIZATION_SEED": {"description": "Seed for well placement.", "unit": None, "affects": []},
@@ -325,6 +333,25 @@ def validate_blocks(c):
                 raise ValueError(f"{where}: skip entry {pair} is not a [surfactant, dye] pair of the block")
 
 
+def validate_pauses(c):
+    pauses = c["DISPENSE_PAUSES"]
+    if not isinstance(pauses, list):
+        raise ValueError("DISPENSE_PAUSES must be a list")
+    batches, seen = len(c["BATCH_SCHEDULES_MIN"]), set()
+    for p in pauses:
+        if not isinstance(p, dict) or set(p) != {"batch", "after", "minutes"}:
+            raise ValueError(f"DISPENSE_PAUSES entries are {{batch, after, minutes}}: {p}")
+        if type(p["batch"]) is not int or not 1 <= p["batch"] <= batches:
+            raise ValueError(f"DISPENSE_PAUSES batch must be a batch with a schedule (1..{batches}): {p}")
+        if p["after"] not in _COMPONENTS:
+            raise ValueError(f"DISPENSE_PAUSES after must be one of {', '.join(_COMPONENTS)}: {p}")
+        if not isinstance(p["minutes"], (int, float)) or not math.isfinite(p["minutes"]) or p["minutes"] <= 0:
+            raise ValueError(f"DISPENSE_PAUSES minutes must be positive: {p}")
+        if (p["batch"], p["after"]) in seen:
+            raise ValueError(f"Two DISPENSE_PAUSES for batch {p['batch']} after {p['after']}")
+        seen.add((p["batch"], p["after"]))
+
+
 def validate_config(c):
     layout = plate_layout(c["WELLPLATE_TYPE"])
     if c["TOTAL_VOLUME_UL"] > layout["max_ul"]:
@@ -351,6 +378,7 @@ def validate_config(c):
         if not schedule or schedule[0] != 0 or list(schedule) != sorted(set(schedule)):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
     validate_blocks(c)
+    validate_pauses(c)
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 
@@ -744,15 +772,34 @@ def component_volumes(c, wells, component):
     return out
 
 
-def dispense_batch(lash_e, c, wells, table):
+def batch_pauses(c, batch):
+    """{component: minutes} to wait after that component in this batch (DISPENSE_PAUSES)."""
+    return {p["after"]: float(p["minutes"]) for p in c["DISPENSE_PAUSES"] if p["batch"] == batch}
+
+
+def pause(lash_e, batch, component, minutes):
+    """Wait `minutes` from now (logged for duration estimates; not waited in simulation)."""
+    from workflows.helpers._planning_markers import mark_wait
+    lash_e.logger.info(f"Batch {batch}: waiting {minutes:g} min after {component} before the next component")
+    mark_wait(lash_e.logger, f"batch{batch}_after_{component}", minutes * 60)
+    if not lash_e.simulate:
+        time.sleep(minutes * 60)
+
+
+def dispense_batch(lash_e, c, wells, table, batch):
     """Dispense each component in DISPENSE_ORDER. Each source vial's wells go in
-    chunks that one fill can give; the vial is refilled before a chunk if needed."""
+    chunks that one fill can give; the vial is refilled before a chunk if needed.
+    After a component listed in DISPENSE_PAUSES for this batch, wait before the
+    next one (timed from the last well, so every well waits at least that long)."""
     liquids = {c["WATER_VIAL"]: "water", c["DYE_SOLVENT_VIAL"]: c["DYE_SOLVENT"]}
+    pauses = batch_pauses(c, batch)
     for component in c["DISPENSE_ORDER"]:
+        dispensed = False
         for vial, volumes in component_volumes(c, wells, component).items():
             volumes = volumes[volumes > 0]
             if volumes.empty:
                 continue
+            dispensed = True
             liquid = liquids.get(vial, c["SURFACTANT"] if component == "surfactant" else c["DYE_SOLVENT"])
             rule = _rule(c, table, vial)
             chunks = ([volumes] if rule["fill_ml"] is None
@@ -761,6 +808,8 @@ def dispense_batch(lash_e, c, wells, table):
                 ensure_volume(lash_e, c, vial, float(chunk.sum()), table)
                 lash_e.nr_robot.dispense_from_vials_into_wellplate(
                     pd.DataFrame({vial: chunk}), liquid={vial: liquid}, well_plate_type=c["WELLPLATE_TYPE"])
+        if component in pauses and dispensed:
+            pause(lash_e, batch, component, pauses[component])
 
 
 def fill_chunks(volumes, max_ml):
@@ -901,7 +950,7 @@ def execute(config=None, show_gui=True):
                 record = update_substock_record(record, record_rows(c, recipes, datetime.now()))
                 if save_record:
                     save_substock_record(record, record_path)
-            dispense_batch(lash_e, c, wells, table)
+            dispense_batch(lash_e, c, wells, table, batch)
             results.append(measure_batch(lash_e, c, wells, batch, reads, read_rng, output_dir))
             pd.concat(results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)
             used |= set(wells.well_index)
