@@ -2533,18 +2533,6 @@ class North_Robot(North_Base):
 
         required_tip_type = resolved_tip
 
-        # Small tip position/volume safety warnings
-        if required_tip_type == 'small_tip':
-            _vial_loc = self.get_vial_info(source_vial_num, 'location')
-            _vial_loc_idx = int(self.get_vial_info(source_vial_num, 'location_index'))
-            # Safe positions for small-tip aspiration: small_tip_safe_indices in vial_positions.yaml
-            if _vial_loc_idx not in self.get_small_tip_safe_indices(_vial_loc):
-                self.logger.warning(f"WARNING: Aspirating from {_vial_loc}[{_vial_loc_idx}] with a small tip may cause an automation issue")
-            else:
-                _remaining_vol = self.get_vial_info(source_vial_num, 'vial_volume')
-                if _remaining_vol is not None and float(_remaining_vol) < 2.0:
-                    self.logger.warning(f"WARNING: Small tip aspiration of {amount_mL:.3f} mL from {_vial_loc}[{_vial_loc_idx}] - remaining volume low ({float(_remaining_vol)*1000:.0f}uL)")
-
         if source_vial_needs_uncapping:
             # Get pipet tip FIRST to avoid cap-rack interference when uncapping
             
@@ -2560,7 +2548,19 @@ class North_Robot(North_Base):
                 
             #Get a tip if we need one
             self.get_tip_if_needed(required_tip_type)
-        
+
+        # Small tip position/volume safety warnings
+        if required_tip_type == 'small_tip':
+            _vial_loc = self.get_vial_info(source_vial_num, 'location')
+            _vial_loc_idx = int(self.get_vial_info(source_vial_num, 'location_index'))
+            # Safe positions for small-tip aspiration: small_tip_safe_indices in vial_positions.yaml
+            if _vial_loc_idx not in self.get_small_tip_safe_indices(_vial_loc):
+                self.logger.warning(f"WARNING: Aspirating from {_vial_loc}[{_vial_loc_idx}] with a small tip may cause an automation issue")
+            else:
+                _remaining_vol = self.get_vial_info(source_vial_num, 'vial_volume')
+                if _remaining_vol is not None and float(_remaining_vol) < 2.0:
+                    self.logger.warning(f"WARNING: Small tip aspiration of {amount_mL:.3f} mL from {_vial_loc}[{_vial_loc_idx}] - remaining volume low ({float(_remaining_vol)*1000:.0f}uL)")
+
         # The liquid step (same as aspirate_from_open_vial, with the parameters already resolved)
         continuous_mass_data, source_vial_clamped = self._aspirate_open_vial(
             source_vial_name, source_vial_num, amount_mL, parameters, move_to_aspirate, track_height,

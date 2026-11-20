@@ -1,0 +1,15 @@
+- workflow: validate_all_calibrations
+  config_file: ../../workflow_configs/surfactant_dye_cmc_queue/validate.yaml
+  label: Validate ethanol SDS and water before
+- workflow: surfactant_dye_cmc
+  config_file: ../../workflow_configs/surfactant_dye_cmc_queue/dye_last.yaml
+  label: Dye last
+- workflow: surfactant_dye_cmc
+  config_file: ../../workflow_configs/surfactant_dye_cmc_queue/dye_first_wait.yaml
+  label: Dye first with 60 minute batch 2 pause
+- workflow: surfactant_dye_cmc
+  config_file: ../../workflow_configs/surfactant_dye_cmc_queue/dye_first_no_wait.yaml
+  label: Dye first without pause - draft
+- workflow: validate_all_calibrations
+  config_file: ../../workflow_configs/surfactant_dye_cmc_queue/validate.yaml
+  label: Validate ethanol SDS and water after

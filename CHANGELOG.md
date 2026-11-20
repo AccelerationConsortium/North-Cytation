@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026-11-20] - Water Validation Refill
+
+- Refill water validation source vials from the configured reservoir before
+  validating calibrated conditions.
+
 ## [2026-11-16] - Liquid Review Shows Calibration Rows Only
 
 - Past Validation, Overvolume Changes and Environmental Analysis now use only

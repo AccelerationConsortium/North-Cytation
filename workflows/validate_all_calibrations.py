@@ -9,6 +9,7 @@ are never written. Simulation runs the same calls without saving data.
 
 VIALS names the source vial for each liquid, in the same order as LIQUIDS.
 Leave it empty when each vial is named after its liquid.
+Water source vials are topped up from the configured reservoir before validation.
 """
 import sys
 sys.path.append("../utoronto_demo")  # Always first, before any local imports
@@ -28,8 +29,11 @@ INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 LIQUIDS = ["water"]
 VIALS = []  # Same order as LIQUIDS; empty = vial named after each liquid
 REPLICATES = 4
+WATER_RESERVOIR = 1
+WATER_VIAL_FILL_ML = 8.0
 
-_CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE", "LIQUIDS", "VIALS", "REPLICATES"]
+_CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE", "LIQUIDS", "VIALS", "REPLICATES",
+                "WATER_RESERVOIR", "WATER_VIAL_FILL_ML"]
 
 _CONFIG_DOCS = {
     "SIMULATE": {"description": "Run without hardware; the scheduler sets this per job.",
@@ -44,6 +48,10 @@ _CONFIG_DOCS = {
     "REPLICATES": {"description": "Check replicates per calibrated volume.",
                    "unit": None, "affects": ["duration", "liquids"],
                    "effect": "time and liquid scale with replicates x calibrated volumes"},
+    "WATER_RESERVOIR": {"description": "Reservoir index used to refill water validation vials.",
+                        "unit": None, "affects": ["liquids"]},
+    "WATER_VIAL_FILL_ML": {"description": "Target volume for water validation vials before validation.",
+                           "unit": "mL", "affects": ["duration", "liquids"]},
 }
 
 _PRODUCT_VIALS = []
@@ -76,6 +84,8 @@ def plan_validations(config, lash_e):
         raise ValueError("Vial file changed during review. Restart with the new vial file.")
     if type(config["REPLICATES"]) is not int or config["REPLICATES"] < 1:
         raise ValueError("REPLICATES must be a positive integer.")
+    if not math.isfinite(config["WATER_VIAL_FILL_ML"]) or config["WATER_VIAL_FILL_ML"] <= 0:
+        raise ValueError("WATER_VIAL_FILL_ML must be positive and finite.")
     liquids = config["LIQUIDS"]
     if not liquids:
         raise ValueError("LIQUIDS is empty.")
@@ -117,6 +127,11 @@ def execute(config=None, show_gui=True):
         output_dir.mkdir(parents=True, exist_ok=False)
         lash_e.save_run_info(output_dir)
         logger.info(f"Calibration validation output: {output_dir}")
+
+        water_vials = dict.fromkeys(vial for vial, liquid, _, _ in plan if liquid == "water")
+        for vial in water_vials:
+            lash_e.nr_robot.refill_vial(vial, c["WATER_VIAL_FILL_ML"],
+                                       reservoir=c["WATER_RESERVOIR"], liquid="water")
 
         results = {}
         for vial, liquid, tip, volumes in plan:
