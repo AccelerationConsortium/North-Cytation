@@ -82,8 +82,8 @@ def stock_record(stock_id, stocks, volume_mL):
 def unknown_record(volume_mL):
     """A container holding liquid we know nothing about (no stock, no record)."""
     record = empty_record(volume_mL)
-    record["complete"] = volume_mL <= 0
-    record["known"] = volume_mL <= 0
+    record["complete"] = record["volume_mL"] <= 0
+    record["known"] = record["volume_mL"] <= 0
     return record
 
 
