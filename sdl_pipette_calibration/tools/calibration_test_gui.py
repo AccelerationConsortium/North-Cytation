@@ -1931,7 +1931,8 @@ class CalibrationTestMainWindow(QMainWindow):
             if not PANDAS_AVAILABLE:
                 return env_data
                 
-            mqtt_log_file = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
+            from experiment_tracking.environment_metadata import load_settings
+            mqtt_log_file = load_settings()["log_file"]  # environment_log in robot_hardware.yaml
             if not os.path.exists(mqtt_log_file):
                 return env_data
                 
@@ -3334,8 +3335,9 @@ class CalibrationTestMainWindow(QMainWindow):
                 self.env_timestamp_label.setText("pandas required")
                 return
                 
-            mqtt_log_file = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
-            
+            from experiment_tracking.environment_metadata import load_settings
+            mqtt_log_file = load_settings()["log_file"]  # environment_log in robot_hardware.yaml
+
             if not os.path.exists(mqtt_log_file):
                 self.temp_label.setText("File not found")
                 self.humidity_label.setText("File not found")

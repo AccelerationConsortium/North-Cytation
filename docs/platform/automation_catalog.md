@@ -18,6 +18,8 @@ In live runs every vial, well, reservoir load and powder cartridge load records 
 
 Each live run saves `output/sample_tracking/<run_id>/` (start and end vial files and contents, and `well_contents.csv`), and a copy in the workflow's output folder when it was recorded. Live records: `status/container_contents.csv` (not in git); history: `status/transfers.csv`; stocks: `status/stocks.csv`; reservoir and cartridge loads: `status/sources.csv`. The code is in `experiment_tracking/sample_tracking.py` and `experiment_tracking/sample_contents.py`.
 
+Each live run with a recorded output folder also gets `environmental_metadata/`: `environment.csv` (room temperature, humidity and pressure from 30 min before the run to 30 min after, with a `during_run` column), `summary.yaml` (min/mean/max during the run, reading gaps) and `environment.png`. For values at each measurement, use `read_environment(start, end)` from `experiment_tracking/environment_metadata.py` with `pd.merge_asof`. Earlier runs: `python -m experiment_tracking.environment_metadata --all` on the computer with the sensor log. Log path and padding: `environment_log` in `robot_state/robot_hardware.yaml`.
+
 ## Primitives
 
 ### North_Robot (`North_Safe.py`)
