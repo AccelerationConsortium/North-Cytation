@@ -581,16 +581,21 @@ def read_protocols(c):
 
 
 def simulate_read(wells, label, c, rng):
-    """Synthetic plate data in Cytation layout (index A1.., columns (protocol, channel))."""
+    """Synthetic plate data in Cytation layout (index A1.., columns (protocol, channel)).
+
+    Shapes only, not real values: dye binding K = 2 /mM to micellised surfactant
+    (smooth over 5% of the CMC), and absorbance at 5e4 /M/cm over a 0.6 cm path."""
+    from workflows.surfactant_grid_ailsa import _DYE_PROTOCOLS
     cmc, dye = c["SURFACTANT_CMC_MM"], wells.dye_uM.to_numpy()
-    micellar = np.clip(wells.surfactant_mM.to_numpy() - cmc, 0, None)
+    scale = 0.05 * cmc
+    micellar = scale * np.logaddexp(0.0, (wells.surfactant_mM.to_numpy() - cmc) / scale)
     bound = np.where(wells.matrix == "solvent", 1.0, 2.0 * micellar / (1 + 2.0 * micellar))
     noise = lambda n: 1 + 0.03 * rng.standard_normal(n)
     if label == "fluorescence":
-        data = {"550_648": (50 + dye * (100 + 2000 * bound)) * noise(len(wells))}
+        channel = next(iter(_DYE_PROTOCOLS[c["DYE"]]["raw_column_mapping"]))  # e.g. 485_530
+        data = {channel: (50 + dye * (100 + 2000 * bound)) * noise(len(wells))}
     else:
-        # ~3.4e4 /M/cm, ~0.56 cm path for 200 uL in a 96-well plate
-        data = {"579": (0.04 + dye * 0.034 * 0.56 * noise(len(wells))),
+        data = {"peak": (0.04 + dye * 0.05 * 0.6 * noise(len(wells))),
                 "750": np.full(len(wells), 0.04)}
     frame = pd.DataFrame(data, index=wells.well_position.to_numpy())
     frame.columns = pd.MultiIndex.from_tuples([(f"rep1_{label}", col) for col in frame.columns])
