@@ -1,9 +1,11 @@
 import unittest
+from datetime import datetime, timedelta
 
 import pandas as pd
 
 from workflows import surfactant_dye_cmc as workflow
-from workflows.surfactant_dye_cmc import build_plan, fill_chunks
+from workflows.surfactant_dye_cmc import (build_plan, fill_chunks, plate_layout, record_rows,
+                                          reusable_substocks, total_demand, update_substock_record)
 
 BASE = {key: getattr(workflow, key) for key in workflow._CONFIG_KEYS}
 
@@ -14,39 +16,55 @@ def config(**changes):
     return c
 
 
+def block(name="b", batch=1, matrix="water", replicates=1, **levels):
+    b = dict(name=name, batch=batch, matrix=matrix, replicates=replicates)
+    b.update(levels)
+    return b
+
+
 class SurfactantDyeCmcPlanTests(unittest.TestCase):
-    def test_default_plan_matches_config_blocks(self):
+    def test_default_plan_is_the_coumarin_sds_plate(self):
+        wells = build_plan(config())["wells"]
+        counts = wells.groupby(["batch", "block"]).size().to_dict()
+        self.assertEqual(counts, {(1, "stock_check"): 6, (2, "cmc"): 42, (2, "dye_matrix"): 46})
+        self.assertTrue(wells.well_index.is_unique)
+        self.assertTrue((wells.loc[wells.matrix == "water", "dye_ul"] == BASE["DYE_VOLUME_UL"]).all())
+        matrix = wells[wells.block == "dye_matrix"]
+        pairs = set(zip(matrix.surfactant_mM, matrix.dye_uM))
+        self.assertNotIn((0.0, 1.0), pairs)
+        self.assertNotIn((16.0, 1.0), pairs)
+        self.assertEqual(len(pairs), 23)
+
+    def test_stock_check_reuses_later_dye_substocks(self):
         plan = build_plan(config())
-        wells = plan["wells"]
-        cmc_wells = sum(n for _, n in BASE["CMC_LEVELS_X_CMC"])
-        check_wells = len(BASE["STOCK_CHECK_FRACTIONS"]) * BASE["STOCK_CHECK_REPLICATES"] + BASE["STOCK_CHECK_BLANKS"]
-        self.assertEqual((wells.block == "cmc").sum(), cmc_wells)
-        self.assertEqual((wells.block == "stock_check").sum(), check_wells)
-        self.assertTrue(wells.well_index.is_unique)
-        self.assertTrue(((wells.loc[wells.matrix == "water", "dye_ul"]) == BASE["DYE_VOLUME_UL"]).all())
-        cmc = wells[wells.block == "cmc"]
-        pd.testing.assert_series_equal(cmc.surfactant_mM, cmc.level * BASE["SURFACTANT_CMC_MM"],
-                                       check_names=False)
-
-    def test_plate_contents_follow_config(self):
-        plan = build_plan(config(CMC_LEVELS_X_CMC=[[0.0, 2], [1.0, 4]], CMC_DYE_UM=0.5,
-                                 STOCK_CHECK_FRACTIONS=[0.5], STOCK_CHECK_BLANKS=1))
-        wells = plan["wells"]
-        self.assertEqual(len(wells), 8)
-        self.assertEqual(set(wells.loc[wells.block == "cmc", "dye_uM"]), {0.5})
-        self.assertEqual(sorted(wells.loc[wells.block == "cmc", "replicate"]), [1, 1, 2, 2, 3, 4])
-
-    def test_batches_share_one_plate_and_reuse_substocks(self):
-        plan = build_plan(config(CMC_BATCH=1, STOCK_CHECK_BATCH=2, BATCH_SCHEDULES_MIN=[[0, 30], [0]]))
         wells, recipes = plan["wells"], plan["recipes"]
-        self.assertEqual(set(wells.loc[wells.block == "cmc", "batch"]), {1})
-        self.assertEqual(set(wells.loc[wells.block == "stock_check", "batch"]), {2})
-        self.assertTrue(wells.well_index.is_unique)
-        # The 40 uM dye substock made for the CMC block is reused by the stock check.
-        self.assertEqual(recipes.name.is_unique, True)
-        made_in_1 = set(recipes.loc[recipes.batch == 1, "name"])
-        used_in_2 = set(wells.loc[wells.batch == 2, "dye_source"])
-        self.assertTrue(used_in_2 & made_in_1)
+        later = set(wells.loc[wells.batch == 2, "dye_source"].dropna())
+        check = set(wells.loc[wells.block == "stock_check", "dye_source"].dropna())
+        self.assertTrue(check <= later | {BASE["DYE_STOCK_VIAL"]})
+        self.assertEqual((recipes.component == "dye").sum(), 4)
+
+    def test_substock_made_in_one_batch_is_not_charged_again_later(self):
+        plan = build_plan(config())
+        made = plan["recipes"]
+        stock_ml = made.loc[made.parent == BASE["DYE_STOCK_VIAL"], "parent_ml"].sum()
+        self.assertAlmostEqual(total_demand(plan)[BASE["DYE_STOCK_VIAL"]], stock_ml)
+
+    def test_grid_replicates_and_multiples_of_cmc(self):
+        b = block(replicates=2, surfactant_x_cmc=[0.0, 1.0], dye_uM=[0.5])
+        wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0]]))["wells"]
+        self.assertEqual(len(wells), 4)
+        self.assertEqual(sorted(wells.surfactant_mM.unique()), [0.0, BASE["SURFACTANT_CMC_MM"]])
+        self.assertEqual(sorted(wells.replicate), [1, 1, 2, 2])
+
+    def test_other_plate_sizes_come_from_wellplates_yaml(self):
+        layout = plate_layout("48 WELL PLATE")
+        self.assertEqual((layout["wells"], layout["columns"]), (48, 8))
+        b = block(surfactant_mM=[1.0], dye_uM=[1.0])
+        wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0]], WELLPLATE_TYPE="48 WELL PLATE",
+                                  RANDOMIZED_ORDER=False))["wells"]
+        self.assertEqual(wells.well_position.iloc[0], "A1")
+        with self.assertRaisesRegex(ValueError, "free on the plate"):
+            build_plan(config(WELLPLATE_TYPE="48 WELL PLATE"))
 
     def test_sequential_wells_without_randomization(self):
         wells = build_plan(config(RANDOMIZED_ORDER=False))["wells"]
@@ -58,19 +76,106 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         used = wells.loc[wells.surfactant_ul > 0, "surfactant_ul"]
         self.assertGreaterEqual(used.min(), BASE["SURFACTANT_PREFERRED_MIN_UL"] - 1e-9)
 
+    def test_extra_block_targets_feed_a_later_batch(self):
+        original = workflow.extra_block_targets
+        try:
+            workflow.extra_block_targets = lambda c, batch, results: pd.DataFrame(
+                [dict(batch=2, block="adaptive", replicate=1, matrix="water", surfactant_mM=9.0, dye_uM=1.0)])
+            b = block(surfactant_mM=[0.0, 5.0], dye_uM=[1.0])
+            wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0], [0]]))["wells"]
+            self.assertEqual(wells.loc[wells.block == "adaptive", "batch"].tolist(), [2])
+        finally:
+            workflow.extra_block_targets = original
+
     def test_invalid_config(self):
         with self.assertRaisesRegex(ValueError, "DYE_SUBSTOCK_REFILL_ML < DYE_SUBSTOCK_ML"):
             build_plan(config(DYE_SUBSTOCK_REFILL_ML=4.0))
-        with self.assertRaisesRegex(ValueError, "SURFACTANT_PREFERRED_MIN_UL"):
-            build_plan(config(SURFACTANT_PREFERRED_MIN_UL=10.0))
-        with self.assertRaisesRegex(ValueError, "batch with a schedule"):
-            build_plan(config(CMC_BATCH=2))
         with self.assertRaisesRegex(ValueError, "start at 0"):
-            build_plan(config(BATCH_SCHEDULES_MIN=[[10, 30]]))
+            build_plan(config(BATCH_SCHEDULES_MIN=[[10, 30], [0]]))
         with self.assertRaisesRegex(ValueError, "DISPENSE_ORDER"):
             build_plan(config(DISPENSE_ORDER=["water", "dye"]))
-        with self.assertRaisesRegex(ValueError, "free on the plate"):
-            build_plan(config(CMC_LEVELS_X_CMC=[[1.0, 100]]))
+        with self.assertRaisesRegex(ValueError, "batch with a schedule"):
+            build_plan(config(BATCH_SCHEDULES_MIN=[[0]]))
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            build_plan(config(BLOCKS=[block(dye_uM=[1.0])], BATCH_SCHEDULES_MIN=[[0]]))
+        with self.assertRaisesRegex(ValueError, "skip entry"):
+            build_plan(config(BLOCKS=[block(surfactant_mM=[1.0], dye_uM=[1.0], skip=[[2.0, 1.0]])],
+                              BATCH_SCHEDULES_MIN=[[0]]))
+        with self.assertRaisesRegex(ValueError, "cannot contain surfactant"):
+            build_plan(config(BLOCKS=[block(matrix="solvent", surfactant_mM=[1.0], dye_uM=[1.0])],
+                              BATCH_SCHEDULES_MIN=[[0]]))
+        with self.assertRaisesRegex(ValueError, "unique name"):
+            b = block(surfactant_mM=[1.0], dye_uM=[1.0])
+            build_plan(config(BLOCKS=[b, b], BATCH_SCHEDULES_MIN=[[0]]))
+        with self.assertRaisesRegex(ValueError, "TOTAL_VOLUME_UL"):
+            build_plan(config(TOTAL_VOLUME_UL=400.0))
+
+    # ---- reuse of substocks left from earlier runs ----
+
+    def leftovers(self, volumes=None, made_at=None, **changes):
+        """Plan a run, then pretend it left its substocks (volume mL each) in their vials."""
+        c = config(**changes)
+        first = build_plan(c)["recipes"]
+        now = datetime(2026, 11, 21, 12, 0)
+        record = record_rows(c, first, made_at or now - timedelta(hours=10))
+        # Roughly what the simulated run leaves: SDS substocks ~5.4 mL, dye substocks ~3.5 mL.
+        left = {n: (5.4 if comp == "surfactant" else 3.5) for n, comp in zip(first.name, first.component)}
+        inventory = pd.DataFrame({"vial_volume": volumes or left})
+        return c, first, record, inventory, now
+
+    def test_second_run_reuses_every_leftover_and_makes_nothing_new(self):
+        c, first, record, inventory, now = self.leftovers()
+        reused, problems = reusable_substocks(c, inventory, record, now)
+        self.assertEqual(problems, [])
+        self.assertEqual(sorted(s["name"] for s in reused), sorted(first.name))
+        plan = build_plan(c, reused)
+        self.assertTrue(plan["recipes"].empty)
+        self.assertEqual(total_demand(plan).get(BASE["DYE_STOCK_VIAL"], 0.0), 0.0)
+
+    def test_partial_leftovers_new_substocks_take_free_names(self):
+        c, first, record, inventory, now = self.leftovers()
+        keep = first.name[first.component == "dye"].iloc[[0, 2]].tolist()  # e.g. dye_sub_1, dye_sub_3
+        inventory = inventory.assign(vial_volume=[3.5 if n in keep else 0.0 for n in inventory.index])
+        reused, problems = reusable_substocks(c, inventory, record, now)
+        self.assertEqual(sorted(s["name"] for s in reused), sorted(keep))
+        recipes = build_plan(c, reused)["recipes"]
+        self.assertFalse(set(recipes.name) & set(keep))
+        self.assertEqual((recipes.component == "dye").sum(), 2)
+
+    def test_old_unrecorded_or_other_leftovers_are_problems(self):
+        c, first, record, inventory, now = self.leftovers(made_at=datetime(2026, 11, 1))
+        _, problems = reusable_substocks(c, inventory, record, now)
+        self.assertTrue(problems and all("SUBSTOCK_MAX_AGE_HOURS" in p for p in problems))
+        c, first, record, inventory, now = self.leftovers()
+        _, problems = reusable_substocks(config(DYE="nile-red"), inventory, record, now)
+        self.assertTrue(any("nile-red" in p for p in problems))
+        _, problems = reusable_substocks(c, inventory, record.iloc[:0], now)
+        self.assertTrue(problems and all("no record" in p for p in problems))
+
+    def test_reused_concentration_follows_a_remeasured_stock(self):
+        c, first, record, inventory, now = self.leftovers()
+        reused, _ = reusable_substocks(config(DYE_STOCK_UM=2500.0), inventory, record, now)
+        top = max(s["conc"] for s in reused if s["component"] == "dye")
+        self.assertAlmostEqual(top, 1280.0 * 2500.0 / 2630.0)
+
+    def test_record_keeps_other_vials_and_replaces_remade_ones(self):
+        c, first, record, inventory, now = self.leftovers()
+        again = record_rows(c, first.iloc[:1], now)
+        merged = update_substock_record(record, again)
+        self.assertEqual(len(merged), len(record))
+        self.assertEqual(merged.set_index("vial").loc[first.name.iloc[0], "made_at"], again.made_at.iloc[0])
+
+    def test_record_round_trips_through_its_file(self):
+        import tempfile
+        from pathlib import Path
+        c, first, record, inventory, now = self.leftovers()
+        with tempfile.TemporaryDirectory() as folder:
+            path = workflow.substock_record_path(Path(folder) / "vials.csv")
+            self.assertEqual(path.suffix, ".yaml")
+            workflow.save_substock_record(record, path)
+            loaded = workflow.load_substock_record(path)
+        self.assertEqual(reusable_substocks(c, inventory, loaded, now)[1], [])
+        self.assertEqual(len(loaded), len(record))
 
     def test_fill_chunks_fit_one_vial_fill(self):
         volumes = pd.Series([0.19] * 60)

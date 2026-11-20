@@ -1,13 +1,15 @@
 """
-Single-surfactant CMC plate with one dye (first run: SDS + Nile Red), one 96-well plate.
+Single-surfactant plate with one dye (current run: SDS + coumarin-6), one well plate.
 
 Plan: docs/plans/dye_surfactant_grid_plan.md (sections 4. Workflow and First run).
 
 Steps:
 1. Targets: what each well should contain (surfactant mM, dye uM, matrix), built
-   from config blocks. Blocks: "cmc" (surfactant series at one dye level, in water)
-   and "stock_check" (dye stock diluted in pure solvent, read by absorbance).
-   extra_block_targets() is the hook for a further block (e.g. capacity); empty now.
+   from the BLOCKS config. Each block is a grid (every surfactant level x every
+   dye level, some pairs skipped) in water or in pure dye solvent; a CMC series is
+   a grid with one dye level, a stock check a solvent grid with surfactant 0.
+   extra_block_targets() is the hook for blocks planned from earlier results
+   (adaptive runs); empty now.
 2. Plan: workflows/helpers/well_plan.py picks a source and volume for every
    component of every well and the fewest substocks needed. Water wells all get
    DYE_VOLUME_UL of dye solution, so the solvent fraction is the same everywhere.
@@ -25,7 +27,14 @@ refilled as its refill_table() row says (substocks in their recipe's ratio, wate
 from the reservoir, SDS stock and solvent from their refill vials). The table is
 saved with the plan as refill_table.csv.
 
-build_plan(config) runs steps 1-2 for every configured batch without hardware.
+Reuse across runs: each new substock is recorded (what it holds, concentration,
+recipe, when made) in <vial file>_substocks.yaml next to the vial file. A later run
+reuses any non-empty substock vial the record matches (same surfactant / dye and
+solvent, at most SUBSTOCK_MAX_AGE_HOURS old) before making new ones, and refuses to
+start while a substock vial is non-empty but unrecorded, too old or holds
+something else. Simulations write the record only inside a scheduler session.
+
+build_plan(config, reused) runs steps 1-2 for every configured batch without hardware.
 
 Pipetting validation is not part of this workflow: run validate_all_calibrations
 (LIQUIDS water, SDS, ethanol) before and after it.
@@ -41,7 +50,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from workflows.helpers.well_plan import after_batch, plan_wells, top_up
+from workflows.helpers.well_plan import after_batch, plan_wells, stock_sources, top_up
 
 _WORKFLOW_NAME = Path(__file__).stem
 
@@ -56,9 +65,9 @@ SURFACTANT_STOCK_VIAL = "SDS_stock"
 SURFACTANT_REFILL_VIAL = "SDS_refill"  # same stock in a large vial; tops up SURFACTANT_STOCK_VIAL
 SURFACTANT_STOCK_MM = 50.0
 SURFACTANT_CMC_MM = 8.6
-DYE = "nile-red"                    # key in surfactant_grid_ailsa._DYE_PROTOCOLS
-DYE_STOCK_VIAL = "nilered_stock"
-DYE_STOCK_UM = 500.0                # assumed until measured
+DYE = "coumarin-6"                  # key in surfactant_grid_ailsa._DYE_PROTOCOLS
+DYE_STOCK_VIAL = "coumarin6_stock"
+DYE_STOCK_UM = 2630.0               # coumarin-6 in ethanol as reported by the tech; the stock check measures it
 DYE_SOLVENT = "ethanol"             # liquids.yaml name
 DYE_SOLVENT_VIAL = "ethanol"
 SOLVENT_REFILL_VIAL = "ethanol_refill"  # pure solvent in a large vial; tops up DYE_SOLVENT_VIAL
@@ -71,7 +80,7 @@ WATER_VIAL_FILL_ML = 7.5
 # Volumes
 TOTAL_VOLUME_UL = 200.0             # includes the dye
 DYE_VOLUME_UL = 5.0                 # fixed dye-solution volume in every water well
-WELL_MIN_UL = 20.0                  # smallest variable-volume transfer into a well
+WELL_MIN_UL = 5.0                   # smallest variable-volume transfer into a well (= DYE_VOLUME_UL)
 WELL_MAX_UL = 195.0                 # largest (small tip 200 uL less its 5 uL margin)
 SURFACTANT_PREFERRED_MIN_UL = 75.0  # surfactant wells aim for at least this (more substocks if higher)
 SUBSTOCK_MIN_TRANSFER_UL = 200.0    # smallest parent transfer when making a substock
@@ -80,24 +89,34 @@ SURFACTANT_SUBSTOCK_REFILL_ML = 4.0 # ...and topped up in its recipe's ratio bel
 DYE_SUBSTOCK_ML = 4.0
 DYE_SUBSTOCK_REFILL_ML = 2.0
 STOCK_RESERVE_ML = 0.5              # left in the dye stock and the refill vials
+# Substocks left from earlier runs are reused when this record says what they hold
+# and they are younger than this (ethanol substocks concentrate as they evaporate).
+SUBSTOCK_MAX_AGE_HOURS = 72.0
 
-# CMC block: [multiple of CMC, replicates], all at CMC_DYE_UM in water.
-CMC_LEVELS_X_CMC = (
-    [[0.0, 3], [0.3, 3], [0.6, 3]]
-    + [[round(0.75 + i * 0.6 / 11, 4), 3] for i in range(12)]
-    + [[1.5, 3], [2.0, 3], [2.5, 3], [3.5, 3], [5.0, 3]]
-)
-CMC_DYE_UM = 1.0
-CMC_BATCH = 1
-
-# Stock check: dye stock diluted in pure solvent; fractions of DYE_STOCK_UM in the well.
-STOCK_CHECK_FRACTIONS = [0.01, 0.02, 0.04, 0.06, 0.1, 0.15]  # 5-75 uM at 500 uM stock
-STOCK_CHECK_REPLICATES = 1
-STOCK_CHECK_BLANKS = 2
-STOCK_CHECK_BATCH = 1
+# What goes on the plate. Each block is a grid: every surfactant level x every dye
+# level, `replicates` independently prepared wells each, final well concentrations.
+#   matrix: "water" (water + surfactant + DYE_VOLUME_UL of dye solution) or
+#           "solvent" (dye in pure DYE_SOLVENT; surfactant must be 0)
+#   surfactant_mM, or surfactant_x_cmc (multiples of SURFACTANT_CMC_MM): one of the two
+#   skip (optional): [surfactant, dye] pairs to leave out, in the block's own units
+#   batch: batches are dispensed and read in order, each on its own schedule
+BLOCKS = [
+    # Block 3 of the spec: dye in ethanol (stock concentration, linearity); read once.
+    {"name": "stock_check", "batch": 1, "matrix": "solvent", "replicates": 1,
+     "surfactant_mM": [0.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 20.0, 32.0]},
+    # Block 1: CMC series at 1 uM dye.
+    {"name": "cmc", "batch": 2, "matrix": "water", "replicates": 3,
+     "surfactant_mM": [0.0, 2.0, 5.0, 7.0, 7.6, 8.0, 8.4, 8.8, 9.5, 10.0, 11.0, 16.0, 22.0, 32.0],
+     "dye_uM": [1.0]},
+    # Block 2: dye x SDS matrix; the two pairs already in the CMC block are skipped.
+    {"name": "dye_matrix", "batch": 2, "matrix": "water", "replicates": 2,
+     "surfactant_mM": [0.0, 6.0, 10.0, 16.0, 25.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 32.0],
+     "skip": [[0.0, 1.0], [16.0, 1.0]]},
+]
 
 # Reads: one schedule (minutes after that batch is dispensed) per batch, in batch order.
-BATCH_SCHEDULES_MIN = [[0, 30, 60, 120]]
+# Batch 2 follows Study 3 of the CMC/EE studies draft (0, 1, 2, 4, 8, 16 h).
+BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 960]]
 FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
 ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
 
@@ -116,10 +135,8 @@ _CONFIG_KEYS = [
     "TOTAL_VOLUME_UL", "DYE_VOLUME_UL", "WELL_MIN_UL", "WELL_MAX_UL", "SURFACTANT_PREFERRED_MIN_UL",
     "SUBSTOCK_MIN_TRANSFER_UL",
     "SURFACTANT_SUBSTOCK_ML", "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_ML",
-    "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML",
-    "CMC_LEVELS_X_CMC", "CMC_DYE_UM", "CMC_BATCH",
-    "STOCK_CHECK_FRACTIONS", "STOCK_CHECK_REPLICATES", "STOCK_CHECK_BLANKS", "STOCK_CHECK_BATCH",
-    "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE",
+    "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML", "SUBSTOCK_MAX_AGE_HOURS",
+    "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE",
     "DISPENSE_ORDER", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED", "VORTEX_SECONDS",
 ]
 
@@ -128,8 +145,9 @@ _CONFIG_DOCS = {
                  "unit": None, "affects": []},
     "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (repository-relative) for this run.",
                                "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
-    "WELLPLATE_TYPE": {"description": "Plate type; only 96 WELL PLATE is set up.", "unit": None,
-                       "choices": ["96 WELL PLATE"], "affects": ["plates"], "shares": "plate_type"},
+    "WELLPLATE_TYPE": {"description": "Plate type (robot_state/wellplates.yaml); well count and volume limit come from there.",
+                       "unit": None, "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
+                       "affects": ["plates"], "shares": "plate_type"},
     "SURFACTANT": {"description": "Surfactant liquid name (liquids.yaml) and substock name prefix.",
                    "unit": None, "affects": ["liquids"], "ask": True},
     "SURFACTANT_STOCK_VIAL": {"description": "Vial holding the surfactant stock.", "unit": None,
@@ -191,21 +209,14 @@ _CONFIG_DOCS = {
                                "effect": "each fill gives DYE_SUBSTOCK_ML - this to use"},
     "STOCK_RESERVE_ML": {"description": "Volume left in the dye stock (never refilled) and in the refill vials.",
                          "unit": "mL", "affects": []},
-    "CMC_LEVELS_X_CMC": {"description": "CMC block: list of [multiple of CMC, replicates].",
-                         "unit": None, "affects": ["liquids", "tips", "duration"],
-                         "effect": "wells = sum of replicates"},
-    "CMC_DYE_UM": {"description": "Dye concentration in every CMC-block well.", "unit": "uM",
-                   "affects": ["liquids"]},
-    "CMC_BATCH": {"description": "Batch the CMC block runs in (1 = first).", "unit": None,
-                  "affects": ["duration"]},
-    "STOCK_CHECK_FRACTIONS": {"description": "Stock check: dye levels as fractions of DYE_STOCK_UM, in pure solvent.",
-                              "unit": None, "affects": ["liquids", "tips"],
-                              "effect": "wells = fractions x replicates + blanks"},
-    "STOCK_CHECK_REPLICATES": {"description": "Replicates per stock-check level.", "unit": None,
-                               "affects": ["liquids", "tips"]},
-    "STOCK_CHECK_BLANKS": {"description": "Pure-solvent wells in the stock check (0 to skip the block: also set FRACTIONS []).",
-                           "unit": None, "affects": ["liquids"]},
-    "STOCK_CHECK_BATCH": {"description": "Batch the stock check runs in.", "unit": None, "affects": ["duration"]},
+    "SUBSTOCK_MAX_AGE_HOURS": {"description": "Substocks left from earlier runs are reused up to this age (from when first made); older ones must be emptied.",
+                               "unit": "h", "affects": ["vials", "liquids"],
+                               "effect": "reused substocks need no new stock; a run refuses to start while an older or unrecorded substock vial is not empty"},
+    "BLOCKS": {"description": "Plate contents: list of blocks, each a grid of surfactant x dye levels "
+                              "(name, batch, matrix water/solvent, replicates, surfactant_mM or "
+                              "surfactant_x_cmc, dye_uM, optional skip pairs). Final well concentrations.",
+               "unit": None, "affects": ["liquids", "vials", "tips", "duration"],
+               "effect": "wells per block = (surfactant levels x dye levels - skipped) x replicates"},
     "BATCH_SCHEDULES_MIN": {"description": "Read times per batch (minutes after it is dispensed), one list per batch.",
                             "unit": "min", "affects": ["duration"],
                             "effect": "each batch waits until its last read before the next batch"},
@@ -225,7 +236,10 @@ _CONFIG_DOCS = {
 # Substocks this workflow makes: <SURFACTANT>_sub_<n>, dye_sub_<n>.
 _PRODUCT_VIALS = ["*_sub_[0-9]*"]
 
-_PLATE_WELLS, _PLATE_COLUMNS = 96, 12
+_WELLPLATES_FILE = Path(__file__).resolve().parents[1] / "robot_state" / "wellplates.yaml"
+# Wells per row for each standard plate size (same layout as biotek_new.well_index_to_label).
+_COLUMNS_BY_WELLS = {96: 12, 48: 8, 24: 6}
+_BLOCK_KEYS = {"name", "batch", "matrix", "replicates", "surfactant_mM", "surfactant_x_cmc", "dye_uM", "skip"}
 # The small tip warns below ~2 mL in a vial, so the water vial is refilled above this.
 _WATER_VIAL_RESERVE_ML = 2.0
 _VIAL_CAPACITY_ML = 8.0  # substock vials (8 mL)
@@ -236,8 +250,22 @@ _COMPONENTS = ("water", "solvent", "surfactant", "dye")
 # PLANNING (no hardware)
 # ============================================================================
 
-def well_position(index):
-    return f"{chr(65 + index // _PLATE_COLUMNS)}{index % _PLATE_COLUMNS + 1}"
+def plate_layout(plate_type):
+    """dict(wells, columns, max_ul) for a plate type, from robot_state/wellplates.yaml."""
+    import yaml
+    with open(_WELLPLATES_FILE) as f:
+        plates = yaml.safe_load(f)
+    if plate_type not in plates:
+        raise ValueError(f"Unknown WELLPLATE_TYPE {plate_type!r}; see {_WELLPLATES_FILE.name}")
+    wells = int(plates[plate_type]["num_wells"])
+    if wells not in _COLUMNS_BY_WELLS:
+        raise ValueError(f"No row layout for a {wells}-well plate")
+    return dict(wells=wells, columns=_COLUMNS_BY_WELLS[wells],
+                max_ul=float(plates[plate_type]["max_volume_per_well"]) * 1000)
+
+
+def well_position(index, columns):
+    return f"{chr(65 + index // columns)}{index % columns + 1}"
 
 
 def planning_rules(c):
@@ -259,15 +287,55 @@ def planning_rules(c):
     )
 
 
+def validate_blocks(c):
+    """Check BLOCKS; error messages name the block."""
+    blocks = c["BLOCKS"]
+    if not isinstance(blocks, list) or not blocks:
+        raise ValueError("BLOCKS must be a non-empty list")
+    names = [b.get("name") if isinstance(b, dict) else None for b in blocks]
+    if None in names or len(set(names)) != len(names):
+        raise ValueError("Every block needs a unique name")
+    batches = len(c["BATCH_SCHEDULES_MIN"])
+    for b in blocks:
+        where = f"Block {b['name']!r}"
+        unknown = set(b) - _BLOCK_KEYS
+        if unknown:
+            raise ValueError(f"{where}: unknown keys {sorted(unknown)}")
+        if ("surfactant_mM" in b) == ("surfactant_x_cmc" in b):
+            raise ValueError(f"{where}: give exactly one of surfactant_mM or surfactant_x_cmc")
+        if b.get("matrix") not in ("water", "solvent"):
+            raise ValueError(f"{where}: matrix must be water or solvent")
+        if type(b.get("batch")) is not int or not 1 <= b["batch"] <= batches:
+            raise ValueError(f"{where}: batch must be a batch with a schedule (1..{batches})")
+        if type(b.get("replicates")) is not int or b["replicates"] < 1:
+            raise ValueError(f"{where}: replicates must be an integer >= 1")
+        surfactant = b.get("surfactant_mM", b.get("surfactant_x_cmc"))
+        for key, levels in (("surfactant", surfactant), ("dye_uM", b.get("dye_uM"))):
+            if not isinstance(levels, list) or not levels:
+                raise ValueError(f"{where}: {key} levels must be a non-empty list")
+            if any(not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0 for v in levels):
+                raise ValueError(f"{where}: {key} levels must be numbers >= 0")
+            if len(set(levels)) != len(levels):
+                raise ValueError(f"{where}: repeated {key} level (use replicates instead)")
+        if b["matrix"] == "solvent" and any(v > 0 for v in surfactant):
+            raise ValueError(f"{where}: solvent wells cannot contain surfactant")
+        grid = {(float(s), float(d)) for s in surfactant for d in b["dye_uM"]}
+        for pair in b.get("skip", []):
+            if not isinstance(pair, list) or len(pair) != 2 or tuple(map(float, pair)) not in grid:
+                raise ValueError(f"{where}: skip entry {pair} is not a [surfactant, dye] pair of the block")
+
+
 def validate_config(c):
-    if c["WELLPLATE_TYPE"] != "96 WELL PLATE":
-        raise ValueError("Only 96 WELL PLATE is set up")
+    layout = plate_layout(c["WELLPLATE_TYPE"])
+    if c["TOTAL_VOLUME_UL"] > layout["max_ul"]:
+        raise ValueError(f"TOTAL_VOLUME_UL {c['TOTAL_VOLUME_UL']:g} uL is above the "
+                         f"{layout['max_ul']:g} uL limit of a {c['WELLPLATE_TYPE']}")
     for key in ("SURFACTANT_STOCK_MM", "SURFACTANT_CMC_MM", "DYE_STOCK_UM", "TOTAL_VOLUME_UL",
                 "DYE_VOLUME_UL", "WELL_MIN_UL", "WELL_MAX_UL", "SURFACTANT_PREFERRED_MIN_UL",
                 "SUBSTOCK_MIN_TRANSFER_UL",
                 "SURFACTANT_SUBSTOCK_ML", "DYE_SUBSTOCK_ML", "WATER_VIAL_FILL_ML",
                 "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_REFILL_ML",
-                "STOCK_REFILL_TO_ML", "STOCK_REFILL_BELOW_ML"):
+                "STOCK_REFILL_TO_ML", "STOCK_REFILL_BELOW_ML", "SUBSTOCK_MAX_AGE_HOURS"):
         if not math.isfinite(c[key]) or c[key] <= 0:
             raise ValueError(f"{key} must be positive")
     if c["DYE_VOLUME_UL"] >= c["TOTAL_VOLUME_UL"] or c["WELL_MIN_UL"] > c["WELL_MAX_UL"]:
@@ -279,18 +347,10 @@ def validate_config(c):
             raise ValueError(f"Need {below} < {fill} <= {_VIAL_CAPACITY_ML:g} mL")
     if not c["WELL_MIN_UL"] <= c["SURFACTANT_PREFERRED_MIN_UL"] <= c["WELL_MAX_UL"]:
         raise ValueError("SURFACTANT_PREFERRED_MIN_UL must be between WELL_MIN_UL and WELL_MAX_UL")
-    for level, replicates in c["CMC_LEVELS_X_CMC"]:
-        if level < 0 or type(replicates) is not int or replicates < 1:
-            raise ValueError(f"CMC_LEVELS_X_CMC entries are [multiple >= 0, replicates >= 1]: {[level, replicates]}")
-    if any(not 0 < f <= 1 for f in c["STOCK_CHECK_FRACTIONS"]):
-        raise ValueError("STOCK_CHECK_FRACTIONS must be in (0, 1]")
-    schedules = c["BATCH_SCHEDULES_MIN"]
-    for schedule in schedules:
+    for schedule in c["BATCH_SCHEDULES_MIN"]:
         if not schedule or schedule[0] != 0 or list(schedule) != sorted(set(schedule)):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
-    for key in ("CMC_BATCH", "STOCK_CHECK_BATCH"):
-        if type(c[key]) is not int or not 1 <= c[key] <= len(schedules):
-            raise ValueError(f"{key} must be a batch with a schedule (1..{len(schedules)})")
+    validate_blocks(c)
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 
@@ -298,19 +358,20 @@ def validate_config(c):
 def configured_targets(c):
     """Target rows for every configured block (batch, block, replicate, matrix, concentrations)."""
     rows = []
-    for level, replicates in c["CMC_LEVELS_X_CMC"]:
-        for replicate in range(1, replicates + 1):
-            rows.append(dict(batch=c["CMC_BATCH"], block="cmc", replicate=replicate, matrix="water",
-                             level=level, surfactant_mM=level * c["SURFACTANT_CMC_MM"],
-                             dye_uM=c["CMC_DYE_UM"]))
-    for fraction in [0.0] * c["STOCK_CHECK_BLANKS"] + list(c["STOCK_CHECK_FRACTIONS"]) * c["STOCK_CHECK_REPLICATES"]:
-        rows.append(dict(batch=c["STOCK_CHECK_BATCH"], block="stock_check", replicate=None,
-                         matrix="solvent", level=fraction, surfactant_mM=0.0,
-                         dye_uM=fraction * c["DYE_STOCK_UM"]))
-    targets = pd.DataFrame(rows)
-    if not targets.empty:
-        targets["replicate"] = targets.groupby(["block", "level"]).cumcount() + 1
-    return targets
+    for b in c["BLOCKS"]:
+        if "surfactant_mM" in b:
+            surfactant, scale = b["surfactant_mM"], 1.0
+        else:
+            surfactant, scale = b["surfactant_x_cmc"], c["SURFACTANT_CMC_MM"]
+        skip = {tuple(map(float, pair)) for pair in b.get("skip", [])}
+        for s in surfactant:
+            for d in b["dye_uM"]:
+                if (float(s), float(d)) in skip:
+                    continue
+                for replicate in range(1, b["replicates"] + 1):
+                    rows.append(dict(batch=b["batch"], block=b["name"], replicate=replicate,
+                                     matrix=b["matrix"], surfactant_mM=float(s) * scale, dye_uM=float(d)))
+    return pd.DataFrame(rows)
 
 
 def extra_block_targets(c, batch, results):
@@ -319,41 +380,161 @@ def extra_block_targets(c, batch, results):
     return pd.DataFrame()
 
 
-def assign_wells(targets, used, rng):
+def assign_wells(targets, used, rng, layout):
     """Give each target a free well: random free wells if rng, else the next free ones."""
-    free = [i for i in range(_PLATE_WELLS) if i not in used]
+    free = [i for i in range(layout["wells"]) if i not in used]
     if len(targets) > len(free):
         raise ValueError(f"{len(targets)} wells needed, {len(free)} free on the plate")
     chosen = list(rng.permutation(free)[:len(targets)]) if rng is not None else free[:len(targets)]
     targets = targets.reset_index(drop=True).copy()
     targets["well_index"] = [int(i) for i in chosen]
-    targets["well_position"] = targets.well_index.map(well_position)
+    targets["well_position"] = targets.well_index.map(lambda i: well_position(i, layout["columns"]))
     return targets
 
 
 def plan_batch(c, batch, sources, used_wells, rng, results=None):
     """Plan one batch: (wells, sources after it, recipes to make first)."""
-    targets = pd.concat([t for t in (configured_targets(c), extra_block_targets(c, batch, results))
-                         if not t.empty], ignore_index=True)
-    targets = targets[targets.batch == batch]
+    every = pd.concat([t for t in (configured_targets(c), extra_block_targets(c, batch, results))
+                       if not t.empty], ignore_index=True)
+    targets = every[every.batch == batch]
     if targets.empty:
         return targets, sources, pd.DataFrame()
-    targets = assign_wells(targets, used_wells, rng)
-    wells, planned, recipes = plan_wells(targets, planning_rules(c), existing=sources)
+    targets = assign_wells(targets, used_wells, rng, plate_layout(c["WELLPLATE_TYPE"]))
+    wells, planned, recipes = plan_wells(targets, planning_rules(c), existing=sources,
+                                         later_targets=every[every.batch > batch])
     recipes["batch"] = batch
     return wells, planned, recipes
 
 
-def build_plan(config):
+# ============================================================================
+# SUBSTOCK REUSE (leftovers from earlier runs)
+# ============================================================================
+
+_RECORD_COLUMNS = ["vial", "component", "material", "solvent", "conc", "units", "stock_conc",
+                   "parent", "parent_ml", "diluent", "diluent_ml", "volume_ml", "made_at"]
+
+
+def substock_record_path(vial_file):
+    """The substock record sits next to the vial file: <vial file>_substocks.yaml.
+    YAML, not CSV, so tools that scan for vial CSV files skip it."""
+    vial_file = Path(vial_file)
+    return vial_file.with_name(f"{vial_file.stem}_substocks.yaml")
+
+
+def load_substock_record(path):
+    import yaml
+    path = Path(path)
+    rows = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else None
+    return pd.DataFrame(rows or [], columns=_RECORD_COLUMNS)
+
+
+def save_substock_record(record, path):
+    import yaml
+    rows = [{k: (v.item() if hasattr(v, "item") else v) for k, v in row.items()}
+            for row in record[_RECORD_COLUMNS].to_dict("records")]
+    Path(path).write_text(yaml.safe_dump(rows, sort_keys=False), encoding="utf-8")
+
+
+def _material(c, component):
+    """(material, solvent, stock concentration, units) a component's substocks hold."""
+    if component == "surfactant":
+        return c["SURFACTANT"], "water", c["SURFACTANT_STOCK_MM"], "mM"
+    return c["DYE"], c["DYE_SOLVENT"], c["DYE_STOCK_UM"], "uM"
+
+
+def record_rows(c, recipes, made_at):
+    """Record rows for substocks just made."""
+    rows = []
+    for r in recipes.itertuples():
+        material, solvent, stock_conc, units = _material(c, r.component)
+        rows.append(dict(vial=r.name, component=r.component, material=material, solvent=solvent,
+                         conc=r.conc, units=units, stock_conc=stock_conc, parent=r.parent,
+                         parent_ml=r.parent_ml, diluent=r.diluent, diluent_ml=r.diluent_ml,
+                         volume_ml=r.volume_ml, made_at=made_at.isoformat(timespec="seconds")))
+    return pd.DataFrame(rows, columns=_RECORD_COLUMNS)
+
+
+def update_substock_record(record, rows):
+    """Replace the rows of re-made vials, keep the rest."""
+    kept = record[~record.vial.isin(rows.vial)] if not record.empty else record
+    return pd.concat([kept, rows], ignore_index=True)[_RECORD_COLUMNS]
+
+
+def reusable_substocks(c, inventory, record, now):
+    """Substock vials left from earlier runs: (sources for the planner, problems).
+
+    A non-empty substock vial is reused when the record says it holds this run's
+    surfactant (in water) or dye (in DYE_SOLVENT) and it is at most
+    SUBSTOCK_MAX_AGE_HOURS old. Its concentration is rescaled if the stock
+    concentration has changed since it was made. Any other non-empty substock
+    vial is a problem (the run cannot know what is in it)."""
+    import fnmatch
+    prefixes = planning_rules(c)["substock_prefix"]
+    rows = {r.vial: r for r in record.itertuples()} if not record.empty else {}
+    refill_ml = {"surfactant": c["SURFACTANT_SUBSTOCK_REFILL_ML"], "dye": c["DYE_SUBSTOCK_REFILL_ML"]}
+    sources, problems = [], []
+    for vial in sorted(inventory.index):
+        if not any(fnmatch.fnmatch(vial, p) for p in _PRODUCT_VIALS):
+            continue
+        volume = float(inventory.loc[vial, "vial_volume"])
+        if volume <= 0.05:
+            continue
+        r = rows.get(vial)
+        if r is None:
+            problems.append(f"{vial} has {volume:.2f} mL but no record of what it holds")
+            continue
+        material, solvent, stock_conc, units = _material(c, r.component)
+        if (r.material, r.solvent, r.units) != (material, solvent, units) or not vial.startswith(prefixes[r.component] + "_"):
+            problems.append(f"{vial} holds {r.material} in {r.solvent}, not this run's {material} in {solvent}")
+            continue
+        age_h = (now - datetime.fromisoformat(r.made_at)).total_seconds() / 3600
+        if age_h > c["SUBSTOCK_MAX_AGE_HOURS"]:
+            problems.append(f"{vial} was made {age_h:.0f} h ago (limit SUBSTOCK_MAX_AGE_HOURS = "
+                            f"{c['SUBSTOCK_MAX_AGE_HOURS']:g} h)")
+            continue
+        sources.append(dict(name=vial, component=r.component, conc=r.conc * stock_conc / r.stock_conc,
+                            kind="substock", volume_ml=float(r.volume_ml), parent=r.parent,
+                            parent_ml=float(r.parent_ml), diluent=r.diluent, diluent_ml=float(r.diluent_ml),
+                            new=False, left_ml=max(0.0, volume - refill_ml[r.component]), reused=True))
+    # Top-ups need the parent; one that is not here now is replaced by the stock.
+    stock_vial = {"surfactant": c["SURFACTANT_STOCK_VIAL"], "dye": c["DYE_STOCK_VIAL"]}
+    present = set(stock_vial.values()) | {s["name"] for s in sources}
+    for s in sources:
+        if s["parent"] not in present:
+            stock_conc = _material(c, s["component"])[2]
+            s["parent"] = stock_vial[s["component"]]
+            s["parent_ml"] = s["volume_ml"] * s["conc"] / stock_conc
+            s["diluent_ml"] = s["volume_ml"] - s["parent_ml"]
+    return sources, problems
+
+
+def starting_sources(c, reused):
+    """Planner sources before the first batch: stocks plus reused substocks (None = stocks only)."""
+    if not reused:
+        return None
+    return stock_sources(planning_rules(c)) + [dict(s) for s in reused]
+
+
+def reused_recipes(reused):
+    """Recipes of reused substocks, so they can be topped up like new ones."""
+    return pd.DataFrame([dict(name=s["name"], component=s["component"], conc=s["conc"], parent=s["parent"],
+                              parent_ml=s["parent_ml"], diluent=s["diluent"], diluent_ml=s["diluent_ml"],
+                              volume_ml=s["volume_ml"], batch=0) for s in reused or []],
+                        columns=["name", "component", "conc", "parent", "parent_ml", "diluent",
+                                 "diluent_ml", "volume_ml", "batch"])
+
+
+def build_plan(config, reused=None):
     """Plan every configured batch without hardware.
 
+    reused: leftover substocks from reusable_substocks() (None = none).
     Returns dict(wells=all wells, recipes=all substocks with the batch that makes
     them, sources=per-batch source lists with demand_ml).
     """
     c = config
     validate_config(c)
     rng = np.random.default_rng(c["RANDOMIZATION_SEED"]) if c["RANDOMIZED_ORDER"] else None
-    sources, used = None, set()
+    sources, used = starting_sources(c, reused), set()
     all_wells, all_recipes, batch_sources = [], [], {}
     for batch in range(1, len(c["BATCH_SCHEDULES_MIN"]) + 1):
         wells, planned, recipes = plan_batch(c, batch, sources, used, rng)
@@ -648,17 +829,26 @@ def execute(config=None, show_gui=True):
         lash_e.nr_robot.home_robot_components()
         if c["SIMULATE"] != lash_e.simulate:
             raise ValueError("Workflow and controller simulation modes do not match.")
-        plan = build_plan(c)
+        inventory = lash_e.nr_robot.VIAL_DF.set_index("vial_name")
+        record_path = substock_record_path(lash_e.nr_robot.VIAL_FILE)
+        record = load_substock_record(record_path)
+        reused, problems = reusable_substocks(c, inventory, record, datetime.now())
+        if problems:
+            raise ValueError("Empty these substock vials (and set them to 0 mL in "
+                             f"{c['INPUT_VIAL_STATUS_FILE']}) or fix {record_path.name}: " + "; ".join(problems))
+        for s in reused:
+            logger.info(f"Reusing {s['name']}: {s['conc']:.4g} {_material(c, s['component'])[3]}, "
+                        f"{inventory.loc[s['name'], 'vial_volume']:.2f} mL")
+        plan = build_plan(c, reused)
         reads = read_protocols(c)
         if not lash_e.simulate:
             for _, path in reads:
                 if not Path(path).is_file():
                     raise FileNotFoundError(path)
-            if not c["ABSORBANCE_PROTOCOL_FILE"] and (plan["wells"].block == "stock_check").any():
-                raise ValueError("The stock check needs ABSORBANCE_PROTOCOL_FILE")
+            if not c["ABSORBANCE_PROTOCOL_FILE"] and (plan["wells"].matrix == "solvent").any():
+                raise ValueError("Solvent (stock-check) wells need ABSORBANCE_PROTOCOL_FILE")
         if not c["ABSORBANCE_PROTOCOL_FILE"]:
             logger.warning("ABSORBANCE_PROTOCOL_FILE not set: absorbance reads skipped")
-        inventory = lash_e.nr_robot.VIAL_DF.set_index("vial_name")
         check_vials(c, plan, inventory)
         try:
             lash_e.nr_track.inventory.plate_at("source_stack", c["WELLPLATE_TYPE"])
@@ -673,14 +863,21 @@ def execute(config=None, show_gui=True):
         lash_e.save_run_info(output_dir)
         plan["wells"].to_csv(output_dir / "planned_wells.csv", index=False)
         plan["recipes"].to_csv(output_dir / "planned_substocks.csv", index=False)
-        refill_table_frame(refill_table(c, plan["recipes"])).to_csv(output_dir / "refill_table.csv", index=False)
+        reused_frame = reused_recipes(reused)
+        reused_frame.to_csv(output_dir / "reused_substocks.csv", index=False)
+        refill_table_frame(refill_table(c, pd.concat([reused_frame, plan["recipes"]], ignore_index=True))
+                           ).to_csv(output_dir / "refill_table.csv", index=False)
         _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} started | {c['SURFACTANT']} + {c['DYE']} | "
-                                     f"{len(plan['wells'])} wells | {len(plan['recipes'])} substocks")
+                                     f"{len(plan['wells'])} wells | {len(plan['recipes'])} new substocks, "
+                                     f"{len(reused)} reused")
 
         # Re-plan each batch as it runs, so a batch can use earlier results (extra_block_targets).
         rng = np.random.default_rng(c["RANDOMIZATION_SEED"]) if c["RANDOMIZED_ORDER"] else None
         read_rng = np.random.default_rng(0)
-        sources, used, results, made = None, set(), [], []
+        sources, used, results = starting_sources(c, reused), set(), []
+        made = [reused_frame] if not reused_frame.empty else []
+        from scheduler.simulation_state import can_save
+        save_record = can_save(lash_e.nr_robot, lash_e.nr_robot.VIAL_FILE)
         lash_e.grab_new_wellplate()
         for batch in range(1, len(c["BATCH_SCHEDULES_MIN"]) + 1):
             so_far = pd.concat(results, ignore_index=True) if results else None
@@ -694,6 +891,11 @@ def execute(config=None, show_gui=True):
                            else recipes)
             table = refill_table(c, all_recipes)
             make_substocks(lash_e, c, recipes, table)
+            if not recipes.empty:
+                # Record what each new substock holds, so later runs can reuse it.
+                record = update_substock_record(record, record_rows(c, recipes, datetime.now()))
+                if save_record:
+                    save_substock_record(record, record_path)
             dispense_batch(lash_e, c, wells, table)
             results.append(measure_batch(lash_e, c, wells, batch, reads, read_rng, output_dir))
             pd.concat(results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)

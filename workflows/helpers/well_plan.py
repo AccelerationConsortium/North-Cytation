@@ -89,8 +89,12 @@ def _add_substock(conc, component, sources, rules):
         weakest = parents[-1]
         _add_substock(math.sqrt(weakest["conc"] * conc), component, sources, rules)
         return _add_substock(conc, component, sources, rules)
-    count = sum(1 for s in sources if s["component"] == component and s["kind"] == "substock")
-    source = _new_source(f"{rules['substock_prefix'][component]}_{count + 1}", component, conc,
+    # Next free number: substocks kept from earlier runs may leave gaps (e.g. _1 and _3).
+    taken = {s["name"] for s in sources}
+    number = 1
+    while f"{rules['substock_prefix'][component]}_{number}" in taken:
+        number += 1
+    source = _new_source(f"{rules['substock_prefix'][component]}_{number}", component, conc,
                          "substock", volume_ml=volume_ml)
     source.update(parent=parent["name"], parent_ml=transfer, diluent_ml=volume_ml - transfer,
                   diluent=_diluent_vial(rules, component), new=True)
@@ -118,14 +122,17 @@ def top_up(fill_ml, ratio, current_ml, min_parent_ml, capacity_ml):
 
 
 def _refill_draws(s, draw_ml, rules):
-    """(top-ups, parent_ml, diluent_ml) a substock needs to supply draw_ml, counting
-    the first make if it is new. Assumes each top-up starts at the refill level."""
+    """(top-ups, parent_ml, diluent_ml, left_ml) a substock needs to supply draw_ml,
+    counting the first make if it is new, or what an earlier batch left in it
+    (left_ml: usable mL above the refill level). Assumes each top-up starts at the
+    refill level."""
     fill, refill = s["volume_ml"], rules["substock_refill_ml"][s["component"]]
     usable = fill - refill
     if usable <= 0:
         raise ValueError(f"{s['name']}: fill volume {fill:g} mL must be above its refill level {refill:g} mL")
-    first = usable if s["new"] else 0.0
+    first = usable if s["new"] else s.get("left_ml", 0.0)
     topups = max(0, math.ceil((draw_ml - first) / usable - 1e-9))
+    left = first + topups * usable - draw_ml
     parent = s["parent_ml"] if s["new"] else 0.0
     diluent = s["diluent_ml"] if s["new"] else 0.0
     if topups:
@@ -133,7 +140,7 @@ def _refill_draws(s, draw_ml, rules):
                       rules["vial_capacity_ml"])
         parent += topups * p
         diluent += topups * d
-    return topups, parent, diluent
+    return topups, parent, diluent, left
 
 
 def _fixed_source(conc, sources, rules):
@@ -181,13 +188,16 @@ def _cover_variable(targets, component, sources, max_ul, rules):
             _add_substock(conc, component, sources, rules)
 
 
-def plan_wells(targets, rules, existing=None):
+def plan_wells(targets, rules, existing=None, later_targets=None):
     """Return (wells, sources, recipes).
 
     targets: DataFrame with matrix, surfactant_mM, dye_uM (other columns are kept).
     rules: see stock_sources() and the keys used below; volumes in uL unless named _ml.
     existing: sources from earlier batches (list of dicts from a previous call);
               None means start from the stocks only.
+    later_targets: targets of later batches, if known. Their fixed-volume dye
+              substocks are made now, so this batch can use them too instead of
+              making dilutions of its own.
     wells: targets plus source and volume columns (uL) for every component.
     sources: every source (stocks, blank, old and new substocks) with demand_ml
              (everything drawn from it) and, for substocks, topups.
@@ -206,8 +216,9 @@ def plan_wells(targets, rules, existing=None):
     if (targets.loc[~water, "surfactant_mM"] > 0).any():
         raise ValueError("Solvent wells cannot contain surfactant")
 
-    # 1. Exact dye sources for the fixed dye volume (water wells).
-    fixed_conc = targets.loc[water, "dye_uM"] * total / dye_ul
+    # 1. Exact dye sources for the fixed dye volume (water wells, this batch and later ones).
+    fixed = targets if later_targets is None or later_targets.empty else pd.concat([targets, later_targets])
+    fixed_conc = fixed.loc[fixed["matrix"] == "water", "dye_uM"] * total / dye_ul
     for conc in sorted(set(fixed_conc[fixed_conc > 0]), reverse=True):
         _fixed_source(conc, sources, rules)
     # 2. Variable dye (solvent wells) and surfactant (water wells).
@@ -256,7 +267,7 @@ def plan_wells(targets, rules, existing=None):
     demand[water_name] += wells["water_ul"].sum() / 1000
     for s in reversed(sources):
         if s["kind"] == "substock":
-            s["topups"], parent_ml, diluent_ml = _refill_draws(s, demand[s["name"]], rules)
+            s["topups"], parent_ml, diluent_ml, s["left_ml"] = _refill_draws(s, demand[s["name"]], rules)
             demand[s["parent"]] += parent_ml
             demand[s["diluent"]] += diluent_ml
     for s in sources:
