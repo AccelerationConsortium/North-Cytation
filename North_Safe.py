@@ -3920,9 +3920,9 @@ class North_Robot(North_Base):
             time.sleep(release_settle_time_s)
 
         if location == 'clamp':
-            self.close_clamp()
+            #self.close_clamp()
             self.move_rel_xyz(z_distance=10, vel=release_speed)
-            self.open_clamp()
+            #self.open_clamp()
 
         self.VIAL_DF.at[vial_index, 'location']=location
         self.VIAL_DF.at[vial_index, 'location_index']=location_index
