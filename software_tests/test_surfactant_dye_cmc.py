@@ -257,13 +257,50 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
                 return None
 
             lash = SimpleNamespace(simulate=True, logger=mock.Mock(), measure_wellplate=read)
-            result = workflow.measure_batch(lash, c, batch2, 2, [("fluorescence", "f.prt")],
+            result = workflow.measure_batch(lash, c, batch2, 2, [("fluorescence", "f.prt", "endpoint"), ("spec", "spec.prt", "spectrum")],
                                             np.random.default_rng(0), out, earlier=earlier)
             sizes.append(len(pd.read_csv(out / "results.csv")))
         n, reads = len(batch2), len(c["BATCH_SCHEDULES_MIN"][1])
         # Before each later read the file already holds batch 1 plus every earlier read.
         self.assertEqual(sizes, [len(earlier[0]) + n * k for k in range(1, reads + 1)])
         self.assertIn("read_at", result.columns)
+
+    def test_endpoint_and_spectrum_from_one_plate_trip(self):
+        # Built the way measure_wellplate builds it: each protocol's frame gets
+        # (rep1_<stem>, column) labels, then they are joined side by side.
+        endpoint = pd.DataFrame({"460": [0.1, 0.2], "750": [0.04, 0.05]}, index=["A1", "B1"])
+        spectrum = pd.DataFrame({"Wavelengths": [400, 405, 410], "A1": [1.0, 2.0, 3.0], "B1": [4.0, 5.0, 6.0]})
+        parts = []
+        for stem, frame in (("Coumarin_Abs_96", endpoint), ("Coumarin_AbsSpectrum_96", spectrum)):
+            frame = frame.copy()
+            frame.columns = pd.MultiIndex.from_tuples([(f"rep1_{stem}", col) for col in frame.columns])
+            parts.append(frame)
+        raw = pd.concat(parts, axis=1)  # rows padded: wells and 0, 1, 2
+        pick = lambda stem: raw[[col for col in raw.columns if col[0] == f"rep1_{stem}"]]
+        columns = workflow.raw_to_columns(pick("Coumarin_Abs_96"), "absorbance")
+        self.assertEqual(list(columns.well_position), ["A1", "B1"])
+        self.assertEqual(list(columns.absorbance_460), [0.1, 0.2])
+        long = workflow.spectrum_to_long(pick("Coumarin_AbsSpectrum_96"), "Coumarin_AbsSpectrum_96")
+        self.assertEqual(len(long), 6)
+        b1 = long[long.well_position == "B1"].set_index("wavelength_nm").value
+        self.assertEqual(list(b1), [4.0, 5.0, 6.0])
+
+    def test_spectra_appended_after_every_read(self):
+        import tempfile
+        from pathlib import Path
+        import numpy as np
+        wells = build_plan(config())["wells"]
+        batch = wells[wells.batch == 1]
+        rng = np.random.default_rng(0)
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            for minutes in (0, 60):
+                long = workflow.spectrum_to_long(workflow.simulate_spectrum(batch, "s", rng), "s")
+                workflow.save_spectra(long, batch, 1, minutes, "now", out)
+            saved = pd.read_csv(out / "spectra.csv")
+        self.assertEqual(sorted(saved.timepoint_min.unique()), [0, 60])
+        self.assertEqual(len(saved), 2 * len(batch) * 71)  # 400-750 nm in 5 nm steps
+        self.assertIn("dye_uM", saved.columns)
 
     def test_invalid_pauses(self):
         for bad, message in (([{"batch": 3, "after": "dye", "minutes": 30}], "batch with a schedule"),
@@ -273,6 +310,49 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
                              ([{"batch": 2, "after": "dye", "minutes": 5}] * 2, "Two DISPENSE_PAUSES")):
             with self.assertRaisesRegex(ValueError, message):
                 build_plan(config(DISPENSE_PAUSES=bad))
+
+    # ---- several refill vials for the surfactant ----
+
+    def test_refill_uses_vials_in_order(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        c = config(SURFACTANT_REFILL_VIAL=["SDS_refill_1", "SDS_refill_2"])
+        volumes = {c["SURFACTANT_STOCK_VIAL"]: 4.0, "SDS_refill_1": 1.5, "SDS_refill_2": 8.0}
+        calls = []
+
+        def refill(vial, target, source_vial=None, liquid=None):
+            add = target - volumes[vial]
+            volumes[vial] = target
+            volumes[source_vial] -= add
+            calls.append((source_vial, round(add, 3)))
+
+        robot = SimpleNamespace(get_vial_info=lambda v, k: volumes[v], refill_vial=refill)
+        lash = SimpleNamespace(nr_robot=robot, logger=mock.Mock())
+        table = workflow.refill_table(c, pd.DataFrame(columns=["name", "component", "volume_ml"]))
+        workflow.ensure_volume(lash, c, c["SURFACTANT_STOCK_VIAL"], 1.0, table)
+        # Vial 1 gives down to its reserve, vial 2 the rest of the fill.
+        self.assertEqual(calls, [("SDS_refill_1", 0.5), ("SDS_refill_2", 3.0)])  # 1 mL reserve
+        self.assertAlmostEqual(volumes[c["SURFACTANT_STOCK_VIAL"]], c["STOCK_REFILL_TO_ML"])
+
+    def test_check_counts_every_refill_vial(self):
+        c = config(SURFACTANT_REFILL_VIAL=["SDS_refill_1", "SDS_refill_2"])
+        plan = build_plan(c)
+        names = set(total_demand(plan)) | {"SDS_refill_1", "SDS_refill_2", c["SOLVENT_REFILL_VIAL"]}
+        inventory = pd.DataFrame({"vial_volume": {n: 0.0 for n in names}})
+        inventory.loc[[c["SURFACTANT_STOCK_VIAL"], c["DYE_SOLVENT_VIAL"], c["DYE_STOCK_VIAL"]], "vial_volume"] = 8.0
+        inventory.loc[c["SOLVENT_REFILL_VIAL"], "vial_volume"] = 20.0
+        inventory.loc[c["WATER_VIAL"], "vial_volume"] = 8.0
+        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 8.0
+        # The run needs ~2.2 mL from the refill vials (SDS_stock gives 8 - 4 mL itself).
+        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 2.2
+        workflow.check_vials(c, plan, inventory)  # 1.2 + 1.2 mL above the 1 mL reserve: enough together
+        inventory.loc["SDS_refill_2", "vial_volume"] = 0.0  # 1.2 mL alone is not
+        with self.assertRaisesRegex(ValueError, "SDS_refill_1, SDS_refill_2"):
+            workflow.check_vials(c, plan, inventory)
+        with self.assertRaisesRegex(ValueError, "SURFACTANT_REFILL_VIAL"):
+            build_plan(config(SURFACTANT_REFILL_VIAL=["a", "a"]))
+        with self.assertRaisesRegex(ValueError, "SOLVENT_REFILL_VIAL"):
+            build_plan(config(SOLVENT_REFILL_VIAL=["a", "b"]))
 
     def test_fill_chunks_fit_one_vial_fill(self):
         volumes = pd.Series([0.19] * 60)

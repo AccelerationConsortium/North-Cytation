@@ -57,12 +57,13 @@ _WORKFLOW_NAME = Path(__file__).stem
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/surfactant_dye_cmc_vials.csv"
 WELLPLATE_TYPE = "96 WELL PLATE"
+PLATE_KIND = "fluorescence"        # fluorescence = black PS, clear bottom; clear = clear PS. Recorded only
 
 # Liquids and stocks. Stock concentrations will come from status/stocks.csv once
 # it exists; until then they are set here.
 SURFACTANT = "SDS"                  # liquids.yaml name; also the substock name prefix
 SURFACTANT_STOCK_VIAL = "SDS_stock"
-SURFACTANT_REFILL_VIAL = "SDS_refill"  # same stock in a large vial; tops up SURFACTANT_STOCK_VIAL
+SURFACTANT_REFILL_VIAL = "SDS_refill"  # same stock; tops up SURFACTANT_STOCK_VIAL (one vial or a list, used in order)
 SURFACTANT_STOCK_MM = 50.0
 SURFACTANT_CMC_MM = 8.6
 DYE = "coumarin-6"                  # key in surfactant_grid_ailsa._DYE_PROTOCOLS
@@ -89,7 +90,7 @@ SURFACTANT_SUBSTOCK_ML = 6.0        # each SDS substock is made (and topped up) 
 SURFACTANT_SUBSTOCK_REFILL_ML = 4.0 # ...and topped up in its recipe's ratio below this
 DYE_SUBSTOCK_ML = 4.0
 DYE_SUBSTOCK_REFILL_ML = 2.0
-STOCK_RESERVE_ML = 0.5              # left in the dye stock and the refill vials
+STOCK_RESERVE_ML = 1.0              # left in the dye stock and the refill vials
 # Substocks left from earlier runs are reused when this record says what they hold
 # and they are younger than this (ethanol substocks concentrate as they evaporate).
 SUBSTOCK_MAX_AGE_HOURS = 72.0
@@ -120,6 +121,7 @@ BLOCKS = [
 BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 960]]
 FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
 ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
+SPECTRUM_PROTOCOL_FILES = []        # spectral scans (Gen5 protocols with a Spectrum read); saved to spectra.csv
 
 DISPENSE_ORDER = ["dye", "water", "surfactant", "solvent"]
 # Waits between components, per batch: [{"batch": 2, "after": "dye", "minutes": 30}]
@@ -131,7 +133,7 @@ RANDOMIZATION_SEED = 42
 VORTEX_SECONDS = 5
 
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "WELLPLATE_TYPE",
+    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "WELLPLATE_TYPE", "PLATE_KIND",
     "SURFACTANT", "SURFACTANT_STOCK_VIAL", "SURFACTANT_REFILL_VIAL", "SURFACTANT_STOCK_MM",
     "SURFACTANT_CMC_MM",
     "DYE", "DYE_STOCK_VIAL", "DYE_STOCK_UM", "DYE_SOLVENT", "DYE_SOLVENT_VIAL", "SOLVENT_REFILL_VIAL",
@@ -141,7 +143,7 @@ _CONFIG_KEYS = [
     "SUBSTOCK_MIN_TRANSFER_UL",
     "SURFACTANT_SUBSTOCK_ML", "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_ML",
     "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML", "SUBSTOCK_MAX_AGE_HOURS",
-    "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE",
+    "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE", "SPECTRUM_PROTOCOL_FILES",
     "DISPENSE_ORDER", "DISPENSE_PAUSES", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED", "VORTEX_SECONDS",
 ]
 
@@ -150,6 +152,9 @@ _CONFIG_DOCS = {
                  "unit": None, "affects": []},
     "INPUT_VIAL_STATUS_FILE": {"description": "Vial layout CSV (repository-relative) for this run.",
                                "unit": None, "affects": ["vials", "liquids"], "shares": "vial_layout"},
+    "PLATE_KIND": {"description": "Which plate is loaded: fluorescence (black PS, clear bottom) or clear (clear PS). "
+                                  "Recorded with the run; does not change robot moves or reads.",
+                   "unit": None, "choices": ["fluorescence", "clear"], "affects": []},
     "WELLPLATE_TYPE": {"description": "Plate type (robot_state/wellplates.yaml); well count and volume limit come from there.",
                        "unit": None, "choices": ["96 WELL PLATE", "48 WELL PLATE", "24 WELL PLATE"],
                        "affects": ["plates"], "shares": "plate_type"},
@@ -160,7 +165,7 @@ _CONFIG_DOCS = {
     "SURFACTANT_STOCK_MM": {"description": "Surfactant stock concentration.", "unit": "mM",
                             "affects": ["vials", "liquids"],
                             "effect": "weaker stock -> larger well volumes; error if the top level needs more than WELL_MAX_UL"},
-    "SURFACTANT_REFILL_VIAL": {"description": "Large vial of the same surfactant stock; tops up SURFACTANT_STOCK_VIAL.",
+    "SURFACTANT_REFILL_VIAL": {"description": "Vial(s) of the same surfactant stock that top up SURFACTANT_STOCK_VIAL: one name or a list, used in order (e.g. two closed 8 mL vials).",
                                "unit": None, "affects": ["vials", "liquids"]},
     "SURFACTANT_CMC_MM": {"description": "Expected CMC; CMC block levels are multiples of it.",
                           "unit": "mM", "affects": ["liquids"], "ask": True},
@@ -231,6 +236,10 @@ _CONFIG_DOCS = {
                             "effect": "each batch waits until its last read before the next batch"},
     "FLUORESCENCE_PROTOCOL_FILE": {"description": "Cytation fluorescence protocol; null = the DYE's default.",
                                    "unit": None, "affects": ["duration"]},
+    "SPECTRUM_PROTOCOL_FILES": {"description": "Spectral-scan protocols read at every read time in the same plate trip "
+                                               "(one read type per protocol). Saved as spectra.csv: one row per well, "
+                                               "read and wavelength.",
+                                "unit": None, "affects": ["duration"]},
     "ABSORBANCE_PROTOCOL_FILE": {"description": "Cytation absorbance protocol (dye peak + 750 nm); null skips absorbance.",
                                  "unit": None, "affects": ["duration"]},
     "DISPENSE_ORDER": {"description": "Order of components: water, solvent, surfactant, dye.", "unit": None,
@@ -339,6 +348,17 @@ def validate_blocks(c):
                 raise ValueError(f"{where}: skip entry {pair} is not a [surfactant, dye] pair of the block")
 
 
+def validate_refill_vials(c):
+    value = c["SURFACTANT_REFILL_VIAL"]
+    names = [value] if isinstance(value, str) else value
+    if not isinstance(names, list) or not names or not all(isinstance(n, str) and n for n in names) \
+            or len(set(names)) != len(names):
+        raise ValueError("SURFACTANT_REFILL_VIAL must be a vial name or a list of different vial names")
+    # Dye substocks draw solvent straight from SOLVENT_REFILL_VIAL, so it stays one vial.
+    if not isinstance(c["SOLVENT_REFILL_VIAL"], str) or not c["SOLVENT_REFILL_VIAL"]:
+        raise ValueError("SOLVENT_REFILL_VIAL must be one vial name")
+
+
 def validate_pauses(c):
     pauses = c["DISPENSE_PAUSES"]
     if not isinstance(pauses, list):
@@ -388,6 +408,16 @@ def validate_config(c):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
     validate_blocks(c)
     validate_pauses(c)
+    validate_refill_vials(c)
+    spectra = c["SPECTRUM_PROTOCOL_FILES"]
+    if not isinstance(spectra, list) or not all(isinstance(x, str) and x for x in spectra):
+        raise ValueError("SPECTRUM_PROTOCOL_FILES must be a list of protocol paths")
+    stems = [Path(x).stem for x in spectra] + [Path(x).stem for x in
+                                                (c["FLUORESCENCE_PROTOCOL_FILE"], c["ABSORBANCE_PROTOCOL_FILE"]) if x]
+    if len(set(stems)) != len(stems):
+        raise ValueError("Each protocol file needs a different name (its data is found by file name)")
+    if c["PLATE_KIND"] not in ("fluorescence", "clear"):
+        raise ValueError("PLATE_KIND must be fluorescence (black, clear bottom) or clear")
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 
@@ -604,16 +634,19 @@ def total_demand(plan):
 # ============================================================================
 
 def read_protocols(c):
-    """[(label, protocol path)] for each read, skipping a protocol set to None."""
+    """[(label, protocol path, kind)] for each read; kind is "endpoint" (one row per well,
+    merged into results.csv) or "spectrum" (wavelengths x wells, saved to spectra.csv)."""
     from workflows.surfactant_grid_ailsa import _DYE_PROTOCOLS, _PLATE_PROTOCOL_SUFFIX
     if c["DYE"] not in _DYE_PROTOCOLS:
         raise ValueError(f"Unknown DYE {c['DYE']}")
     fluorescence = (c["FLUORESCENCE_PROTOCOL_FILE"]
                     or _DYE_PROTOCOLS[c["DYE"]]["fluorescence_protocol_file"].format(
                         plate=_PLATE_PROTOCOL_SUFFIX[c["WELLPLATE_TYPE"]]))
-    reads = [("fluorescence", fluorescence)]
+    reads = [("fluorescence", fluorescence, "endpoint")]
     if c["ABSORBANCE_PROTOCOL_FILE"]:
-        reads.append(("absorbance", c["ABSORBANCE_PROTOCOL_FILE"]))
+        reads.append(("absorbance", c["ABSORBANCE_PROTOCOL_FILE"], "endpoint"))
+    for path in c["SPECTRUM_PROTOCOL_FILES"]:
+        reads.append((Path(path).stem, path, "spectrum"))
     return reads
 
 
@@ -639,11 +672,42 @@ def simulate_read(wells, label, c, rng):
     return frame
 
 
+def simulate_spectrum(wells, label, rng):
+    """Synthetic spectrum in the reader's layout: Wavelengths column plus one column per
+    well (shape only: a band at 460 nm scaled by dye)."""
+    wavelengths = np.arange(400, 755, 5)
+    band = np.exp(-0.5 * ((wavelengths - 460) / 25.0) ** 2)
+    frame = pd.DataFrame({"Wavelengths": wavelengths})
+    for w in wells.itertuples():
+        frame[w.well_position] = 0.04 + w.dye_uM * 0.03 * band * (1 + 0.02 * rng.standard_normal(len(band)))
+    frame.columns = pd.MultiIndex.from_tuples([(f"rep1_{label}", col) for col in frame.columns])
+    return frame
+
+
+def _well_label(value):
+    text = str(value).strip()
+    return f"{text[0].upper()}{int(text[1:])}"
+
+
+def spectrum_to_long(raw, label):
+    """Reader spectrum (Wavelengths + one column per well) -> rows of
+    well_position, protocol, wavelength_nm, value."""
+    frame = raw.dropna(how="all").copy()
+    frame.columns = [col[1] if isinstance(col, tuple) else col for col in frame.columns]
+    if "Wavelengths" not in frame.columns:
+        raise ValueError(f"{label}: no Wavelengths column; is it a Spectrum protocol?")
+    long = frame.melt(id_vars="Wavelengths", var_name="well_position", value_name="value")
+    long["well_position"] = long.well_position.map(_well_label)
+    long.insert(1, "protocol", label)
+    return long.rename(columns={"Wavelengths": "wavelength_nm"})[
+        ["well_position", "protocol", "wavelength_nm", "value"]]
+
+
 def raw_to_columns(raw, label):
     """Cytation frame -> well_position plus <label>_<channel> columns."""
-    frame = raw.copy()
+    frame = raw.dropna(how="all").copy()  # rows padded in when spectra share the plate trip
     frame.columns = [f"{label}_{col[1] if isinstance(col, tuple) else col}" for col in frame.columns]
-    frame.index = [f"{str(p)[0].upper()}{int(str(p)[1:])}" for p in frame.index]
+    frame.index = [_well_label(p) for p in frame.index]
     return frame.rename_axis("well_position").reset_index()
 
 
@@ -651,15 +715,20 @@ def raw_to_columns(raw, label):
 # EXECUTION
 # ============================================================================
 
+def _vial_list(value):
+    """A refill setting as a list: one vial name or a list of them (used in order)."""
+    return [value] if isinstance(value, str) else list(value)
+
+
 def refillable(c):
-    """{working vial: refill vial} for vials topped up from a large refill vial."""
-    return {c["SURFACTANT_STOCK_VIAL"]: c["SURFACTANT_REFILL_VIAL"],
-            c["DYE_SOLVENT_VIAL"]: c["SOLVENT_REFILL_VIAL"]}
+    """{working vial: [refill vials, used in order]} for vials topped up from refill vials."""
+    return {c["SURFACTANT_STOCK_VIAL"]: _vial_list(c["SURFACTANT_REFILL_VIAL"]),
+            c["DYE_SOLVENT_VIAL"]: _vial_list(c["SOLVENT_REFILL_VIAL"])}
 
 
 def refill_table(c, recipes):
     """How each vial is refilled: {vial: dict(fill_ml, below_ml, how, recipe)}.
-    how: "recipe" (top up in the recipe's ratio), "reservoir", or a refill vial name.
+    how: "recipe" (top up in the recipe's ratio), "reservoir", or a list of refill vials.
     A vial not in the table is never refilled and keeps STOCK_RESERVE_ML."""
     table = {c["WATER_VIAL"]: dict(fill_ml=c["WATER_VIAL_FILL_ML"], below_ml=_WATER_VIAL_RESERVE_ML,
                                    how="reservoir", recipe=None)}
@@ -680,7 +749,8 @@ def refill_table_frame(table):
     """The refill table as rows, saved with the plan."""
     return pd.DataFrame([dict(vial=vial, fill_ml=r["fill_ml"], refill_below_ml=r["below_ml"],
                               refilled_from=(f"{r['recipe'].parent} + {r['recipe'].diluent}, recipe ratio"
-                                             if r["how"] == "recipe" else r["how"]))
+                                             if r["how"] == "recipe" else
+                                             ", ".join(r["how"]) if isinstance(r["how"], list) else r["how"]))
                          for vial, r in table.items()])
 
 
@@ -689,7 +759,7 @@ def check_vials(c, plan, inventory):
     that are never refilled (dye stock, refill vials) hold enough for the whole run."""
     demand = total_demand(plan)
     refills = refillable(c)
-    missing = sorted((set(demand) | set(refills.values())) - set(inventory.index))
+    missing = sorted((set(demand) | {v for vials in refills.values() for v in vials}) - set(inventory.index))
     if missing:
         raise ValueError(f"Add these vials to {c['INPUT_VIAL_STATUS_FILE']}: {', '.join(missing)}")
     for recipe in plan["recipes"].itertuples():
@@ -701,14 +771,14 @@ def check_vials(c, plan, inventory):
     need = demand.get(c["DYE_STOCK_VIAL"], 0.0)
     if need > 0 and need + reserve > have + 1e-9:
         raise ValueError(f"{c['DYE_STOCK_VIAL']}: needs {need:.2f} mL + {reserve:g} mL reserve, has {have:.2f} mL")
-    for vial, refill in refills.items():
-        # The refill vial covers what the working vial can't, plus anything drawn from it directly.
+    for vial, refills_for in refills.items():
+        # The refill vials cover what the working vial can't, plus anything drawn from them directly.
         from_working = inventory.loc[vial, "vial_volume"] - c["STOCK_REFILL_BELOW_ML"]
-        need = max(0.0, demand.get(vial, 0.0) - from_working) + demand.get(refill, 0.0)
-        have = inventory.loc[refill, "vial_volume"] - reserve
+        need = max(0.0, demand.get(vial, 0.0) - from_working) + sum(demand.get(r, 0.0) for r in refills_for)
+        have = sum(max(0.0, inventory.loc[r, "vial_volume"] - reserve) for r in refills_for)
         if need > have + 1e-9:
-            raise ValueError(f"{refill}: the run needs {need:.2f} mL from it, it has {have:.2f} mL "
-                             f"above its {reserve:g} mL reserve")
+            raise ValueError(f"{', '.join(refills_for)}: the run needs {need:.2f} mL from them, they have "
+                             f"{have:.2f} mL above their {reserve:g} mL reserve")
 
 
 def _volume(lash_e, vial):
@@ -752,12 +822,16 @@ def ensure_volume(lash_e, c, vial, need_ml, table):
     elif rule["how"] == "reservoir":
         lash_e.nr_robot.refill_vial(vial, fill, reservoir=c["WATER_RESERVOIR"], liquid="water")
     else:
-        source = rule["how"]
-        add = min(fill - current, _volume(lash_e, source) - c["STOCK_RESERVE_ML"])
-        if add > 0:
-            liquid = c["SURFACTANT"] if vial == c["SURFACTANT_STOCK_VIAL"] else c["DYE_SOLVENT"]
-            lash_e.logger.info(f"Refilling {vial} from {source}: +{add:.3f} mL")
-            lash_e.nr_robot.refill_vial(vial, current + add, source_vial=source, liquid=liquid)
+        # Refill vials in order: empty the first (down to its reserve) before the next.
+        liquid = c["SURFACTANT"] if vial == c["SURFACTANT_STOCK_VIAL"] else c["DYE_SOLVENT"]
+        for source in rule["how"]:
+            current = _volume(lash_e, vial)
+            add = min(fill - current, _volume(lash_e, source) - c["STOCK_RESERVE_ML"])
+            if add > 0:
+                lash_e.logger.info(f"Refilling {vial} from {source}: +{add:.3f} mL")
+                lash_e.nr_robot.refill_vial(vial, current + add, source_vial=source, liquid=liquid)
+            if _volume(lash_e, vial) >= fill - 1e-9:
+                break
     after = _volume(lash_e, vial)
     if after - need_ml < below - 1e-9:
         raise RuntimeError(f"{vial}: still too little after refilling ({after:.3f} mL "
@@ -850,28 +924,48 @@ def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir, earlier=None)
         wait = t0 + minutes * 60 - time.monotonic()
         if wait > 0 and not lash_e.simulate:
             time.sleep(wait)
-        raw = lash_e.measure_wellplate([path for _, path in reads], wells.well_index.tolist(),
+        raw = lash_e.measure_wellplate([path for _, path, _ in reads], wells.well_index.tolist(),
                                        plate_type=c["WELLPLATE_TYPE"])
+        read_at = datetime.now().isoformat(timespec="seconds")
         merged = wells.copy()
-        for label, path in reads:
+        for label, path, kind in reads:
             if raw is None:
                 if not lash_e.simulate:
                     raise RuntimeError(f"No plate data for batch {batch}, t={minutes} min")
-                part = simulate_read(wells, label, c, rng)
+                part = (simulate_spectrum(wells, label, rng) if kind == "spectrum"
+                        else simulate_read(wells, label, c, rng))
             else:
                 stem = Path(path).stem
-                part = raw[[col for col in raw.columns if col[0].endswith(stem)]]
+                # measure_wellplate labels each protocol's columns rep1_<protocol file stem>
+                part = raw[[col for col in raw.columns if col[0] == f"rep1_{stem}"]]
+                if part.empty:
+                    raise RuntimeError(f"No columns for {stem} in the plate data")
+            if kind == "spectrum":
+                save_spectra(spectrum_to_long(part, label), wells, batch, minutes, read_at, output_dir)
+                continue
             merged = merged.merge(raw_to_columns(part, label), on="well_position", how="left",
                                   validate="one_to_one")
         merged["timepoint_min"] = minutes
         merged["elapsed_actual_min"] = (time.monotonic() - t0) / 60
-        merged["read_at"] = datetime.now().isoformat(timespec="seconds")
+        merged["read_at"] = read_at
         results.append(merged)
         pd.concat(list(earlier or []) + results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)
         if raw is not None:
             raw.to_csv(output_dir / f"raw_batch{batch}_t{minutes}.csv")
         lash_e.logger.info(f"Batch {batch}: read at t={minutes} min")
     return pd.concat(results, ignore_index=True)
+
+
+def save_spectra(long, wells, batch, minutes, read_at, output_dir):
+    """Append one spectrum read to spectra.csv (one row per well x wavelength), with the
+    well's contents so it can be used on its own."""
+    keys = ["well_position", "block", "replicate", "matrix", "surfactant_mM", "dye_uM"]
+    rows = long.merge(wells[keys], on="well_position", how="left")
+    rows.insert(0, "batch", batch)
+    rows.insert(1, "timepoint_min", minutes)
+    rows.insert(2, "read_at", read_at)
+    path = output_dir / "spectra.csv"
+    rows.to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
 def _send_workflow_slack(lash_e, message):
@@ -910,7 +1004,7 @@ def execute(config=None, show_gui=True):
         plan = build_plan(c, reused)
         reads = read_protocols(c)
         if not lash_e.simulate:
-            for _, path in reads:
+            for _, path, _ in reads:
                 if not Path(path).is_file():
                     raise FileNotFoundError(path)
             if not c["ABSORBANCE_PROTOCOL_FILE"] and (plan["wells"].matrix == "solvent").any():

@@ -1,8 +1,9 @@
 # CMC / EE / K / solubilization workflow — plan
 
-Updated 2026-11-19 · Status: analysis and measurement decided; plate layout for the first
-(SDS) run being detailed; workflow not built yet. Target: SDS run over the weekend of
-2026-11-21.
+Updated 2026-11-20 · Status: first run decided (SDS + coumarin-6, see **Current run**);
+workflow `surfactant_dye_cmc` built, simulated and queued
+(`scheduler/config_lists/surfactant_dye_cmc_queue.yaml`). Missing before a live run: the
+Gen5 protocol paths (see Measurement). Target: weekend of 2026-11-21.
 
 ## Goal
 
@@ -55,6 +56,25 @@ Rules:
 
 ## 2. Measurement (decided)
 
+**Current run (coumarin-6), at every read time, one plate trip, four protocols:**
+
+| Protocol | Reads | Setting | Saved in |
+|---|---|---|---|
+| `Coumarin_96.prt` (existing) | fluorescence 485 / 530 | `FLUORESCENCE_PROTOCOL_FILE` (blank = this) | `results.csv` |
+| `Coumarin_Abs_96.prt` | absorbance 460 (peak), 750 (scatter) | `ABSORBANCE_PROTOCOL_FILE` | `results.csv` |
+| `Coumarin_FluorSpectrum_96.prt` | ex 450, em 480-650, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
+| `Coumarin_AbsSpectrum_96.prt` | absorbance 400-750, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
+
+- One read type per protocol: the reader wrapper classifies a protocol by its first read
+  step; a spectrum comes back as wavelengths x wells. `spectra.csv` has one row per well,
+  read time, protocol and wavelength, with the well's contents.
+- `hardware_tests/cytation_protocol_preview.py` runs protocols without robot moves and
+  saves the raw output and its shape: run it on new protocols first.
+- Every column the reader returns is saved: raw file per read, and `results.csv` (one row
+  per well per read, rewritten after every read, with `read_at` clock time).
+
+Earlier general notes:
+
 - **Every well, every timepoint:** one fluorescence pair + absorbance at the dye peak and
   at 750 nm (scatter / undissolved dye). Reads cost time, not wells.
 - **Once per new dye-surfactant pair:** fluorescence and absorbance spectra on a few wells
@@ -105,7 +125,36 @@ below; wells chosen by optimal design; 96 wells all for CMC/K/EE):
 - Simulation gaps: its CMC error bars are too narrow; no equilibration time between
   batches, no polymer concentration limit by mass, no solubilization wells.
 
-### First run: SDS + Nile Red, fixed plate (not final)
+### Current run: SDS + coumarin-6 (decided 2026-11-20)
+
+Spec: three blocks on one 96-well black plate with clear bottom (`PLATE_KIND: fluorescence`),
+94 wells, final well concentrations, random placement.
+
+| Block | Batch | Contents | Wells |
+|---|---|---|---|
+| Stock check | 1 | dye in ethanol 0, 1, 4, 12, 20, 32 uM; read once (ethanol evaporates) | 6 |
+| CMC | 2 | SDS 0, 2, 5, 7, 7.6, 8, 8.4, 8.8, 9.5, 10, 11, 16, 22, 32 mM x 3; dye 1 uM | 42 |
+| Dye x SDS | 2 | SDS 0, 6, 10, 16, 25 x dye 0, 1, 4, 12, 32 uM x 2, minus (0, 1) and (16, 1) (already in CMC block) | 46 |
+
+- Reads: batch 2 at 0, 1, 2, 4, 8, 12, 16 h (Chanelle's Study 3 times, plus 12 h).
+- Dye: coumarin-6 stock in ethanol, 918 uM (COUMARIN6-004) in the queue; 25 uL per well
+  (dye substocks at 8x final). `DYE_SOLVENT_EVAPORATES: true` (ethanol is volatile over the
+  18 h): water + SDS fill the full 200 uL, the dye solution goes on top. For a non-volatile
+  solvent (DMSO) set it false: the dye solution then counts within the 200 uL.
+- Queue (three plates): dye last; dye first with a 60 min pause; dye first, no pause.
+  Order and pauses only change pipetting; volumes are the same.
+- Substocks (7): dye 256, 96, 32, 8 uM; SDS 16.4, 6.2, 2.1 mM. Made in run 1, reused by
+  later runs (record next to the vial file; reused up to 72 h).
+- Vials: SDS refill in two closed 8 mL vials (an open vial loses water, SDS strengthens
+  ~2.5-5% per run); ethanol refill open 20 mL, put in 20, recorded 17 (~2-3 mL evaporates
+  over the queue). 1 mL left in stock and refill vials.
+- Whole queue uses ~1.5 mL coumarin-6 stock, ~14.5 mL 50 mM SDS, ~19 mL ethanol.
+- Analysis: `analysis/surfactant_dye_cmc_analysis.py <run folder> --fluorescence
+  fluorescence_485_530 [--absorbance <col> --epsilon <1/M/cm>]`: CMC and K per read,
+  dye x SDS slopes, stock check, time course. Descriptive for loading: not a capacity or
+  encapsulation measure.
+
+### Earlier proposal: SDS + Nile Red (superseded by the current run)
 
 **Terminology problem (raised by Chanelle, 2026-11-19):** her doc defines EE as "the
 amount of dye that can be encapsulated at and above the CMC", i.e. what this plan calls
@@ -153,22 +202,23 @@ Built from `workflows/workflow_template.py` on the North_Safe flows
 
 ### Steps
 
-1. **Plan** — pure function `build_plan(config)`, testable without hardware. Outputs the
-   well table and substock recipes. `TOTAL_VOLUME_UL` includes the dye; water = total -
-   surfactant - dye; every well checked against `max_volume_per_well`. Surfactant
-   concentration computed over the total volume.
+1. **Plan** — pure function `build_plan(config, reused)`, testable without hardware. Plate
+   contents come from `BLOCKS` (each a surfactant x dye grid). Concentrations are over
+   `TOTAL_VOLUME_UL`; with `DYE_SOLVENT_EVAPORATES` the dye solution goes on top of it,
+   otherwise it counts within it.
 2. **Substocks** with `create_substock` (reservoir water first, then stock, vortex).
    - Dye: fixed dye volume per well, so the solvent fraction is the same in every well; one
      substock per level, sized to demand + reserve.
    - Surfactant: variable volume per well; fewest substocks so every volume fits (typically
      1-2).
-   - `refill_vial` for water, surfactant, solvent.
+   - `refill_vial` for water, surfactant (one or several refill vials, in order), solvent.
+   - Substocks left from earlier runs are reused (`<vial file>_substocks.yaml`).
 3. **Dispense** with `dispense_from_vials_into_wellplate`, one call per component in
-   `DISPENSE_ORDER` (default water -> surfactant -> dye); seeded `RANDOMIZED_ORDER`;
-   whole-run supply check before the first move.
+   `DISPENSE_ORDER`; optional `DISPENSE_PAUSES` between components; seeded
+   `RANDOMIZED_ORDER`; whole-run supply check before the first move.
 4. **Measure** with `lash_e.measure_wellplate([fluorescence, absorbance])` (one trip).
-5. **Timepoints:** repeat step 4 over `MEASUREMENT_SCHEDULE_MIN`
-   (`mark_clock_start` / `mark_wait_until`). Consider `use_lid` for long schedules.
+5. **Timepoints:** repeat step 4 over `BATCH_SCHEDULES_MIN` (one list per batch)
+   (`mark_clock_start` / `mark_wait_until`). No lid.
 
 ### Keep / drop from existing workflows
 
@@ -187,7 +237,10 @@ Built from `workflows/workflow_template.py` on the North_Safe flows
 
 ## Before the first run
 
-- Gen5 absorbance protocols for Nile Red (none exist yet); plates clear or clear-bottomed.
+- Make the three new Gen5 protocols, run `hardware_tests/cytation_protocol_preview.py` live,
+  and check its summary (data shape, processing OK, read times).
+- Load: coumarin-6 stock (918 uM, 8 mL), SDS_stock + SDS_refill_1/2 (8 mL each, closed, rack
+  6, 10, 11), ethanol (8 mL), ethanol_refill (20 mL), empty substock vials, 3 black plates.
 - Confirm the North_Safe closed-cap vial-to-vial fix (stock -> substock moves vials while
   holding a tip; only rack 0-5 and the clamp are safe).
 - Run `VALIDATE_LIQUIDS` once for small dye volumes. Dye substocks ~3 mL (small-tip vials
