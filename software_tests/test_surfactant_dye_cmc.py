@@ -274,6 +274,49 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 build_plan(config(DISPENSE_PAUSES=bad))
 
+    # ---- several refill vials for the surfactant ----
+
+    def test_refill_uses_vials_in_order(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        c = config(SURFACTANT_REFILL_VIAL=["SDS_refill_1", "SDS_refill_2"])
+        volumes = {c["SURFACTANT_STOCK_VIAL"]: 4.0, "SDS_refill_1": 1.5, "SDS_refill_2": 8.0}
+        calls = []
+
+        def refill(vial, target, source_vial=None, liquid=None):
+            add = target - volumes[vial]
+            volumes[vial] = target
+            volumes[source_vial] -= add
+            calls.append((source_vial, round(add, 3)))
+
+        robot = SimpleNamespace(get_vial_info=lambda v, k: volumes[v], refill_vial=refill)
+        lash = SimpleNamespace(nr_robot=robot, logger=mock.Mock())
+        table = workflow.refill_table(c, pd.DataFrame(columns=["name", "component", "volume_ml"]))
+        workflow.ensure_volume(lash, c, c["SURFACTANT_STOCK_VIAL"], 1.0, table)
+        # Vial 1 gives down to its reserve, vial 2 the rest of the fill.
+        self.assertEqual(calls, [("SDS_refill_1", 1.0), ("SDS_refill_2", 2.5)])
+        self.assertAlmostEqual(volumes[c["SURFACTANT_STOCK_VIAL"]], c["STOCK_REFILL_TO_ML"])
+
+    def test_check_counts_every_refill_vial(self):
+        c = config(SURFACTANT_REFILL_VIAL=["SDS_refill_1", "SDS_refill_2"])
+        plan = build_plan(c)
+        names = set(total_demand(plan)) | {"SDS_refill_1", "SDS_refill_2", c["SOLVENT_REFILL_VIAL"]}
+        inventory = pd.DataFrame({"vial_volume": {n: 0.0 for n in names}})
+        inventory.loc[[c["SURFACTANT_STOCK_VIAL"], c["DYE_SOLVENT_VIAL"], c["DYE_STOCK_VIAL"]], "vial_volume"] = 8.0
+        inventory.loc[c["SOLVENT_REFILL_VIAL"], "vial_volume"] = 20.0
+        inventory.loc[c["WATER_VIAL"], "vial_volume"] = 8.0
+        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 8.0
+        # The run needs ~2.2 mL from the refill vials (SDS_stock gives 8 - 4 mL itself).
+        inventory.loc[["SDS_refill_1", "SDS_refill_2"], "vial_volume"] = 1.7
+        workflow.check_vials(c, plan, inventory)  # 1.2 + 1.2 mL above reserve: enough together
+        inventory.loc["SDS_refill_2", "vial_volume"] = 0.0  # 1.2 mL alone is not
+        with self.assertRaisesRegex(ValueError, "SDS_refill_1, SDS_refill_2"):
+            workflow.check_vials(c, plan, inventory)
+        with self.assertRaisesRegex(ValueError, "SURFACTANT_REFILL_VIAL"):
+            build_plan(config(SURFACTANT_REFILL_VIAL=["a", "a"]))
+        with self.assertRaisesRegex(ValueError, "SOLVENT_REFILL_VIAL"):
+            build_plan(config(SOLVENT_REFILL_VIAL=["a", "b"]))
+
     def test_fill_chunks_fit_one_vial_fill(self):
         volumes = pd.Series([0.19] * 60)
         chunks = fill_chunks(volumes, 5.5)

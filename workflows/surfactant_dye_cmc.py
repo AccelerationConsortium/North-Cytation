@@ -62,7 +62,7 @@ WELLPLATE_TYPE = "96 WELL PLATE"
 # it exists; until then they are set here.
 SURFACTANT = "SDS"                  # liquids.yaml name; also the substock name prefix
 SURFACTANT_STOCK_VIAL = "SDS_stock"
-SURFACTANT_REFILL_VIAL = "SDS_refill"  # same stock in a large vial; tops up SURFACTANT_STOCK_VIAL
+SURFACTANT_REFILL_VIAL = "SDS_refill"  # same stock; tops up SURFACTANT_STOCK_VIAL (one vial or a list, used in order)
 SURFACTANT_STOCK_MM = 50.0
 SURFACTANT_CMC_MM = 8.6
 DYE = "coumarin-6"                  # key in surfactant_grid_ailsa._DYE_PROTOCOLS
@@ -160,7 +160,7 @@ _CONFIG_DOCS = {
     "SURFACTANT_STOCK_MM": {"description": "Surfactant stock concentration.", "unit": "mM",
                             "affects": ["vials", "liquids"],
                             "effect": "weaker stock -> larger well volumes; error if the top level needs more than WELL_MAX_UL"},
-    "SURFACTANT_REFILL_VIAL": {"description": "Large vial of the same surfactant stock; tops up SURFACTANT_STOCK_VIAL.",
+    "SURFACTANT_REFILL_VIAL": {"description": "Vial(s) of the same surfactant stock that top up SURFACTANT_STOCK_VIAL: one name or a list, used in order (e.g. two closed 8 mL vials).",
                                "unit": None, "affects": ["vials", "liquids"]},
     "SURFACTANT_CMC_MM": {"description": "Expected CMC; CMC block levels are multiples of it.",
                           "unit": "mM", "affects": ["liquids"], "ask": True},
@@ -339,6 +339,17 @@ def validate_blocks(c):
                 raise ValueError(f"{where}: skip entry {pair} is not a [surfactant, dye] pair of the block")
 
 
+def validate_refill_vials(c):
+    value = c["SURFACTANT_REFILL_VIAL"]
+    names = [value] if isinstance(value, str) else value
+    if not isinstance(names, list) or not names or not all(isinstance(n, str) and n for n in names) \
+            or len(set(names)) != len(names):
+        raise ValueError("SURFACTANT_REFILL_VIAL must be a vial name or a list of different vial names")
+    # Dye substocks draw solvent straight from SOLVENT_REFILL_VIAL, so it stays one vial.
+    if not isinstance(c["SOLVENT_REFILL_VIAL"], str) or not c["SOLVENT_REFILL_VIAL"]:
+        raise ValueError("SOLVENT_REFILL_VIAL must be one vial name")
+
+
 def validate_pauses(c):
     pauses = c["DISPENSE_PAUSES"]
     if not isinstance(pauses, list):
@@ -388,6 +399,7 @@ def validate_config(c):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
     validate_blocks(c)
     validate_pauses(c)
+    validate_refill_vials(c)
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 
@@ -651,15 +663,20 @@ def raw_to_columns(raw, label):
 # EXECUTION
 # ============================================================================
 
+def _vial_list(value):
+    """A refill setting as a list: one vial name or a list of them (used in order)."""
+    return [value] if isinstance(value, str) else list(value)
+
+
 def refillable(c):
-    """{working vial: refill vial} for vials topped up from a large refill vial."""
-    return {c["SURFACTANT_STOCK_VIAL"]: c["SURFACTANT_REFILL_VIAL"],
-            c["DYE_SOLVENT_VIAL"]: c["SOLVENT_REFILL_VIAL"]}
+    """{working vial: [refill vials, used in order]} for vials topped up from refill vials."""
+    return {c["SURFACTANT_STOCK_VIAL"]: _vial_list(c["SURFACTANT_REFILL_VIAL"]),
+            c["DYE_SOLVENT_VIAL"]: _vial_list(c["SOLVENT_REFILL_VIAL"])}
 
 
 def refill_table(c, recipes):
     """How each vial is refilled: {vial: dict(fill_ml, below_ml, how, recipe)}.
-    how: "recipe" (top up in the recipe's ratio), "reservoir", or a refill vial name.
+    how: "recipe" (top up in the recipe's ratio), "reservoir", or a list of refill vials.
     A vial not in the table is never refilled and keeps STOCK_RESERVE_ML."""
     table = {c["WATER_VIAL"]: dict(fill_ml=c["WATER_VIAL_FILL_ML"], below_ml=_WATER_VIAL_RESERVE_ML,
                                    how="reservoir", recipe=None)}
@@ -680,7 +697,8 @@ def refill_table_frame(table):
     """The refill table as rows, saved with the plan."""
     return pd.DataFrame([dict(vial=vial, fill_ml=r["fill_ml"], refill_below_ml=r["below_ml"],
                               refilled_from=(f"{r['recipe'].parent} + {r['recipe'].diluent}, recipe ratio"
-                                             if r["how"] == "recipe" else r["how"]))
+                                             if r["how"] == "recipe" else
+                                             ", ".join(r["how"]) if isinstance(r["how"], list) else r["how"]))
                          for vial, r in table.items()])
 
 
@@ -689,7 +707,7 @@ def check_vials(c, plan, inventory):
     that are never refilled (dye stock, refill vials) hold enough for the whole run."""
     demand = total_demand(plan)
     refills = refillable(c)
-    missing = sorted((set(demand) | set(refills.values())) - set(inventory.index))
+    missing = sorted((set(demand) | {v for vials in refills.values() for v in vials}) - set(inventory.index))
     if missing:
         raise ValueError(f"Add these vials to {c['INPUT_VIAL_STATUS_FILE']}: {', '.join(missing)}")
     for recipe in plan["recipes"].itertuples():
@@ -701,14 +719,14 @@ def check_vials(c, plan, inventory):
     need = demand.get(c["DYE_STOCK_VIAL"], 0.0)
     if need > 0 and need + reserve > have + 1e-9:
         raise ValueError(f"{c['DYE_STOCK_VIAL']}: needs {need:.2f} mL + {reserve:g} mL reserve, has {have:.2f} mL")
-    for vial, refill in refills.items():
-        # The refill vial covers what the working vial can't, plus anything drawn from it directly.
+    for vial, refills_for in refills.items():
+        # The refill vials cover what the working vial can't, plus anything drawn from them directly.
         from_working = inventory.loc[vial, "vial_volume"] - c["STOCK_REFILL_BELOW_ML"]
-        need = max(0.0, demand.get(vial, 0.0) - from_working) + demand.get(refill, 0.0)
-        have = inventory.loc[refill, "vial_volume"] - reserve
+        need = max(0.0, demand.get(vial, 0.0) - from_working) + sum(demand.get(r, 0.0) for r in refills_for)
+        have = sum(max(0.0, inventory.loc[r, "vial_volume"] - reserve) for r in refills_for)
         if need > have + 1e-9:
-            raise ValueError(f"{refill}: the run needs {need:.2f} mL from it, it has {have:.2f} mL "
-                             f"above its {reserve:g} mL reserve")
+            raise ValueError(f"{', '.join(refills_for)}: the run needs {need:.2f} mL from them, they have "
+                             f"{have:.2f} mL above their {reserve:g} mL reserve")
 
 
 def _volume(lash_e, vial):
@@ -752,12 +770,16 @@ def ensure_volume(lash_e, c, vial, need_ml, table):
     elif rule["how"] == "reservoir":
         lash_e.nr_robot.refill_vial(vial, fill, reservoir=c["WATER_RESERVOIR"], liquid="water")
     else:
-        source = rule["how"]
-        add = min(fill - current, _volume(lash_e, source) - c["STOCK_RESERVE_ML"])
-        if add > 0:
-            liquid = c["SURFACTANT"] if vial == c["SURFACTANT_STOCK_VIAL"] else c["DYE_SOLVENT"]
-            lash_e.logger.info(f"Refilling {vial} from {source}: +{add:.3f} mL")
-            lash_e.nr_robot.refill_vial(vial, current + add, source_vial=source, liquid=liquid)
+        # Refill vials in order: empty the first (down to its reserve) before the next.
+        liquid = c["SURFACTANT"] if vial == c["SURFACTANT_STOCK_VIAL"] else c["DYE_SOLVENT"]
+        for source in rule["how"]:
+            current = _volume(lash_e, vial)
+            add = min(fill - current, _volume(lash_e, source) - c["STOCK_RESERVE_ML"])
+            if add > 0:
+                lash_e.logger.info(f"Refilling {vial} from {source}: +{add:.3f} mL")
+                lash_e.nr_robot.refill_vial(vial, current + add, source_vial=source, liquid=liquid)
+            if _volume(lash_e, vial) >= fill - 1e-9:
+                break
     after = _volume(lash_e, vial)
     if after - need_ml < below - 1e-9:
         raise RuntimeError(f"{vial}: still too little after refilling ({after:.3f} mL "
