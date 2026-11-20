@@ -121,6 +121,7 @@ BLOCKS = [
 BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 960]]
 FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
 ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
+SPECTRUM_PROTOCOL_FILES = []        # spectral scans (Gen5 protocols with a Spectrum read); saved to spectra.csv
 
 DISPENSE_ORDER = ["dye", "water", "surfactant", "solvent"]
 # Waits between components, per batch: [{"batch": 2, "after": "dye", "minutes": 30}]
@@ -142,7 +143,7 @@ _CONFIG_KEYS = [
     "SUBSTOCK_MIN_TRANSFER_UL",
     "SURFACTANT_SUBSTOCK_ML", "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_ML",
     "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML", "SUBSTOCK_MAX_AGE_HOURS",
-    "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE",
+    "BLOCKS", "BATCH_SCHEDULES_MIN", "FLUORESCENCE_PROTOCOL_FILE", "ABSORBANCE_PROTOCOL_FILE", "SPECTRUM_PROTOCOL_FILES",
     "DISPENSE_ORDER", "DISPENSE_PAUSES", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED", "VORTEX_SECONDS",
 ]
 
@@ -235,6 +236,10 @@ _CONFIG_DOCS = {
                             "effect": "each batch waits until its last read before the next batch"},
     "FLUORESCENCE_PROTOCOL_FILE": {"description": "Cytation fluorescence protocol; null = the DYE's default.",
                                    "unit": None, "affects": ["duration"]},
+    "SPECTRUM_PROTOCOL_FILES": {"description": "Spectral-scan protocols read at every read time in the same plate trip "
+                                               "(one read type per protocol). Saved as spectra.csv: one row per well, "
+                                               "read and wavelength.",
+                                "unit": None, "affects": ["duration"]},
     "ABSORBANCE_PROTOCOL_FILE": {"description": "Cytation absorbance protocol (dye peak + 750 nm); null skips absorbance.",
                                  "unit": None, "affects": ["duration"]},
     "DISPENSE_ORDER": {"description": "Order of components: water, solvent, surfactant, dye.", "unit": None,
@@ -404,6 +409,13 @@ def validate_config(c):
     validate_blocks(c)
     validate_pauses(c)
     validate_refill_vials(c)
+    spectra = c["SPECTRUM_PROTOCOL_FILES"]
+    if not isinstance(spectra, list) or not all(isinstance(x, str) and x for x in spectra):
+        raise ValueError("SPECTRUM_PROTOCOL_FILES must be a list of protocol paths")
+    stems = [Path(x).stem for x in spectra] + [Path(x).stem for x in
+                                                (c["FLUORESCENCE_PROTOCOL_FILE"], c["ABSORBANCE_PROTOCOL_FILE"]) if x]
+    if len(set(stems)) != len(stems):
+        raise ValueError("Each protocol file needs a different name (its data is found by file name)")
     if c["PLATE_KIND"] not in ("fluorescence", "clear"):
         raise ValueError("PLATE_KIND must be fluorescence (black, clear bottom) or clear")
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
@@ -622,16 +634,19 @@ def total_demand(plan):
 # ============================================================================
 
 def read_protocols(c):
-    """[(label, protocol path)] for each read, skipping a protocol set to None."""
+    """[(label, protocol path, kind)] for each read; kind is "endpoint" (one row per well,
+    merged into results.csv) or "spectrum" (wavelengths x wells, saved to spectra.csv)."""
     from workflows.surfactant_grid_ailsa import _DYE_PROTOCOLS, _PLATE_PROTOCOL_SUFFIX
     if c["DYE"] not in _DYE_PROTOCOLS:
         raise ValueError(f"Unknown DYE {c['DYE']}")
     fluorescence = (c["FLUORESCENCE_PROTOCOL_FILE"]
                     or _DYE_PROTOCOLS[c["DYE"]]["fluorescence_protocol_file"].format(
                         plate=_PLATE_PROTOCOL_SUFFIX[c["WELLPLATE_TYPE"]]))
-    reads = [("fluorescence", fluorescence)]
+    reads = [("fluorescence", fluorescence, "endpoint")]
     if c["ABSORBANCE_PROTOCOL_FILE"]:
-        reads.append(("absorbance", c["ABSORBANCE_PROTOCOL_FILE"]))
+        reads.append(("absorbance", c["ABSORBANCE_PROTOCOL_FILE"], "endpoint"))
+    for path in c["SPECTRUM_PROTOCOL_FILES"]:
+        reads.append((Path(path).stem, path, "spectrum"))
     return reads
 
 
@@ -657,11 +672,42 @@ def simulate_read(wells, label, c, rng):
     return frame
 
 
+def simulate_spectrum(wells, label, rng):
+    """Synthetic spectrum in the reader's layout: Wavelengths column plus one column per
+    well (shape only: a band at 460 nm scaled by dye)."""
+    wavelengths = np.arange(400, 755, 5)
+    band = np.exp(-0.5 * ((wavelengths - 460) / 25.0) ** 2)
+    frame = pd.DataFrame({"Wavelengths": wavelengths})
+    for w in wells.itertuples():
+        frame[w.well_position] = 0.04 + w.dye_uM * 0.03 * band * (1 + 0.02 * rng.standard_normal(len(band)))
+    frame.columns = pd.MultiIndex.from_tuples([(f"rep1_{label}", col) for col in frame.columns])
+    return frame
+
+
+def _well_label(value):
+    text = str(value).strip()
+    return f"{text[0].upper()}{int(text[1:])}"
+
+
+def spectrum_to_long(raw, label):
+    """Reader spectrum (Wavelengths + one column per well) -> rows of
+    well_position, protocol, wavelength_nm, value."""
+    frame = raw.dropna(how="all").copy()
+    frame.columns = [col[1] if isinstance(col, tuple) else col for col in frame.columns]
+    if "Wavelengths" not in frame.columns:
+        raise ValueError(f"{label}: no Wavelengths column; is it a Spectrum protocol?")
+    long = frame.melt(id_vars="Wavelengths", var_name="well_position", value_name="value")
+    long["well_position"] = long.well_position.map(_well_label)
+    long.insert(1, "protocol", label)
+    return long.rename(columns={"Wavelengths": "wavelength_nm"})[
+        ["well_position", "protocol", "wavelength_nm", "value"]]
+
+
 def raw_to_columns(raw, label):
     """Cytation frame -> well_position plus <label>_<channel> columns."""
-    frame = raw.copy()
+    frame = raw.dropna(how="all").copy()  # rows padded in when spectra share the plate trip
     frame.columns = [f"{label}_{col[1] if isinstance(col, tuple) else col}" for col in frame.columns]
-    frame.index = [f"{str(p)[0].upper()}{int(str(p)[1:])}" for p in frame.index]
+    frame.index = [_well_label(p) for p in frame.index]
     return frame.rename_axis("well_position").reset_index()
 
 
@@ -878,28 +924,48 @@ def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir, earlier=None)
         wait = t0 + minutes * 60 - time.monotonic()
         if wait > 0 and not lash_e.simulate:
             time.sleep(wait)
-        raw = lash_e.measure_wellplate([path for _, path in reads], wells.well_index.tolist(),
+        raw = lash_e.measure_wellplate([path for _, path, _ in reads], wells.well_index.tolist(),
                                        plate_type=c["WELLPLATE_TYPE"])
+        read_at = datetime.now().isoformat(timespec="seconds")
         merged = wells.copy()
-        for label, path in reads:
+        for label, path, kind in reads:
             if raw is None:
                 if not lash_e.simulate:
                     raise RuntimeError(f"No plate data for batch {batch}, t={minutes} min")
-                part = simulate_read(wells, label, c, rng)
+                part = (simulate_spectrum(wells, label, rng) if kind == "spectrum"
+                        else simulate_read(wells, label, c, rng))
             else:
                 stem = Path(path).stem
-                part = raw[[col for col in raw.columns if col[0].endswith(stem)]]
+                # measure_wellplate labels each protocol's columns rep1_<protocol file stem>
+                part = raw[[col for col in raw.columns if col[0] == f"rep1_{stem}"]]
+                if part.empty:
+                    raise RuntimeError(f"No columns for {stem} in the plate data")
+            if kind == "spectrum":
+                save_spectra(spectrum_to_long(part, label), wells, batch, minutes, read_at, output_dir)
+                continue
             merged = merged.merge(raw_to_columns(part, label), on="well_position", how="left",
                                   validate="one_to_one")
         merged["timepoint_min"] = minutes
         merged["elapsed_actual_min"] = (time.monotonic() - t0) / 60
-        merged["read_at"] = datetime.now().isoformat(timespec="seconds")
+        merged["read_at"] = read_at
         results.append(merged)
         pd.concat(list(earlier or []) + results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)
         if raw is not None:
             raw.to_csv(output_dir / f"raw_batch{batch}_t{minutes}.csv")
         lash_e.logger.info(f"Batch {batch}: read at t={minutes} min")
     return pd.concat(results, ignore_index=True)
+
+
+def save_spectra(long, wells, batch, minutes, read_at, output_dir):
+    """Append one spectrum read to spectra.csv (one row per well x wavelength), with the
+    well's contents so it can be used on its own."""
+    keys = ["well_position", "block", "replicate", "matrix", "surfactant_mM", "dye_uM"]
+    rows = long.merge(wells[keys], on="well_position", how="left")
+    rows.insert(0, "batch", batch)
+    rows.insert(1, "timepoint_min", minutes)
+    rows.insert(2, "read_at", read_at)
+    path = output_dir / "spectra.csv"
+    rows.to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
 def _send_workflow_slack(lash_e, message):
@@ -938,7 +1004,7 @@ def execute(config=None, show_gui=True):
         plan = build_plan(c, reused)
         reads = read_protocols(c)
         if not lash_e.simulate:
-            for _, path in reads:
+            for _, path, _ in reads:
                 if not Path(path).is_file():
                     raise FileNotFoundError(path)
             if not c["ABSORBANCE_PROTOCOL_FILE"] and (plan["wells"].matrix == "solvent").any():

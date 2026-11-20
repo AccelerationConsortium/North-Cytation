@@ -56,14 +56,18 @@ Rules:
 
 ## 2. Measurement (decided)
 
-**Current run (coumarin-6), at every read time, one plate trip, two fixed reads:**
-- Fluorescence 485 / 530: `Coumarin_96.prt` (existing; `FLUORESCENCE_PROTOCOL_FILE` blank).
-- Absorbance 460 nm (peak) and 750 nm (scatter): `Coumarin_Abs_96.prt`
-  (`ABSORBANCE_PROTOCOL_FILE`; a live run with stock-check wells needs it).
-- Optional later, not read by the workflow yet: `Coumarin_FluorSpectrum_96.prt` (ex 450,
-  em 480-650, 5 nm) and `Coumarin_AbsSpectrum_96.prt` (400-750, 5 nm). A Gen5 protocol
-  with a spectrum returns wavelengths x wells, and the reader wrapper classifies a protocol
-  by its first read step: one read type per protocol.
+**Current run (coumarin-6), at every read time, one plate trip, four protocols:**
+
+| Protocol | Reads | Setting | Saved in |
+|---|---|---|---|
+| `Coumarin_96.prt` (existing) | fluorescence 485 / 530 | `FLUORESCENCE_PROTOCOL_FILE` (blank = this) | `results.csv` |
+| `Coumarin_Abs_96.prt` | absorbance 460 (peak), 750 (scatter) | `ABSORBANCE_PROTOCOL_FILE` | `results.csv` |
+| `Coumarin_FluorSpectrum_96.prt` | ex 450, em 480-650, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
+| `Coumarin_AbsSpectrum_96.prt` | absorbance 400-750, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
+
+- One read type per protocol: the reader wrapper classifies a protocol by its first read
+  step; a spectrum comes back as wavelengths x wells. `spectra.csv` has one row per well,
+  read time, protocol and wavelength, with the well's contents.
 - `hardware_tests/cytation_protocol_preview.py` runs protocols without robot moves and
   saves the raw output and its shape: run it on new protocols first.
 - Every column the reader returns is saved: raw file per read, and `results.csv` (one row
@@ -233,8 +237,8 @@ Built from `workflows/workflow_template.py` on the North_Safe flows
 
 ## Before the first run
 
-- Gen5 protocols for coumarin-6 (absorbance scan; fluorescence with emission scan) and their
-  paths in the three queue configs.
+- Make the three new Gen5 protocols, run `hardware_tests/cytation_protocol_preview.py` live,
+  and check its summary (data shape, processing OK, read times).
 - Load: coumarin-6 stock (918 uM, 8 mL), SDS_stock + SDS_refill_1/2 (8 mL each, closed, rack
   6, 10, 11), ethanol (8 mL), ethanol_refill (20 mL), empty substock vials, 3 black plates.
 - Confirm the North_Safe closed-cap vial-to-vial fix (stock -> substock moves vials while
