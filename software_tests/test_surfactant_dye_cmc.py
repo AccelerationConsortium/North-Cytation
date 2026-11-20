@@ -237,6 +237,34 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "TOTAL_VOLUME_UL \\+ DYE_VOLUME_UL"):
             build_plan(config(TOTAL_VOLUME_UL=290.0))
 
+    def test_results_saved_after_every_read(self):
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace
+        from unittest import mock
+        import numpy as np
+        c = config()
+        wells = build_plan(c)["wells"]
+        batch2 = wells[wells.batch == 2]
+        earlier = [wells[wells.batch == 1].assign(timepoint_min=0)]
+        sizes = []
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+
+            def read(*args, **kwargs):
+                if (out / "results.csv").exists():
+                    sizes.append(len(pd.read_csv(out / "results.csv")))
+                return None
+
+            lash = SimpleNamespace(simulate=True, logger=mock.Mock(), measure_wellplate=read)
+            result = workflow.measure_batch(lash, c, batch2, 2, [("fluorescence", "f.prt")],
+                                            np.random.default_rng(0), out, earlier=earlier)
+            sizes.append(len(pd.read_csv(out / "results.csv")))
+        n, reads = len(batch2), len(c["BATCH_SCHEDULES_MIN"][1])
+        # Before each later read the file already holds batch 1 plus every earlier read.
+        self.assertEqual(sizes, [len(earlier[0]) + n * k for k in range(1, reads + 1)])
+        self.assertIn("read_at", result.columns)
+
     def test_invalid_pauses(self):
         for bad, message in (([{"batch": 3, "after": "dye", "minutes": 30}], "batch with a schedule"),
                              ([{"batch": 2, "after": "ethanol", "minutes": 30}], "after must be"),

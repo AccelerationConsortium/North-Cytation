@@ -835,8 +835,11 @@ def fill_chunks(volumes, max_ml):
     return chunks
 
 
-def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir):
-    """Read the batch on its schedule; return long results (one row per well x timepoint)."""
+def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir, earlier=None):
+    """Read the batch on its schedule; return long results (one row per well x timepoint).
+
+    results.csv (earlier batches + this batch so far) is rewritten after every read,
+    so a run that stops partway keeps every read it made."""
     from workflows.helpers._planning_markers import mark_clock_start, mark_wait_until
     results = []
     t0 = time.monotonic()
@@ -862,7 +865,9 @@ def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir):
                                   validate="one_to_one")
         merged["timepoint_min"] = minutes
         merged["elapsed_actual_min"] = (time.monotonic() - t0) / 60
+        merged["read_at"] = datetime.now().isoformat(timespec="seconds")
         results.append(merged)
+        pd.concat(list(earlier or []) + results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)
         if raw is not None:
             raw.to_csv(output_dir / f"raw_batch{batch}_t{minutes}.csv")
         lash_e.logger.info(f"Batch {batch}: read at t={minutes} min")
@@ -960,8 +965,7 @@ def execute(config=None, show_gui=True):
                 if save_record:
                     save_substock_record(record, record_path)
             dispense_batch(lash_e, c, wells, table, batch)
-            results.append(measure_batch(lash_e, c, wells, batch, reads, read_rng, output_dir))
-            pd.concat(results, ignore_index=True).to_csv(output_dir / "results.csv", index=False)
+            results.append(measure_batch(lash_e, c, wells, batch, reads, read_rng, output_dir, earlier=results))
             used |= set(wells.well_index)
             sources = after_batch(planned)
             _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME}: batch {batch} read ({len(wells)} wells)")
