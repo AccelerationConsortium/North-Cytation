@@ -67,7 +67,7 @@ SURFACTANT_STOCK_MM = 50.0
 SURFACTANT_CMC_MM = 8.6
 DYE = "coumarin-6"                  # key in surfactant_grid_ailsa._DYE_PROTOCOLS
 DYE_STOCK_VIAL = "coumarin6_stock"
-DYE_STOCK_UM = 2630.0               # coumarin-6 in ethanol as reported by the tech; the stock check measures it
+DYE_STOCK_UM = 300.0                # coumarin-6 in ethanol (most that dissolves); the stock check measures it
 DYE_SOLVENT = "ethanol"             # liquids.yaml name
 DYE_SOLVENT_VIAL = "ethanol"
 SOLVENT_REFILL_VIAL = "ethanol_refill"  # pure solvent in a large vial; tops up DYE_SOLVENT_VIAL
@@ -79,8 +79,9 @@ WATER_VIAL_FILL_ML = 7.5
 
 # Volumes
 TOTAL_VOLUME_UL = 200.0             # includes the dye
-DYE_VOLUME_UL = 5.0                 # fixed dye-solution volume in every water well
-WELL_MIN_UL = 5.0                   # smallest variable-volume transfer into a well (= DYE_VOLUME_UL)
+DYE_VOLUME_UL = 25.0                # fixed dye-solution volume in every water well (substocks at 8x final)
+DYE_SOLVENT_EVAPORATES = True       # ethanol evaporates first: water + SDS fill TOTAL_VOLUME_UL on their own
+WELL_MIN_UL = 5.0                   # smallest variable-volume transfer into a well
 WELL_MAX_UL = 195.0                 # largest (small tip 200 uL less its 5 uL margin)
 SURFACTANT_PREFERRED_MIN_UL = 75.0  # surfactant wells aim for at least this (more substocks if higher)
 SUBSTOCK_MIN_TRANSFER_UL = 200.0    # smallest parent transfer when making a substock
@@ -120,11 +121,11 @@ BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 960]]
 FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
 ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
 
-DISPENSE_ORDER = ["water", "solvent", "surfactant", "dye"]
+DISPENSE_ORDER = ["dye", "water", "surfactant", "solvent"]
 # Waits between components, per batch: [{"batch": 2, "after": "dye", "minutes": 30}]
 # (e.g. dye-in-ethanol first, let the ethanol evaporate, then the aqueous parts:
 # also put "dye" first in DISPENSE_ORDER). Empty = no pauses.
-DISPENSE_PAUSES = []
+DISPENSE_PAUSES = [{"batch": 2, "after": "dye", "minutes": 30}]
 RANDOMIZED_ORDER = True
 RANDOMIZATION_SEED = 42
 VORTEX_SECONDS = 5
@@ -136,7 +137,7 @@ _CONFIG_KEYS = [
     "DYE", "DYE_STOCK_VIAL", "DYE_STOCK_UM", "DYE_SOLVENT", "DYE_SOLVENT_VIAL", "SOLVENT_REFILL_VIAL",
     "STOCK_REFILL_TO_ML", "STOCK_REFILL_BELOW_ML",
     "WATER_VIAL", "WATER_RESERVOIR", "WATER_VIAL_FILL_ML",
-    "TOTAL_VOLUME_UL", "DYE_VOLUME_UL", "WELL_MIN_UL", "WELL_MAX_UL", "SURFACTANT_PREFERRED_MIN_UL",
+    "TOTAL_VOLUME_UL", "DYE_VOLUME_UL", "DYE_SOLVENT_EVAPORATES", "WELL_MIN_UL", "WELL_MAX_UL", "SURFACTANT_PREFERRED_MIN_UL",
     "SUBSTOCK_MIN_TRANSFER_UL",
     "SURFACTANT_SUBSTOCK_ML", "SURFACTANT_SUBSTOCK_REFILL_ML", "DYE_SUBSTOCK_ML",
     "DYE_SUBSTOCK_REFILL_ML", "STOCK_RESERVE_ML", "SUBSTOCK_MAX_AGE_HOURS",
@@ -186,8 +187,12 @@ _CONFIG_DOCS = {
     "WATER_VIAL_FILL_ML": {"description": "Water vial is refilled to this from WATER_RESERVOIR.",
                            "unit": "mL", "affects": ["duration"],
                            "effect": "refilled when a draw would take it below 2 mL"},
-    "TOTAL_VOLUME_UL": {"description": "Total volume per well, including the dye.", "unit": "uL",
-                        "affects": ["liquids"]},
+    "TOTAL_VOLUME_UL": {"description": "Final volume per well; includes the dye solution unless DYE_SOLVENT_EVAPORATES.",
+                        "unit": "uL", "affects": ["liquids"]},
+    "DYE_SOLVENT_EVAPORATES": {"description": "Dye solvent evaporates before reading: water + surfactant fill TOTAL_VOLUME_UL "
+                                              "and the dye solution goes on top; concentrations are over TOTAL_VOLUME_UL. "
+                                              "Needs dye first in DISPENSE_ORDER and a pause after dye in each water batch.",
+                               "unit": None, "affects": ["liquids", "duration"]},
     "DYE_VOLUME_UL": {"description": "Dye-solution volume in every water well (sets the solvent fraction).",
                       "unit": "uL", "affects": ["liquids", "vials"],
                       "effect": "one dye substock per dye level, at dye x TOTAL/DYE_VOLUME"},
@@ -280,6 +285,7 @@ def planning_rules(c):
     """Config -> rules for well_plan.plan_wells."""
     return dict(
         total_ul=c["TOTAL_VOLUME_UL"], dye_ul=c["DYE_VOLUME_UL"],
+        dye_solvent_evaporates=c["DYE_SOLVENT_EVAPORATES"],
         well_min_ul=c["WELL_MIN_UL"], well_max_ul=c["WELL_MAX_UL"],
         preferred_min_ul={"surfactant": c["SURFACTANT_PREFERRED_MIN_UL"]},
         substock_min_transfer_ul=c["SUBSTOCK_MIN_TRANSFER_UL"],
@@ -354,8 +360,11 @@ def validate_pauses(c):
 
 def validate_config(c):
     layout = plate_layout(c["WELLPLATE_TYPE"])
-    if c["TOTAL_VOLUME_UL"] > layout["max_ul"]:
-        raise ValueError(f"TOTAL_VOLUME_UL {c['TOTAL_VOLUME_UL']:g} uL is above the "
+    # With an evaporating dye solvent, the dye goes on top of the total until it evaporates.
+    most = c["TOTAL_VOLUME_UL"] + (c["DYE_VOLUME_UL"] if c["DYE_SOLVENT_EVAPORATES"] else 0.0)
+    if most > layout["max_ul"]:
+        raise ValueError(f"Wells would hold up to {most:g} uL (TOTAL_VOLUME_UL"
+                         f"{' + DYE_VOLUME_UL' if c['DYE_SOLVENT_EVAPORATES'] else ''}), above the "
                          f"{layout['max_ul']:g} uL limit of a {c['WELLPLATE_TYPE']}")
     for key in ("SURFACTANT_STOCK_MM", "SURFACTANT_CMC_MM", "DYE_STOCK_UM", "TOTAL_VOLUME_UL",
                 "DYE_VOLUME_UL", "WELL_MIN_UL", "WELL_MAX_UL", "SURFACTANT_PREFERRED_MIN_UL",
@@ -379,6 +388,16 @@ def validate_config(c):
             raise ValueError("Each BATCH_SCHEDULES_MIN list must start at 0 and increase")
     validate_blocks(c)
     validate_pauses(c)
+    if c["DYE_SOLVENT_EVAPORATES"]:
+        # The solvent can only be gone before the aqueous parts if dye goes first and the
+        # run waits after it, in every batch that has water wells.
+        if c["DISPENSE_ORDER"][0] != "dye":
+            raise ValueError("DYE_SOLVENT_EVAPORATES needs \"dye\" first in DISPENSE_ORDER")
+        water_batches = {b["batch"] for b in c["BLOCKS"] if b["matrix"] == "water"}
+        missing = sorted(water_batches - {b for b, comp in ((p["batch"], p["after"]) for p in c["DISPENSE_PAUSES"])
+                                           if comp == "dye"})
+        if missing:
+            raise ValueError(f"DYE_SOLVENT_EVAPORATES needs a DISPENSE_PAUSES entry after dye in batch(es) {missing}")
     if sorted(c["DISPENSE_ORDER"]) != sorted(_COMPONENTS):
         raise ValueError(f"DISPENSE_ORDER must list {', '.join(_COMPONENTS)} once each")
 

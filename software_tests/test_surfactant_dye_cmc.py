@@ -10,6 +10,10 @@ from workflows.surfactant_dye_cmc import (build_plan, fill_chunks, plate_layout,
 BASE = {key: getattr(workflow, key) for key in workflow._CONFIG_KEYS}
 
 
+# For tests whose own blocks have no pause after dye.
+NO_PAUSE = dict(DYE_SOLVENT_EVAPORATES=False, DISPENSE_PAUSES=[])
+
+
 def config(**changes):
     c = dict(BASE)
     c.update(changes)
@@ -51,7 +55,7 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
 
     def test_grid_replicates_and_multiples_of_cmc(self):
         b = block(replicates=2, surfactant_x_cmc=[0.0, 1.0], dye_uM=[0.5])
-        wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0]]))["wells"]
+        wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0]], **NO_PAUSE))["wells"]
         self.assertEqual(len(wells), 4)
         self.assertEqual(sorted(wells.surfactant_mM.unique()), [0.0, BASE["SURFACTANT_CMC_MM"]])
         self.assertEqual(sorted(wells.replicate), [1, 1, 2, 2])
@@ -61,7 +65,7 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         self.assertEqual((layout["wells"], layout["columns"]), (48, 8))
         b = block(surfactant_mM=[1.0], dye_uM=[1.0])
         wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0]], WELLPLATE_TYPE="48 WELL PLATE",
-                                  RANDOMIZED_ORDER=False))["wells"]
+                                  RANDOMIZED_ORDER=False, **NO_PAUSE))["wells"]
         self.assertEqual(wells.well_position.iloc[0], "A1")
         with self.assertRaisesRegex(ValueError, "free on the plate"):
             build_plan(config(WELLPLATE_TYPE="48 WELL PLATE"))
@@ -82,7 +86,7 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
             workflow.extra_block_targets = lambda c, batch, results: pd.DataFrame(
                 [dict(batch=2, block="adaptive", replicate=1, matrix="water", surfactant_mM=9.0, dye_uM=1.0)])
             b = block(surfactant_mM=[0.0, 5.0], dye_uM=[1.0])
-            wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0], [0]]))["wells"]
+            wells = build_plan(config(BLOCKS=[b], BATCH_SCHEDULES_MIN=[[0], [0]], **NO_PAUSE))["wells"]
             self.assertEqual(wells.loc[wells.block == "adaptive", "batch"].tolist(), [2])
         finally:
             workflow.extra_block_targets = original
@@ -156,7 +160,8 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         c, first, record, inventory, now = self.leftovers()
         reused, _ = reusable_substocks(config(DYE_STOCK_UM=2500.0), inventory, record, now)
         top = max(s["conc"] for s in reused if s["component"] == "dye")
-        self.assertAlmostEqual(top, 1280.0 * 2500.0 / 2630.0)
+        made = first.loc[first.component == "dye", "conc"].max()
+        self.assertAlmostEqual(top, made * 2500.0 / BASE["DYE_STOCK_UM"])
 
     def test_record_keeps_other_vials_and_replaces_remade_ones(self):
         c, first, record, inventory, now = self.leftovers()
@@ -211,6 +216,25 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         self.assertIn(c["WATER_VIAL"], after)
         _, events = self.dispense_log(1, **settings)
         self.assertFalse([e for e in events if e[0] == "pause"])
+
+    def test_evaporating_dye_solvent_goes_on_top(self):
+        wells = build_plan(config())["wells"]
+        water = wells[wells.matrix == "water"]
+        self.assertTrue(((water.water_ul + water.surfactant_ul) - BASE["TOTAL_VOLUME_UL"]).abs().max() < 1e-9)
+        sds = water[water.surfactant_source == BASE["SURFACTANT_STOCK_VIAL"]]
+        conc = sds.surfactant_ul * BASE["SURFACTANT_STOCK_MM"] / BASE["TOTAL_VOLUME_UL"]
+        self.assertTrue(((conc - sds.surfactant_mM).abs() < 1e-9).all())
+        kept = build_plan(config(DYE_SOLVENT_EVAPORATES=False))["wells"]
+        kept = kept[kept.matrix == "water"]
+        self.assertTrue(((kept.water_ul + kept.surfactant_ul + kept.dye_ul) - BASE["TOTAL_VOLUME_UL"]).abs().max() < 1e-9)
+
+    def test_evaporation_needs_dye_first_and_a_pause(self):
+        with self.assertRaisesRegex(ValueError, "dye\" first"):
+            build_plan(config(DISPENSE_ORDER=["water", "solvent", "surfactant", "dye"]))
+        with self.assertRaisesRegex(ValueError, r"after dye in batch\(es\) \[2\]"):
+            build_plan(config(DISPENSE_PAUSES=[]))
+        with self.assertRaisesRegex(ValueError, "TOTAL_VOLUME_UL \\+ DYE_VOLUME_UL"):
+            build_plan(config(TOTAL_VOLUME_UL=290.0))
 
     def test_invalid_pauses(self):
         for bad, message in (([{"batch": 3, "after": "dye", "minutes": 30}], "batch with a schedule"),

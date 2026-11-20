@@ -7,6 +7,10 @@ Input: one row per well with the target concentrations over the total well volum
   "water"   - water + surfactant + a FIXED volume of dye solution (dye_ul). The dye
               source is chosen so that volume gives the target, so every well has
               the same dye-solvent fraction. Dye 0 -> the same volume of pure solvent.
+              With rules["dye_solvent_evaporates"], the dye solvent is expected to
+              evaporate before the well is read: water + surfactant then fill
+              total_ul on their own and the dye solution goes on top, so
+              concentrations are over the volume left after evaporation.
   "solvent" - solvent + dye only (e.g. the dye stock check); the dye volume varies.
 
 Variable-volume components (surfactant; dye in solvent wells) use the source that
@@ -223,9 +227,11 @@ def plan_wells(targets, rules, existing=None, later_targets=None):
         _fixed_source(conc, sources, rules)
     # 2. Variable dye (solvent wells) and surfactant (water wells).
     well_max = rules["well_max_ul"]
+    # Water + surfactant per water well: all of total_ul if the dye solvent evaporates.
+    aqueous_ul = total if rules.get("dye_solvent_evaporates") else total - dye_ul
     _cover_variable(targets.loc[~water, "dye_uM"], "dye", sources, min(well_max, total), rules)
     _cover_variable(targets.loc[water, "surfactant_mM"], "surfactant", sources,
-                    min(well_max, total - dye_ul), rules)
+                    min(well_max, aqueous_ul), rules)
 
     rows = []
     blank = next(s["name"] for s in sources if s["kind"] == "blank")
@@ -240,10 +246,10 @@ def plan_wells(targets, rules, existing=None, later_targets=None):
             surf_ul, surf_source = 0.0, None
             if t["surfactant_mM"] > 0:
                 s, surf_ul = _variable_source(t["surfactant_mM"], "surfactant", sources,
-                                              min(well_max, total - dye_ul), rules)
+                                              min(well_max, aqueous_ul), rules)
                 surf_source = s["name"]
             row.update(surfactant_source=surf_source, surfactant_ul=surf_ul,
-                       water_ul=total - dye_ul - surf_ul, solvent_ul=0.0)
+                       water_ul=aqueous_ul - surf_ul, solvent_ul=0.0)
         else:
             dye_ul_well, dye_source = 0.0, None
             if t["dye_uM"] > 0:
