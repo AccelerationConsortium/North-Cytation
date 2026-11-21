@@ -3,25 +3,26 @@
 # Use density appropriate to the actual composition and measurement temperature.
 # refill_pipets: true removes the tip after each calibration measurement.
 # condition_tip: true conditions a fresh tip (aspirate/dispense back into the source) before
-#   pipetting from it in North_Safe flows. It currently matches refill_pipets for every liquid.
+#   pipetting from it in North_Safe flows. It is the opposite of refill_pipets, as in calibration:
+#   a reused tip (refill_pipets: false) is conditioned first; a tip used once is not.
 liquids:
-  water: {density_g_ml: 1.00, refill_pipets: false, condition_tip: false}
-  ethanol: {density_g_ml: 0.789, refill_pipets: false, condition_tip: false}
-  toluene: {density_g_ml: 0.867, refill_pipets: false, condition_tip: false}
-  heptane: {density_g_ml: 0.680, refill_pipets: false, condition_tip: false}
-  2MeTHF: {density_g_ml: 0.852, refill_pipets: false, condition_tip: false}
-  isopropanol: {density_g_ml: 0.789, refill_pipets: false, condition_tip: false}
-  DMSO: {density_g_ml: 1.1, refill_pipets: false, condition_tip: false}
-  acetone: {density_g_ml: 0.79, refill_pipets: false, condition_tip: false}
-  ethyl_acetate: {density_g_ml: 0.902, refill_pipets: false, condition_tip: false}
-  glycerol: {density_g_ml: 1.26, refill_pipets: true, condition_tip: true}
-  TFA: {density_g_ml: 1.49, refill_pipets: false, condition_tip: false}
-  6M_HCl: {density_g_ml: 1.10, refill_pipets: false, condition_tip: false}
-  6M_TFA: {density_g_ml: 1.25, refill_pipets: false, condition_tip: false}
-  6M_p_TSA: {density_g_ml: 1.25, refill_pipets: false, condition_tip: false}
-  6M_Citric_Acid: {density_g_ml: 1.27, refill_pipets: false, condition_tip: false}
-  6M_H2SO4: {density_g_ml: 1.34, refill_pipets: false, condition_tip: false}
-  6M_H3PO4: {density_g_ml: 1.35, refill_pipets: false, condition_tip: false}
-  PVA_water: {density_g_ml: 1.01, refill_pipets: false, condition_tip: false}
-  PVA_DMSO: {density_g_ml: 1.11, refill_pipets: true, condition_tip: true}
-  SDS: {density_g_ml: 1.00, refill_pipets: false, condition_tip: false}
+  water: {density_g_ml: 1.00, refill_pipets: false, condition_tip: true}
+  ethanol: {density_g_ml: 0.789, refill_pipets: false, condition_tip: true}
+  toluene: {density_g_ml: 0.867, refill_pipets: false, condition_tip: true}
+  heptane: {density_g_ml: 0.680, refill_pipets: false, condition_tip: true}
+  2MeTHF: {density_g_ml: 0.852, refill_pipets: false, condition_tip: true}
+  isopropanol: {density_g_ml: 0.789, refill_pipets: false, condition_tip: true}
+  DMSO: {density_g_ml: 1.1, refill_pipets: false, condition_tip: true}
+  acetone: {density_g_ml: 0.79, refill_pipets: false, condition_tip: true}
+  ethyl_acetate: {density_g_ml: 0.902, refill_pipets: false, condition_tip: true}
+  glycerol: {density_g_ml: 1.26, refill_pipets: true, condition_tip: false}
+  TFA: {density_g_ml: 1.49, refill_pipets: false, condition_tip: true}
+  6M_HCl: {density_g_ml: 1.10, refill_pipets: false, condition_tip: true}
+  6M_TFA: {density_g_ml: 1.25, refill_pipets: false, condition_tip: true}
+  6M_p_TSA: {density_g_ml: 1.25, refill_pipets: false, condition_tip: true}
+  6M_Citric_Acid: {density_g_ml: 1.27, refill_pipets: false, condition_tip: true}
+  6M_H2SO4: {density_g_ml: 1.34, refill_pipets: false, condition_tip: true}
+  6M_H3PO4: {density_g_ml: 1.35, refill_pipets: false, condition_tip: true}
+  PVA_water: {density_g_ml: 1.01, refill_pipets: false, condition_tip: true}
+  PVA_DMSO: {density_g_ml: 1.11, refill_pipets: true, condition_tip: false}
+  SDS: {density_g_ml: 1.00, refill_pipets: false, condition_tip: true}

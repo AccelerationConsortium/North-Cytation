@@ -1762,9 +1762,14 @@ class North_Robot(North_Base):
         except Exception as error:
             self.logger.warning(f"Sample tracking: could not record dispense into {destination}: {error}")
 
+    # ASSUMPTION (user decision 2026-11-21): reservoir dispenses are treated as exact (no
+    # volume error) in the contents records until the reservoir is validated; earlier tests
+    # found it very accurate. Set to None to record reservoir error as unknown instead.
+    RESERVOIR_ERROR_ML = (0.0, 0.0)
+
     def _track_reservoir_dispense(self, reservoir_index, vial_index, volume_mL, liquid=None):
-        """Reservoir into a vial: logged, and the vial's record updated (reservoir dispenses
-        have no validation history, so the uncertainty can't be estimated)."""
+        """Reservoir into a vial: logged, and the vial's record updated, with the reservoir's
+        error taken as RESERVOIR_ERROR_ML (assumed exact until the reservoir is validated)."""
         try:
             source = sample_tracking.reservoir_id(reservoir_index)
             destination = self._vial_container_id(vial_index)
@@ -1776,7 +1781,8 @@ class North_Robot(North_Base):
             portion, _ = sample_contents.take(load_record, volume_mL)
             before = float(self.VIAL_DF.at[self.normalize_vial_index(vial_index), 'vial_volume']) - volume_mL
             record, stored = self._container_record(destination, vial_index, max(before, 0.0))
-            updated = sample_contents.add(record, portion, volume_mL, None, getattr(self, "run_id", None))
+            updated = sample_contents.add(record, portion, volume_mL, self.RESERVOIR_ERROR_ML,
+                                          getattr(self, "run_id", None))
             if not (not stored and record["stocks"] and sample_contents.same_contents(record, updated)
                     and updated["stocks"] == record["stocks"]):
                 store.put(destination, updated)

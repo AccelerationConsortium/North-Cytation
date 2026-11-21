@@ -217,7 +217,7 @@ Existing workflows have not been changed; new workflows should use the North_Saf
 
 ### Tip conditioning rule
 
-Flows condition a fresh tip when the liquid has `condition_tip: true` in `robot_state/liquids.yaml`. The setting currently matches `refill_pipets` for every liquid; liquids without it are not conditioned. `dispense_from_vial_into_vial` conditions before its first aspiration with a fresh tip, so `refill_vial` and `create_substock` (which use it) follow the same rule. `dispense_from_vials_into_wellplate` conditions once per tip group, at the group's largest dose. Conditioning is not added inside `aspirate_from_vial`.
+Flows condition a fresh tip when the liquid has `condition_tip: true` in `robot_state/liquids.yaml`. The setting is the opposite of `refill_pipets`, as in calibration: a reused tip (`refill_pipets: false`) is conditioned, a single-use tip is not; liquids without the setting are not conditioned. `dispense_from_vial_into_vial` conditions before its first aspiration with a fresh tip, so `refill_vial` and `create_substock` (which use it) follow the same rule. `dispense_from_vials_into_wellplate` conditions once per tip group, at the group's largest dose. Conditioning is not added inside `aspirate_from_vial`.
 
 ### dispense_from_vials_into_wellplate
 

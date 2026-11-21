@@ -4,6 +4,18 @@ Date: 2026-10-26
 Status: End-to-end code examination complete on 2026-10-26. Ordered implementation
 steps below are proposed; no reservoir execution changes have been made.
 
+## Open: reservoir error is assumed zero in sample tracking (2026-11-21)
+
+Sample tracking currently treats every reservoir dispense as exact:
+`North_Robot.RESERVOIR_ERROR_ML = (0.0, 0.0)` in `North_Safe.py` (user decision, based on
+earlier tests that found the reservoir very accurate). The SDS substock records in
+`status/container_contents.csv` were also rebuilt from the transfer log on 2026-11-21 with
+the same assumption (backup of the previous file: `ai_scratch/container_contents_backup_20261121.csv`).
+
+Once the reservoir is validated, replace the assumption with the measured (random, shared)
+error per volume, as pipetting does (`pipetting_data/dispense_uncertainty.py`), and recompute
+the uncertainty of runs made under the assumption from `status/transfers.csv`.
+
 ## Goal
 
 Treat each physical reservoir dispense as an individual dispense, with its own

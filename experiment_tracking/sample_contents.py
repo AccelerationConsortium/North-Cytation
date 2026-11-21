@@ -158,6 +158,8 @@ def add(record, portion, volume_mL, error_mL, run_id):
     """Mix volume_mL of ``portion`` into ``record`` (returns the new record).
 
     error_mL is (random, shared) for this dispense, or None when it can't be estimated.
+    Liquid the same as what the container already holds (e.g. put back where it came from)
+    changes only the volume: the record's contents and uncertainty stay as they were.
     """
     record = copy.deepcopy(record)
     run = run_id or ""
@@ -165,6 +167,8 @@ def add(record, portion, volume_mL, error_mL, run_id):
     v1 = v0 + volume_mL
     if v1 <= 0:
         return record
+    if v0 > 0 and same_liquid(record, portion):
+        return rescale(record, v1)
     keys = set(record["materials"]) | set(portion["materials"])
     record["materials"] = {k: (record["materials"].get(k, 0.0) * v0 + portion["materials"].get(k, 0.0) * volume_mL) / v1
                            for k in keys}
@@ -220,6 +224,13 @@ def same_contents(a, b, tolerance=1e-9):
     keys = set(a["materials"]) | set(b["materials"])
     return all(abs(a["materials"].get(k, 0.0) - b["materials"].get(k, 0.0))
                <= tolerance * max(1.0, abs(a["materials"].get(k, 0.0))) for k in keys)
+
+
+def same_liquid(record, portion):
+    """True when a portion is the same liquid as the container holds: same materials at the
+    same concentrations, same stocks, equally complete, and no powder waiting for liquid."""
+    return (same_contents(record, portion) and sorted(record["stocks"]) == sorted(portion["stocks"])
+            and record["complete"] == portion["complete"] and not record["solids_mg"])
 
 
 def describe(record, run_id=None):

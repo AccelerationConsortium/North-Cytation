@@ -88,7 +88,7 @@ SURFACTANT_PREFERRED_MIN_UL = 75.0  # surfactant wells aim for at least this (mo
 SUBSTOCK_MIN_TRANSFER_UL = 200.0    # smallest parent transfer when making a substock
 SURFACTANT_SUBSTOCK_ML = 6.0        # each SDS substock is made (and topped up) to this...
 SURFACTANT_SUBSTOCK_REFILL_ML = 4.0 # ...and topped up in its recipe's ratio below this
-DYE_SUBSTOCK_ML = 4.0
+DYE_SUBSTOCK_ML = 5.0
 DYE_SUBSTOCK_REFILL_ML = 2.0
 STOCK_RESERVE_ML = 1.0              # left in the dye stock and the refill vials
 # Substocks left from earlier runs are reused when this record says what they hold
@@ -479,6 +479,7 @@ def plan_batch(c, batch, sources, used_wells, rng, results=None):
 
 _RECORD_COLUMNS = ["vial", "component", "material", "solvent", "conc", "units", "stock_conc",
                    "parent", "parent_ml", "diluent", "diluent_ml", "volume_ml", "made_at"]
+_EMPTY_SUBSTOCK_ML = 0.05  # a substock vial at or below this is empty (its record is cleared)
 
 
 def substock_record_path(vial_file):
@@ -527,6 +528,16 @@ def update_substock_record(record, rows):
     return pd.concat([kept, rows], ignore_index=True)[_RECORD_COLUMNS]
 
 
+def drop_empty_records(record, inventory):
+    """An emptied substock vial was replaced or cleaned: its record no longer applies.
+    Returns (record without the rows of vials at 0 mL or missing, their names)."""
+    if record.empty:
+        return record, []
+    volumes = inventory["vial_volume"].reindex(record.vial).fillna(0).to_numpy()
+    empty = volumes <= _EMPTY_SUBSTOCK_ML
+    return record[~empty].reset_index(drop=True), list(record.vial[empty])
+
+
 def reusable_substocks(c, inventory, record, now):
     """Substock vials left from earlier runs: (sources for the planner, problems).
 
@@ -544,7 +555,7 @@ def reusable_substocks(c, inventory, record, now):
         if not any(fnmatch.fnmatch(vial, p) for p in _PRODUCT_VIALS):
             continue
         volume = float(inventory.loc[vial, "vial_volume"])
-        if volume <= 0.05:
+        if volume <= _EMPTY_SUBSTOCK_ML:
             continue
         r = rows.get(vial)
         if r is None:
@@ -827,7 +838,7 @@ def ensure_volume(lash_e, c, vial, need_ml, table):
         for source in rule["how"]:
             current = _volume(lash_e, vial)
             add = min(fill - current, _volume(lash_e, source) - c["STOCK_RESERVE_ML"])
-            if add > 0:
+            if add >= c["SUBSTOCK_MIN_TRANSFER_UL"] / 1000:  # a sliver left above the reserve: use the next source
                 lash_e.logger.info(f"Refilling {vial} from {source}: +{add:.3f} mL")
                 lash_e.nr_robot.refill_vial(vial, current + add, source_vial=source, liquid=liquid)
             if _volume(lash_e, vial) >= fill - 1e-9:
@@ -1002,6 +1013,10 @@ def execute(config=None, show_gui=True):
         inventory = lash_e.nr_robot.VIAL_DF.set_index("vial_name")
         record_path = substock_record_path(lash_e.nr_robot.VIAL_FILE)
         record = load_substock_record(record_path)
+        record, cleared = drop_empty_records(record, inventory)
+        if cleared:
+            save_substock_record(record, record_path)
+            logger.info(f"Cleared substock records of emptied vials: {', '.join(cleared)}")
         reused, problems = reusable_substocks(c, inventory, record, datetime.now())
         if problems:
             raise ValueError("Empty these substock vials (and set them to 0 mL in "

@@ -82,8 +82,13 @@ class AddStockDialog(QDialog):
         except ValueError:
             QMessageBox.warning(self, "Add Stock", "Concentration must be a number.")
             return
+        if not components and self.solvent.text().strip():
+            # A pure solvent (e.g. water, ethanol): the solvent itself, with nothing dissolved
+            solvent = self.solvent.text().strip()
+            components = [{"material": solvent, "concentration": "", "units": "", "solvent": solvent,
+                           "lot": self.lot.text().strip(), "notes": self.notes.text().strip()}]
         if not components:
-            QMessageBox.warning(self, "Add Stock", "Enter at least one material.")
+            QMessageBox.warning(self, "Add Stock", "Enter at least one material, or only a solvent for a pure solvent.")
             return
         try:
             self.stock_id = sample_tracking.add_stock(components, self.stocks_file)

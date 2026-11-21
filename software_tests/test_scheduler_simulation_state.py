@@ -114,6 +114,15 @@ class SimulationStateTests(unittest.TestCase):
         self.assertFalse((self.repo / "robot_state" / "fluorescence_plate.yaml").exists())
         self.assert_live_unchanged()
 
+    def test_files_kept_next_to_a_vial_file_are_copied_with_it(self):
+        record = self.repo / "first_substocks.yaml"
+        record.write_text("- vial: SDS_sub_1\n")
+        root = state.create_session(self.vials)
+        copy = Path(state.simulated_config(root, {"SIMULATE": False,
+                                                  "INPUT_VIAL_STATUS_FILE": str(self.vials[0])})["INPUT_VIAL_STATUS_FILE"])
+        self.assertEqual(copy.with_name(f"{copy.stem}_substocks.yaml").read_text(), record.read_text())
+        self.assertEqual(record.read_text(), "- vial: SDS_sub_1\n")
+
     def test_end_state_carries_to_next_job_with_separate_vial_files(self):
         first = state.simulated_config(self.root, {"SIMULATE": False, "INPUT_VIAL_STATUS_FILE": str(self.vials[0])})
         second = state.simulated_config(self.root, {"SIMULATE": False, "INPUT_VIAL_STATUS_FILE": str(self.vials[1])})

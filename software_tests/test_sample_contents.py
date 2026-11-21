@@ -100,6 +100,27 @@ def test_a_volume_correction_changes_only_the_amount():
     assert (a1["materials"][SDS], sc.sd_absolute(a1, SDS)) == pytest.approx(before)
 
 
+def test_the_same_liquid_changes_only_the_volume():
+    # Conditioning: 5 cycles of 0.2 mL out of a mixed vial and back in leave its record as it was
+    _, a1, _ = worked_example()
+    vial = sc.rescale(a1, 2.0)
+    before = (vial["materials"], sc.variance_by_run(vial, SDS), vial["stocks"])
+    for _ in range(5):
+        tip, vial = aspirate(sc.empty_record(), vial, 0.2, "today")
+        tip, vial = dispense(tip, vial, 0.2, LARGE_200, "today")
+    assert vial["volume_mL"] == pytest.approx(2.0)
+    assert (vial["materials"], vial["stocks"]) == (before[0], before[2])
+    assert sc.variance_by_run(vial, SDS) == pytest.approx(before[1])
+    # A refill from the same stock changes only the volume too; a different liquid still mixes
+    stock = sc.stock_record("SDS-001", STOCKS, 2.0)
+    tip, _ = aspirate(sc.empty_record(), sc.stock_record("SDS-001", STOCKS, 8.0), 1.0)
+    _, stock = dispense(tip, stock, 1.0, LARGE_200)
+    assert stock["volume_mL"] == pytest.approx(3.0) and sc.sd_absolute(stock, SDS) == pytest.approx(0.0)
+    tip, _ = aspirate(sc.empty_record(), sc.stock_record("WATER-001", STOCKS, 8.0), 1.0)
+    _, stock = dispense(tip, stock, 1.0, LARGE_200)
+    assert stock["materials"][SDS] == pytest.approx(7.5) and sc.sd_absolute(stock, SDS) > 0
+
+
 def test_no_estimate_means_no_value():
     tip, _ = aspirate(sc.empty_record(), sc.stock_record("SDS-001", STOCKS, 5.0), 0.1)
     tip, well = dispense(tip, sc.empty_record(), 0.1, None)  # e.g. an unvalidated volume
@@ -168,6 +189,8 @@ def session(monkeypatch, tmp_path):
 
 def test_robot_transfer_stores_the_mix_and_keeps_the_stock_vial_a_stock(session):
     root, vials, tmp_path = session
+    real = ROOT / "status" / "container_contents.csv"
+    real_before = real.read_bytes() if real.exists() else None
     with state.workflow_state(root, "contents"):
         lash = master_usdl_coordinator.Lash_E(vial_file=str(vials), simulate=True, initialize_biotek=False,
                                               initialize_track=False, show_gui=False,
@@ -179,7 +202,7 @@ def test_robot_transfer_stores_the_mix_and_keeps_the_stock_vial_a_stock(session)
     assert mix["materials"][SDS] == pytest.approx(10.0)
     assert mix["stocks"] == ["SDS-001"]
     assert store.get("vial-aaaaaaaaaaaa") is None  # still just its stock: no record needed
-    assert not (ROOT / "status" / "container_contents.csv").exists()  # real file untouched
+    assert (real.read_bytes() if real.exists() else None) == real_before  # real file untouched
 
 
 def test_simulated_mix_vial_keeps_one_tip_and_the_volume(session, caplog):

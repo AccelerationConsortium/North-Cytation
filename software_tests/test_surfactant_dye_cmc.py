@@ -93,7 +93,7 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
 
     def test_invalid_config(self):
         with self.assertRaisesRegex(ValueError, "DYE_SUBSTOCK_REFILL_ML < DYE_SUBSTOCK_ML"):
-            build_plan(config(DYE_SUBSTOCK_REFILL_ML=4.0))
+            build_plan(config(DYE_SUBSTOCK_REFILL_ML=5.0))
         with self.assertRaisesRegex(ValueError, "start at 0"):
             build_plan(config(BATCH_SCHEDULES_MIN=[[10, 30], [0]]))
         with self.assertRaisesRegex(ValueError, "DISPENSE_ORDER"):
@@ -169,6 +169,14 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
         merged = update_substock_record(record, again)
         self.assertEqual(len(merged), len(record))
         self.assertEqual(merged.set_index("vial").loc[first.name.iloc[0], "made_at"], again.made_at.iloc[0])
+
+    def test_emptied_vials_lose_their_record(self):
+        c, first, record, inventory, now = self.leftovers()
+        dye = first.name[first.component == "dye"].tolist()
+        inventory = inventory.assign(vial_volume=[0.0 if n in dye else 5.4 for n in inventory.index])
+        kept, cleared = workflow.drop_empty_records(record, inventory)
+        self.assertEqual(sorted(cleared), sorted(dye))
+        self.assertEqual(sorted(kept.vial), sorted(set(first.name) - set(dye)))
 
     def test_record_round_trips_through_its_file(self):
         import tempfile

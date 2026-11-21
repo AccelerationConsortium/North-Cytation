@@ -128,11 +128,13 @@ import pandas as pd
 from pipetting_data.liquid_registry import load_liquids
 
 
-def test_condition_tip_setting_matches_refill_pipets_for_every_liquid():
+def test_condition_tip_is_opposite_of_refill_pipets_for_every_liquid():
+    # As in calibration: a reused tip (refill_pipets: false) is conditioned; a single-use tip is not
     liquids = load_liquids()
-    assert all(props['condition_tip'] == props['refill_pipets'] for props in liquids.values())
-    assert liquids['glycerol']['condition_tip'] is True
-    assert liquids['water']['condition_tip'] is False
+    assert all(props['condition_tip'] == (not props['refill_pipets']) for props in liquids.values())
+    assert liquids['water']['condition_tip'] is True
+    assert liquids['SDS']['condition_tip'] is True
+    assert liquids['glycerol']['condition_tip'] is False
 
 
 @pytest.fixture
@@ -163,7 +165,7 @@ def test_wellplate_flow_groups_by_tip_and_uses_fresh_tip_per_vial(plate_robot):
     assert doses == [('stock', 0.02, 'small_tip'), ('stock', 0.01, 'small_tip'),
                      ('stock', 0.3, 'large_tip'), ('stock', 0.2, 'large_tip'), ('source', 0.1, 'large_tip')]
     assert plate_robot.remove_pipet.call_count == 3  # Held tip dropped before staging, then one per vial
-    plate_robot.condition_tip.assert_not_called()   # water has condition_tip: false
+    assert plate_robot.condition_tip.call_count == 3  # water conditions once per vial and tip group
 
 
 def test_wellplate_flow_stages_emptiest_small_tip_vial_first_and_returns_home(plate_robot):
@@ -281,7 +283,7 @@ def test_v2v_vials_already_in_place_are_not_moved(v2v_robot):
 def test_wellplate_flow_conditions_once_per_tip_group_for_flagged_liquid(plate_robot):
     plate = pd.DataFrame({'stock': [0.02, 0.04, 0.3]}, index=[0, 1, 2])
     plate_robot.vials['stock']['location_index'] = 46
-    plate_robot.dispense_from_vials_into_wellplate(plate, liquid='glycerol')
+    plate_robot.dispense_from_vials_into_wellplate(plate, liquid='water')
     assert plate_robot.condition_tip.call_args_list == [
         call('stock', volume_per_cycle_mL=0.04, specified_tip='small_tip'),
         call('stock', volume_per_cycle_mL=0.3, specified_tip='large_tip')]
@@ -289,12 +291,12 @@ def test_wellplate_flow_conditions_once_per_tip_group_for_flagged_liquid(plate_r
 
 def test_wellplate_flow_takes_a_liquid_per_vial(plate_robot):
     plate = pd.DataFrame({'stock': [0.1, 0.0], 'source': [0.0, 0.2]}, index=[0, 1])
-    plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'glycerol', 'source': 'water'})
+    plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'water', 'source': 'glycerol'})
     used = [(c.args[0], c.kwargs['liquid']) for c in plate_robot.aspirate_from_vial.call_args_list]
-    assert used == [('stock', 'glycerol'), ('source', 'water')]
-    plate_robot.condition_tip.assert_called_once()  # only glycerol conditions its tip
+    assert used == [('stock', 'water'), ('source', 'glycerol')]
+    plate_robot.condition_tip.assert_called_once()  # only water conditions its tip
     with pytest.raises(ValueError, match="No liquid given for vial"):
-        plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'glycerol'})
+        plate_robot.dispense_from_vials_into_wellplate(plate, liquid={'stock': 'water'})
 
 
 @pytest.mark.parametrize('value, message', [(float('nan'), 'volume missing'), (-0.1, 'negative volume'),
@@ -319,8 +321,8 @@ def test_wellplate_flow_has_no_strategy_argument(plate_robot):
         plate_robot.dispense_from_vials_into_wellplate(pd.DataFrame({'stock': [0.1]}), strategy='serial')
 
 
-@pytest.mark.parametrize('liquid, held, expected', [('glycerol', None, True), ('water', None, False),
-                                                     ('glycerol', 'large_tip', False)])
+@pytest.mark.parametrize('liquid, held, expected', [('water', None, True), ('glycerol', None, False),
+                                                     ('water', 'large_tip', False)])
 def test_vial_to_vial_conditions_fresh_tip_for_flagged_liquid(robot, liquid, held, expected):
     robot.HELD_PIPET_TYPE = held
     robot.condition_tip = MagicMock()

@@ -115,10 +115,15 @@ def create_session(vial_files):
         for index, source in enumerate(sorted(sources)):
             target = root / "vials" / f"{index}_{Path(source).name}"
             shutil.copy2(source, target)
-            # The copy gets container IDs so the simulation exercises sample tracking; the
-            # real file is never changed here (a live run fills its own IDs at start).
+            # The copy gets container IDs so the simulation exercises sample tracking, and,
+            # as at a live run start, an emptied vial (0 mL) gets a new ID. The real file is
+            # never changed here (a live run fills its own IDs at start).
             from experiment_tracking.sample_tracking import prepare_vial_file
-            prepare_vial_file(target)
+            prepare_vial_file(target, retire_emptied=True)
+            # Files a workflow keeps next to the vial file (<vial file>_*.yaml, e.g. the
+            # substock record) are copied under the copy's name so the workflow finds them.
+            for sidecar in Path(source).parent.glob(f"{Path(source).stem}_*.yaml"):
+                shutil.copy2(sidecar, target.with_name(target.stem + sidecar.name[len(Path(source).stem):]))
             mapping[source] = str(target.resolve())
         (root / "session.json").write_text(
             json.dumps({"simulation": True, "vial_files": mapping}, indent=2), encoding="utf-8"
