@@ -1,9 +1,9 @@
 # CMC / EE / K / solubilization workflow — plan
 
-Updated 2026-11-20 · Status: first run decided (SDS + coumarin-6, see **Current run**);
-workflow `surfactant_dye_cmc` built, simulated and queued
-(`scheduler/config_lists/surfactant_dye_cmc_queue.yaml`). Missing before a live run: the
-Gen5 protocol paths (see Measurement). Target: weekend of 2026-11-21.
+Updated 2026-11-21 · Status: first live run done 2026-11-20 (SDS + coumarin-6, reads to
+480 min); four issues open before the next run (see **First live run**). Workflow
+`surfactant_dye_cmc` built, simulated and queued
+(`scheduler/config_lists/surfactant_dye_cmc_queue.yaml`).
 
 ## Goal
 
@@ -62,7 +62,7 @@ Rules:
 |---|---|---|---|
 | `Coumarin_96.prt` (existing) | fluorescence 485 / 530 | `FLUORESCENCE_PROTOCOL_FILE` (blank = this) | `results.csv` |
 | `Coumarin_Abs_96.prt` | absorbance 460 (peak), 750 (scatter) | `ABSORBANCE_PROTOCOL_FILE` | `results.csv` |
-| `Coumarin_FluorSpectrum_96.prt` | ex 450, em 480-650, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
+| `Coumarin_FluorSpectrum_96.prt` | ex 450, em 490-700, 10 nm (20 nm band), manual gain 75 | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
 | `Coumarin_AbsSpectrum_96.prt` | absorbance 400-750, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
 
 - One read type per protocol: the reader wrapper classifies a protocol by its first read
@@ -153,6 +153,53 @@ Spec: three blocks on one 96-well black plate with clear bottom (`PLATE_KIND: fl
   fluorescence_485_530 [--absorbance <col> --epsilon <1/M/cm>]`: CMC and K per read,
   dye x SDS slopes, stock check, time course. Descriptive for loading: not a capacity or
   encapsulation measure.
+
+### First live run (2026-11-20, reads to 480 min)
+
+Run: `output/surfactant_dye_cmc/20261120_201530_235719_LIVE_wells-94`; preliminary plots
+and scripts in its `prelim_analysis_t480/`.
+
+Open issues (to check on the robot):
+
+1. **Absorbance all invalid:** every well, both protocols (fixed 460/750 = -99999,
+   spectrum = -636), blanks included. Ailsa's 600 nm reads on these plates were valid
+   (~0.038 OD water blank). The preview only ran on an empty plate (0.0000), so it proved
+   nothing. Next: run `CMC_Absorbance_96` and `Coumarin_Abs_96` on this plate; only
+   Coumarin fails -> new protocol files; both fail -> reader or plate.
+2. **Fluorescence spectrum saturates:** emission peak 490-590 nm overflows (~100k cap) in
+   every well with dye >= 4 uM and SDS >= 10 mM, and the 12-32 uM ethanol wells. Next:
+   check whether Gen5 allows Extended range for spectra (the fixed read uses it, which is
+   why it reaches 8M without saturating); otherwise lower gain from 75 (start ~55, test on
+   a 25 mM SDS / 32 uM well, aim for a 50-70k peak). Keep 20 nm bandwidth; check the
+   excitation bandwidth ("450/0.0").
+3. **`dye_sub_4` (8 uM) had no dye:** every well from it reads at blank (all 1 uM wells,
+   so the whole CMC block, and the 4 uM ethanol well). Code, recipe math and log all
+   correct (0.333 mL `dye_sub_2` -> `dye_sub_4`, vortexed; every dispense matches
+   `planned_wells.csv`). Physical cause: check the vial (clear = transfer failed;
+   yellow-green = wrong vial in rack 15).
+4. **Two collapsed wells, B2 and B9 (16 mM SDS, 32 and 12 uM dye):** dosed (bright at
+   0-60 min), then ~1000x drop by 120 min. Look for dye crashed out, film or bubble.
+
+Learned:
+
+- The fixed 485/530 read is fine: Extended range + auto gain, no saturation, stable over
+  time (4 uM wells 2.1-2.5M at every read).
+- Below the CMC the emission peaks near 620 nm; in micelles near 505 nm. With unsaturated
+  spectra the ratio may be a dose-independent CMC readout (to test).
+- 4 uM appears fully taken up from 10 mM SDS up (same brightness at 10, 16, 25 mM) and is
+  stable; 12-32 uM lose signal over time, so excess dye seems to leave solution slowly
+  (coumarin-6 forms microcrystals in water). Loading (dye per micelle) alone does not
+  explain brightness.
+- The ethanol series is sublinear from 12-32 uM; consistent with inner filter (estimated
+  A ~0.7 at 32 uM), which absorbance should confirm. It is the optical control for the
+  micelle wells.
+- Replicates otherwise agree within ~1.3x at t0 and ~1.1x by 480 min.
+
+**Suggestion (not decided):** run the CMC block at a second dye level (4 uM) beside 1 uM,
+2 replicates each (56 wells instead of 42). The apparent CMC depends on dye binding
+strength (Al-Soufi & Novo 2021, Molecules 26:5339); two dye levels through the same SDS
+series would show whether the CMC shifts with dye and constrain K directly. Keep 12 and
+32 uM in the dye matrix: that is where the time-dependent loss shows.
 
 ### Earlier proposal: SDS + Nile Red (superseded by the current run)
 

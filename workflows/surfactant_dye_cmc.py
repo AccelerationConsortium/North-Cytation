@@ -44,7 +44,7 @@ sys.path.append("../utoronto_demo")  # Always first, before any local imports
 
 import math
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -919,7 +919,8 @@ def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir, earlier=None)
     t0 = time.monotonic()
     clock = f"batch{batch}"
     mark_clock_start(lash_e.logger, clock)
-    for minutes in c["BATCH_SCHEDULES_MIN"][batch - 1]:
+    schedule = c["BATCH_SCHEDULES_MIN"][batch - 1]
+    for i, minutes in enumerate(schedule):
         mark_wait_until(lash_e.logger, clock, minutes * 60)
         wait = t0 + minutes * 60 - time.monotonic()
         if wait > 0 and not lash_e.simulate:
@@ -953,6 +954,13 @@ def measure_batch(lash_e, c, wells, batch, reads, rng, output_dir, earlier=None)
         if raw is not None:
             raw.to_csv(output_dir / f"raw_batch{batch}_t{minutes}.csv")
         lash_e.logger.info(f"Batch {batch}: read at t={minutes} min")
+        if i + 1 < len(schedule):
+            next_at = datetime.now() + timedelta(seconds=t0 + schedule[i + 1] * 60 - time.monotonic())
+            after = f"next t={schedule[i + 1]} min at ~{next_at:%H:%M}"
+        else:
+            after = "batch done"
+        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME}: batch {batch} t={minutes} min read "
+                                     f"({i + 1}/{len(schedule)}, {len(wells)} wells); {after}")
     return pd.concat(results, ignore_index=True)
 
 
@@ -1062,9 +1070,9 @@ def execute(config=None, show_gui=True):
             results.append(measure_batch(lash_e, c, wells, batch, reads, read_rng, output_dir, earlier=results))
             used |= set(wells.well_index)
             sources = after_batch(planned)
-            _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME}: batch {batch} read ({len(wells)} wells)")
         lash_e.discard_used_wellplate()
         logger.info(f"Workflow complete; results in {output_dir}")
+        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} complete; results in {output_dir.name}")
         return output_dir
     except (Exception, KeyboardInterrupt) as e:
         logger.exception(f"Workflow failed with error: {e}")

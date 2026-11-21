@@ -225,20 +225,30 @@ class Biotek_Wrapper:
         
         Parses the protocol XML to get the wavelength scan parameters
         and generates the complete list of wavelengths to be measured.
-        
+        Absorbance spectra use Wavelength<Start|Stop|Step>nm; fluorescence spectra use
+        Emission... (emission scan) or Excitation... (excitation scan), where a value can
+        carry its bandwidth ("490/20" means 490 nm, 20 nm band).
+
         Args:
             plate: Biotek plate object with spectral scan procedure
-            
+
         Returns:
             list: List of wavelength values (e.g., [280, 285, 290, ...])
         """
         current_procedure = plate.get_procedure()
         root = ET.fromstring(current_procedure)
 
-        # Extract wavelength scan parameters
-        start_nm = int(root.find(".//WavelengthStartnm").text)
-        stop_nm = int(root.find(".//WavelengthStopnm").text)
-        step_nm = int(root.find(".//WavelengthStepnm").text)
+        def nm(tag):
+            return int(float(root.find(f".//{tag}").text.split("/")[0]))
+
+        for scan in ("Wavelength", "Emission", "Excitation"):
+            if root.find(f".//{scan}Startnm") is not None:
+                break
+        else:
+            raise ValueError("Spectrum protocol has no Wavelength, Emission or Excitation start/stop/step")
+        start_nm = nm(f"{scan}Startnm")
+        stop_nm = nm(f"{scan}Stopnm")
+        step_nm = nm(f"{scan}Stepnm")
 
         # Generate complete wavelength list
         wavelengths = list(range(start_nm, stop_nm + 1, step_nm))
