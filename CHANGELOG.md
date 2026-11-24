@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026-11-23] - Forced-Parameter Pipetting
+
+- New workflow `forced_parameter_pipetting`: pipettes rows of liquid, volume and a full parameter
+  set exactly as given (liquid=None), back into the source vial on the scale, and saves every
+  weighed dispense to output/forced_parameter_pipetting/<CAMPAIGN_ID>/measurements.csv. Same
+  campaign ID resumes. Rows are checked against parameter_limits, tip capacity and the pipetting
+  pump's volume; tips are shared per liquid and tip type (tip_group column for fresh tips) and
+  conditioned per liquids.yaml; MAX_RUN_MINUTES stops in time; reservoir liquids are topped up first.
+- Optional `blowout_speed`: `pipet_dispense` can push blowout air at a given speed. Off unless a
+  workflow sets `robot.APPLY_BLOWOUT_SPEED = True` (forced_parameter_pipetting's APPLY_BLOWOUT_SPEED
+  config, default false), so every existing run behaves as before (air pushed at dispense_speed).
+
 ## [2026-11-20] - Water Validation Refill
 
 - Refill water validation source vials from the configured reservoir before

@@ -2056,14 +2056,17 @@ class North_Robot(North_Base):
             time.sleep(wait_time)
 
 #New dispense function
-    def pipet_dispense(self, amount, wait_time=0.0, blowout_vol=0.0):
+    def pipet_dispense(self, amount, wait_time=0.0, blowout_vol=0.0, blowout_speed=None):
         """
         Internal method: Dispense liquid with a pipet.
-        
+
         Args:
             amount (float): Volume to dispense in mL
             wait_time (float): Time to wait after dispensing in seconds
             blowout_vol (float): Volume for blowout after dispensing in mL
+            blowout_speed (int, optional): Pump speed code for pushing the blowout air out.
+                None (the default, and what every caller passes unless the robot's
+                APPLY_BLOWOUT_SPEED is True) keeps today's behaviour: pushed at the dispense speed.
         """
         self.logger.debug(f"Dispensing {amount:.3f} mL then waiting {wait_time} s")
 
@@ -2102,14 +2105,24 @@ class North_Robot(North_Base):
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
             
-            # Restore original speed for dispense
-            self.adjust_pump_speed(0, current_speed)
-            
+            # Push the air out at blowout_speed if given, else at the dispense speed (default)
+            self.adjust_pump_speed(0, blowout_speed if blowout_speed is not None else current_speed)
+
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
             self.c9.dispense_ml(0, blowout_vol)
+            if blowout_speed is not None:
+                self.adjust_pump_speed(0, current_speed)
 
         if not self.simulate:
             time.sleep(wait_time)
+
+    def _blowout_speed(self, parameters):
+        """blowout_speed to push blowout air with, or None for today's behaviour (dispense speed).
+        Off unless a workflow sets robot.APPLY_BLOWOUT_SPEED = True (forced_parameter_pipetting's
+        APPLY_BLOWOUT_SPEED config); calibration files' blowout_speed values are otherwise ignored."""
+        if not getattr(self, "APPLY_BLOWOUT_SPEED", False):
+            return None
+        return getattr(parameters, "blowout_speed", None)
 
     #Select appropriate tip type based on volume or use specified tip type
     def select_pipet_tip(self, volume, specified_tip_type=None):
@@ -2962,7 +2975,8 @@ class North_Robot(North_Base):
             self.pipet_aspirate(actual_aspirate_vol, wait_time=wait_time)
             self._track_aspirate(self._well_container_id(wp_index), volume)
         else:
-            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol,
+                                blowout_speed=self._blowout_speed(parameters))
             self._track_dispense(self._well_container_id(wp_index), volume, liquid)
         self.save_robot_status()  # keeps the tip's tracked contents across a restart
 
@@ -3226,7 +3240,8 @@ class North_Robot(North_Base):
         scale.mark_start()
         
         # Perform the actual dispensing
-        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol,
+                            blowout_speed=self._blowout_speed(parameters))
         
         scale.mark_end()
         readings = scale.stop()
@@ -3446,7 +3461,8 @@ class North_Robot(North_Base):
                                optimized_parameters.post_asp_air_vol)
 
             #Dispense and then wait
-            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol,
+                                blowout_speed=self._blowout_speed(optimized_parameters))
             self._track_dispense(self._well_container_id(dest_wp_num_array[i]), amount_mL, liquid)
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
