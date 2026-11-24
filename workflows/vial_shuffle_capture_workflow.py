@@ -4,7 +4,7 @@ Run from the repository root: python workflows/vial_shuffle_capture_workflow.py
 Configuration uses the normal workflow YAML/operator review. See
 docs/workflows/vial_shuffle_capture.md for output and future verification contracts.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import math
 from pathlib import Path
@@ -25,6 +25,9 @@ SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/sample_input_vials.csv"
 ITERATIONS = 10
 TARGET_EXPERIMENT_TIME_HOURS = 0.0  # Target cycle spacing includes work; 0 runs without pacing
+RUN_UNTIL = ""  # "08:00" (next time the clock reads that) or "2026-11-22 08:00"; "" = run ITERATIONS cycles
+MAX_RUN_HOURS = 0.0  # Stop starting cycles after this long; 0 = no limit
+RESTORE_RESERVE_MINUTES = 10.0  # Extra time kept free before the deadline for restoring positions
 MIN_VIALS_MOVED = 3
 MAX_VIALS_MOVED = 8
 MIN_OFF_RACK = 0
@@ -40,7 +43,8 @@ _SAVE_SIMULATION_OUTPUT = False
 
 _WORKFLOW_NAME = Path(__file__).stem
 _CONFIG_KEYS = [
-    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ITERATIONS", "TARGET_EXPERIMENT_TIME_HOURS", "MIN_VIALS_MOVED",
+    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "ITERATIONS", "TARGET_EXPERIMENT_TIME_HOURS",
+    "RUN_UNTIL", "MAX_RUN_HOURS", "RESTORE_RESERVE_MINUTES", "MIN_VIALS_MOVED",
     "MAX_VIALS_MOVED", "MIN_OFF_RACK", "MAX_OFF_RACK", "CAMERA_FOLDER",
     "CAPTURE_TIMEOUT_S", "CAPTURE_ATTEMPTS", "SETTLE_SECONDS", "RANDOM_SEED",
 ]
@@ -48,7 +52,10 @@ _CONFIG_KEYS = [
 _CONFIG_DOCS = {
     "SIMULATE": {"description": "Run the shuffle sequence without controlling hardware or saving capture outputs.", "unit": None, "affects": []},
     "INPUT_VIAL_STATUS_FILE": {"description": "CSV describing the vial positions to shuffle.", "unit": None, "affects": ["vials"], "shares": "vial_layout"},
-    "ITERATIONS": {"description": "Number of shuffle-and-capture cycles to run.", "unit": None, "affects": ["duration"]},
+    "ITERATIONS": {"description": "Number of shuffle-and-capture cycles to run (the most cycles when RUN_UNTIL or MAX_RUN_HOURS is set).", "unit": None, "affects": ["duration"]},
+    "RUN_UNTIL": {"description": "Run as many cycles as fit before this time, then restore positions: a clock time such as 08:00 (its next occurrence) or a date and time. Empty runs ITERATIONS cycles.", "unit": None, "affects": ["duration"]},
+    "MAX_RUN_HOURS": {"description": "Run as many cycles as fit in this many hours, then restore positions. 0 means no limit.", "unit": "h", "affects": ["duration"]},
+    "RESTORE_RESERVE_MINUTES": {"description": "Extra time kept free before the deadline, beyond the estimated restore time.", "unit": "min", "affects": ["duration"]},
     "TARGET_EXPERIMENT_TIME_HOURS": {"description": "Target spacing for the complete sequence of shuffle cycles.", "unit": "h", "affects": ["duration"]},
     "MIN_VIALS_MOVED": {"description": "Minimum number of vials moved during each shuffle.", "unit": None, "affects": ["duration", "vials"]},
     "MAX_VIALS_MOVED": {"description": "Maximum number of vials moved during each shuffle.", "unit": None, "affects": ["duration", "vials"]},
@@ -82,6 +89,16 @@ def _validate(config, robot):
         raise ValueError("CAPTURE_TIMEOUT_S must be positive")
     if not math.isfinite(config["TARGET_EXPERIMENT_TIME_HOURS"] * 3600):
         raise ValueError("TARGET_EXPERIMENT_TIME_HOURS is too large to convert to seconds")
+    for key in ("MAX_RUN_HOURS", "RESTORE_RESERVE_MINUTES"):
+        value = config.get(key, 0.0)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key} must be a finite nonnegative number")
+    if not isinstance(config.get("RUN_UNTIL", ""), str):
+        raise ValueError("RUN_UNTIL must be text such as 08:00 or 2026-11-22 08:00")
+    if config.get("RUN_UNTIL", "").strip():
+        _deadline_from(config["RUN_UNTIL"], datetime.now())
+    if _deadline_mode(config) and config["TARGET_EXPERIMENT_TIME_HOURS"]:
+        raise ValueError("Use RUN_UNTIL/MAX_RUN_HOURS or TARGET_EXPERIMENT_TIME_HOURS, not both")
     if robot.HELD_PIPET_TYPE is not None or robot.GRIPPER_STATUS is not None:
         raise ValueError("Shuffle requires an empty gripper and no held pipette")
     slots = available_slots(robot)
@@ -92,6 +109,47 @@ def _validate(config, robot):
     if config["MIN_OFF_RACK"] > min(len(names), off_capacity):
         raise ValueError("MIN_OFF_RACK exceeds available vials or off-rack capacity")
     return slots, names
+
+
+def _deadline_mode(config):
+    return bool(config.get("RUN_UNTIL", "").strip()) or bool(config.get("MAX_RUN_HOURS", 0))
+
+
+def _deadline_from(text, now):
+    """The wall-clock deadline RUN_UNTIL names: "HH:MM" is its next occurrence after now."""
+    text = text.strip()
+    try:
+        clock = datetime.strptime(text, "%H:%M")
+    except ValueError:
+        try:
+            when = datetime.fromisoformat(text)
+        except ValueError:
+            raise ValueError("RUN_UNTIL must look like 08:00 or 2026-11-22 08:00") from None
+        if when.tzinfo is not None:
+            when = when.astimezone().replace(tzinfo=None)
+        if when <= now:
+            raise ValueError(f"RUN_UNTIL {text} is already past")
+        return when
+    when = now.replace(hour=clock.hour, minute=clock.minute, second=0, microsecond=0)
+    return when if when > now else when + timedelta(days=1)
+
+
+def _seconds_left(config, started_wall, started, now):
+    """Seconds until the earliest of RUN_UNTIL and MAX_RUN_HOURS (monotonic clock), or None."""
+    limits = []
+    if config.get("RUN_UNTIL", "").strip():
+        limits.append((_deadline_from(config["RUN_UNTIL"], started_wall) - started_wall).total_seconds())
+    if config.get("MAX_RUN_HOURS", 0):
+        limits.append(config["MAX_RUN_HOURS"] * 3600)
+    return min(limits) - (now - started) if limits else None
+
+
+def _restore_estimate(pairs, original, current):
+    """Seconds to put displaced vials back: their number times the slowest seen seconds per moved vial."""
+    displaced = sum(current.get(name) != slot for name, slot in original.items())
+    per_vial = max((pair["move_seconds"] / pair["vials_moved"] for pair in pairs
+                    if pair.get("vials_moved") and pair.get("move_seconds") is not None), default=0.0)
+    return displaced * per_vial
 
 
 def _write_json(path, value):
@@ -149,9 +207,10 @@ def _simulated_capture(path, _camera_folder, _timeout):
 
 
 def _notify(lash_e, summary):
+    requested = "until deadline" if "run_until" in summary else summary["requested"]
     message = (
         f"Vial shuffle capture {summary['status']} | "
-        f"images={summary['images_saved']}/{summary['requested']} | "
+        f"images={summary['images_saved']}/{requested} | "
         f"original positions restored={summary['restored']}"
     )
     if summary["verification_enabled"]:
@@ -205,14 +264,34 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
         _write_json(directory / "config.json", config)
     rng = random.Random(config["RANDOM_SEED"])
     interval_seconds = config["TARGET_EXPERIMENT_TIME_HOURS"] * 3600 / config["ITERATIONS"]
+    deadline_mode = _deadline_mode(config)
+    # Simulation has no real clock to run against: check the sequence with a few cycles.
+    cycles = min(config["ITERATIONS"], 3) if deadline_mode and lash_e.simulate else config["ITERATIONS"]
+    started_wall = datetime.now()
     summary = dict(status="running", requested=config["ITERATIONS"], images_saved=0,
                    target_experiment_time_hours=config["TARGET_EXPERIMENT_TIME_HOURS"],
                    sample_interval_seconds=interval_seconds,
                    verification_enabled=verifier is not None, verified=0, matches=0,
                    mismatches=0, verification_errors=0, restored=False, pairs=[])
+    if deadline_mode:
+        summary.update(run_until=config.get("RUN_UNTIL", ""), max_run_hours=config.get("MAX_RUN_HOURS", 0),
+                       stopped_for_deadline=False)
     started = time.monotonic()
     try:
-        for index in range(1, config["ITERATIONS"] + 1):
+        for index in range(1, cycles + 1):
+            if deadline_mode and summary["pairs"] and not lash_e.simulate:
+                now = time.monotonic()
+                left = _seconds_left(config, started_wall, started, now)
+                next_cycle = max(pair["cycle_seconds"] for pair in summary["pairs"])
+                restore = _restore_estimate(summary["pairs"], original, positions(robot.VIAL_DF))
+                reserve = config.get("RESTORE_RESERVE_MINUTES", 0) * 60
+                if next_cycle + restore + reserve > left:
+                    summary["stopped_for_deadline"] = True
+                    robot.logger.info(
+                        "Stopping after %s cycles: next cycle (~%.0f s) plus restoring (~%.0f s) and %.0f s "
+                        "reserve would pass the deadline (%.0f s left)", index - 1, next_cycle, restore,
+                        reserve, left)
+                    break
             cycle_started = time.monotonic()
             targets = plan_shuffle(
                 positions(robot.VIAL_DF), names, slots, config["MIN_VIALS_MOVED"],
@@ -220,6 +299,7 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                 config["MAX_OFF_RACK"], rng,
             )
             transfers = apply_transfers(robot, targets, slots)
+            moved_at = time.monotonic()
             if save:
                 photo, csv = _capture_pair(robot, directory, index, config, capture)
                 summary["images_saved"] += 1
@@ -228,7 +308,8 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
                 photo = csv = None
             pair = dict(index=index, photo=photo and photo.name, vial_csv=csv and csv.name,
                         vials_moved=len(targets), transfers=transfers,
-                        off_rack=sum(positions(robot.VIAL_DF)[name][0] != _RACK for name in names))
+                        off_rack=sum(positions(robot.VIAL_DF)[name][0] != _RACK for name in names),
+                        move_seconds=moved_at - cycle_started)
             summary["pairs"].append(pair)
             if verifier is not None and save:
                 try:
@@ -250,7 +331,7 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
             deadline = (cycle_started if lash_e.simulate else started + (index - 1) * interval_seconds) + interval_seconds
             remaining = max(0.0, deadline - cycle_finished) if interval_seconds else 0.0
             pair["schedule_lag_seconds"] = max(0.0, cycle_finished - deadline) if interval_seconds else 0.0
-            pair["wait_seconds"] = remaining if index < config["ITERATIONS"] else 0.0
+            pair["wait_seconds"] = remaining if index < cycles else 0.0
             if pair["schedule_lag_seconds"] and not lash_e.simulate:
                 robot.logger.warning(
                     "Sample %s finished %.3f seconds behind target; continuing without dropping samples",
@@ -259,12 +340,14 @@ def run_collection(lash_e, config, directory, *, capture=None, verifier=None):
             if not lash_e.simulate:
                 # Progress record for long live runs; simulation writes once at the end.
                 _write_json(directory / "summary.json", summary)
-            if index < config["ITERATIONS"]:
+            if index < cycles:
                 # Include manifest-save time when calculating the actual live wait.
                 wait = max(0.0, deadline - time.monotonic()) if not lash_e.simulate and interval_seconds else remaining
                 _wait_between_samples(lash_e, wait)
+        restore_started = time.monotonic()
         apply_transfers(robot, original, slots)
         robot.move_home()
+        summary["restore_seconds"] = time.monotonic() - restore_started
         summary["restored"] = True
         summary["status"] = "completed"
     except BaseException as error:

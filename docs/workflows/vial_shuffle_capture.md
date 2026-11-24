@@ -126,3 +126,14 @@ Hardware-free checks:
 ```powershell
 python -m unittest discover -s software_tests -p test_vial_shuffle_capture.py
 ```
+
+## Run until a deadline (added 2026-11-21, REQ-F71E1E)
+
+Set `RUN_UNTIL` (a clock time such as `08:00`, meaning its next occurrence, or a date and time such
+as `2026-11-22 08:00`) and/or `MAX_RUN_HOURS` to collect as many photo/CSV pairs as fit, with no
+pacing. `ITERATIONS` is then only an upper limit (set it high). Before each cycle the workflow
+checks that the slowest cycle so far, plus restoring every displaced vial (displaced vials times the
+slowest seen seconds per moved vial) and `RESTORE_RESERVE_MINUTES`, still fits; otherwise it stops,
+restores original positions and ends as completed with `stopped_for_deadline: true`. Cannot be
+combined with `TARGET_EXPERIMENT_TIME_HOURS`. In simulation it runs 3 cycles to check the sequence,
+so a simulated estimate does not show the real length: plan the run as lasting until the deadline.

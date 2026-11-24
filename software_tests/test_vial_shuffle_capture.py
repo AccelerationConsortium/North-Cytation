@@ -338,5 +338,82 @@ class ShuffleTests(unittest.TestCase):
         self.assertTrue(summary["restored"])
 
 
+class DeadlineTests(unittest.TestCase):
+    """REQ-F71E1E: as many photo/CSV pairs as fit overnight, then restore before the deadline."""
+
+    def run_live(self, cycle_seconds, **overrides):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=False, logger=robot.logger)
+        now = [0.0]
+        moves = [0]
+        original_move = robot.move_vial_to_location
+
+        def move(*args):
+            now[0] += 10.0  # 10 s per vial moved
+            moves[0] += 1
+            original_move(*args)
+
+        robot.move_vial_to_location = move
+
+        def capture(path, *_):
+            now[0] += cycle_seconds
+            path.write_bytes(b"photo")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(workflow.time, "monotonic", side_effect=lambda: now[0]),                     patch.object(workflow.time, "sleep"), patch.object(workflow, "_notify"):
+                summary = workflow.run_collection(
+                    coordinator, config(SIMULATE=False, ITERATIONS=10000, **overrides),
+                    Path(temporary) / "run", capture=capture)
+        return summary, now[0], robot
+
+    def test_max_run_hours_stops_in_time_to_restore(self):
+        summary, finished, robot = self.run_live(60.0, MAX_RUN_HOURS=1.0, RESTORE_RESERVE_MINUTES=5.0)
+        self.assertEqual(summary["status"], "completed")
+        self.assertTrue(summary["stopped_for_deadline"] and summary["restored"])
+        self.assertGreater(summary["images_saved"], 10)
+        self.assertLess(summary["images_saved"], 10000)
+        self.assertLessEqual(finished, 3600.0)  # restored before the hour was up
+        self.assertEqual({n: s for n, s in positions(robot.VIAL_DF).items()},
+                         {f"v{i}": (RACK, i) for i in range(10)})
+
+    def test_run_until_clock_time_uses_its_next_occurrence(self):
+        from datetime import datetime
+        evening = datetime(2026, 11, 21, 17, 0)
+        self.assertEqual(workflow._deadline_from("08:00", evening), datetime(2026, 11, 22, 8, 0))
+        self.assertEqual(workflow._deadline_from("18:30", evening), datetime(2026, 11, 21, 18, 30))
+        self.assertEqual(workflow._deadline_from("2026-11-22 08:00", evening), datetime(2026, 11, 22, 8, 0))
+        with self.assertRaises(ValueError):
+            workflow._deadline_from("2026-11-20 08:00", evening)
+        with self.assertRaises(ValueError):
+            workflow._deadline_from("8 am", evening)
+
+    def test_bad_deadline_settings_are_rejected_before_motion(self):
+        for overrides in ({"RUN_UNTIL": "soon"}, {"MAX_RUN_HOURS": -1}, {"RUN_UNTIL": 8},
+                          {"MAX_RUN_HOURS": 2.0, "TARGET_EXPERIMENT_TIME_HOURS": 1.0},
+                          {"RESTORE_RESERVE_MINUTES": float("nan")}):
+            with self.subTest(**{k: str(v) for k, v in overrides.items()}):
+                robot = Robot()
+                with self.assertRaises(ValueError):
+                    workflow._validate(config(**overrides), robot)
+                self.assertEqual(robot.moves, [])
+
+    def test_simulation_checks_the_sequence_with_a_few_cycles(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=True, logger=robot.logger)
+        with tempfile.TemporaryDirectory() as temporary, patch.object(workflow, "_notify"):
+            summary = workflow.run_collection(coordinator, config(ITERATIONS=10000, RUN_UNTIL="08:00"),
+                                              Path(temporary) / "run")
+        self.assertEqual(len(summary["pairs"]), 3)
+        self.assertTrue(summary["restored"])
+
+    def test_fixed_count_runs_are_unchanged(self):
+        robot = Robot()
+        coordinator = SimpleNamespace(nr_robot=robot, simulate=True, logger=robot.logger)
+        with tempfile.TemporaryDirectory() as temporary, patch.object(workflow, "_notify"):
+            summary = workflow.run_collection(coordinator, config(ITERATIONS=7), Path(temporary) / "run")
+        self.assertEqual(len(summary["pairs"]), 7)
+        self.assertNotIn("stopped_for_deadline", summary)
+
+
 if __name__ == "__main__":
     unittest.main()
