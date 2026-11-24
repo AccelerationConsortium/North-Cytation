@@ -104,16 +104,18 @@ SUBSTOCK_MAX_AGE_HOURS = 72.0
 #   batch: batches are dispensed and read in order, each on its own schedule
 BLOCKS = [
     # Block 3 of the spec: dye in ethanol (stock concentration, linearity); read once.
-    {"name": "stock_check", "batch": 1, "matrix": "solvent", "replicates": 1,
-     "surfactant_mM": [0.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 20.0, 32.0]},
+    {"name": "stock_check", "batch": 1, "matrix": "solvent", "replicates": 2,
+     "surfactant_mM": [0.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 32.0]},
     # Block 1: CMC series at 1 uM dye.
     {"name": "cmc", "batch": 2, "matrix": "water", "replicates": 3,
-     "surfactant_mM": [0.0, 2.0, 5.0, 7.0, 7.6, 8.0, 8.4, 8.8, 9.5, 10.0, 11.0, 16.0, 22.0, 32.0],
+     "surfactant_mM": [0.0, 5.0, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 11.0, 12.0, 14.0, 16.0, 32.0],
      "dye_uM": [1.0]},
-    # Block 2: dye x SDS matrix; the two pairs already in the CMC block are skipped.
+    # Block 2: dye x SDS matrix at SDS levels from the CMC series. 1 uM: all in the CMC
+    # block. 0 uM: one blank, at 0 mM SDS.
     {"name": "dye_matrix", "batch": 2, "matrix": "water", "replicates": 2,
-     "surfactant_mM": [0.0, 6.0, 10.0, 16.0, 25.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 32.0],
-     "skip": [[0.0, 1.0], [16.0, 1.0]]},
+     "surfactant_mM": [0.0, 7.5, 8.0, 8.5, 9.0, 10.0, 12.0], "dye_uM": [0.0, 1.0, 4.0, 12.0, 32.0],
+     "skip": [[s, 1.0] for s in [0.0, 7.5, 8.0, 8.5, 9.0, 10.0, 12.0]]
+             + [[s, 0.0] for s in [7.5, 8.0, 8.5, 9.0, 10.0, 12.0]]},
 ]
 
 # Reads: one schedule (minutes after that batch is dispensed) per batch, in batch order.
@@ -676,7 +678,8 @@ def simulate_read(wells, label, c, rng):
         channel = next(iter(_DYE_PROTOCOLS[c["DYE"]]["raw_column_mapping"]))  # e.g. 485_530
         data = {channel: (50 + dye * (100 + 2000 * bound)) * noise(len(wells))}
     else:
-        data = {"peak": (0.04 + dye * 0.05 * 0.6 * noise(len(wells))),
+        peak = _DYE_PROTOCOLS[c["DYE"]]["absorbance_column"].removeprefix("absorbance_")  # e.g. 460
+        data = {peak: (0.04 + dye * 0.05 * 0.6 * noise(len(wells))),
                 "750": np.full(len(wells), 0.04)}
     frame = pd.DataFrame(data, index=wells.well_position.to_numpy())
     frame.columns = pd.MultiIndex.from_tuples([(f"rep1_{label}", col) for col in frame.columns])
@@ -998,6 +1001,31 @@ def _send_workflow_slack(lash_e, message):
         lash_e.logger.warning(f"Slack notification failed (non-fatal): {error}")
 
 
+def run_analysis(c, output_dir, started, simulate, logger):
+    """Run analysis/surfactant_dye_cmc_analysis.py on the finished run (output_dir/analysis).
+    Live runs first save the room environment (used for the evaporation estimate; the run
+    logger saves it again at the very end). A failed analysis is a warning: the data are
+    saved, and it can be rerun by hand."""
+    from workflows.surfactant_grid_ailsa import _DYE_PROTOCOLS
+    from analysis.surfactant_dye_cmc_analysis import analyze
+    from experiment_tracking.environment_metadata import export_environment
+    dye = _DYE_PROTOCOLS[c["DYE"]]
+    if not simulate:
+        try:
+            export_environment(output_dir, started, datetime.now())
+        except Exception as e:
+            logger.warning(f"Could not save environment data before the analysis ({type(e).__name__}: {e})")
+    try:
+        analyze(output_dir, dye["primary_metric"],
+                dye["absorbance_column"] if c["ABSORBANCE_PROTOCOL_FILE"] else None,
+                dye["epsilon_per_M_cm"] if c["ABSORBANCE_PROTOCOL_FILE"] else None, logger=logger)
+    except Exception as e:
+        logger.warning(f"Analysis failed ({type(e).__name__}: {e}); data are saved. Rerun: "
+                       f"python analysis/surfactant_dye_cmc_analysis.py \"{output_dir}\" "
+                       f"--fluorescence {dye['primary_metric']} --absorbance {dye.get('absorbance_column')} "
+                       f"--epsilon {dye.get('epsilon_per_M_cm')}")
+
+
 def execute(config=None, show_gui=True):
     """Plan, make substocks, dispense and read each batch on one plate."""
     from master_usdl_coordinator import Lash_E
@@ -1045,6 +1073,7 @@ def execute(config=None, show_gui=True):
         output_dir = (Path(__file__).resolve().parents[1] / "output" / _WORKFLOW_NAME /
                       f"{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{mode}_wells-{len(plan['wells'])}")
         output_dir.mkdir(parents=True, exist_ok=False)
+        started = datetime.now()
         lash_e.save_run_info(output_dir)
         plan["wells"].to_csv(output_dir / "planned_wells.csv", index=False)
         plan["recipes"].to_csv(output_dir / "planned_substocks.csv", index=False)
@@ -1086,6 +1115,7 @@ def execute(config=None, show_gui=True):
             used |= set(wells.well_index)
             sources = after_batch(planned)
         lash_e.discard_used_wellplate()
+        run_analysis(c, output_dir, started, lash_e.simulate, logger)
         logger.info(f"Workflow complete; results in {output_dir}")
         _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} complete; results in {output_dir.name}")
         return output_dir

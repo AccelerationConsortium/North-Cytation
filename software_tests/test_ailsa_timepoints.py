@@ -115,7 +115,7 @@ def test_ordered_reads_use_singleton_requests_for_both_assays():
     ("dye", "measurement_column"),
     (
         ("nile-red", "fluorescence_550_648"),
-        ("coumarin-6", "fluorescence_485_530"),
+        ("coumarin-6", "fluorescence_470_510"),
     ),
 )
 def test_intensity_dye_simulation_returns_synthetic_protocol_data(

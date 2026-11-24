@@ -60,7 +60,7 @@ Rules:
 
 | Protocol | Reads | Setting | Saved in |
 |---|---|---|---|
-| `Coumarin_96.prt` (existing) | fluorescence 485 / 530 | `FLUORESCENCE_PROTOCOL_FILE` (blank = this) | `results.csv` |
+| `Coumarin_96.prt` | fluorescence 470 / 510 (micelle peak; 485 / 530 before 2026-11-23) | `FLUORESCENCE_PROTOCOL_FILE` (blank = this) | `results.csv` |
 | `Coumarin_Abs_96.prt` | absorbance 460 (peak), 750 (scatter) | `ABSORBANCE_PROTOCOL_FILE` | `results.csv` |
 | `Coumarin_FluorSpectrum_96.prt` | ex 450, em 490-700, 10 nm (20 nm band), manual gain 75 | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
 | `Coumarin_AbsSpectrum_96.prt` | absorbance 400-750, 5 nm | `SPECTRUM_PROTOCOL_FILES` | `spectra.csv` |
@@ -128,13 +128,15 @@ below; wells chosen by optimal design; 96 wells all for CMC/K/EE):
 ### Current run: SDS + coumarin-6 (decided 2026-11-20)
 
 Spec: three blocks on one 96-well black plate with clear bottom (`PLATE_KIND: fluorescence`),
-94 wells, final well concentrations, random placement.
+96 wells, final well concentrations, random placement. Layout revised 2026-11-23 from the
+weekend runs: 2D SDS levels near the CMC (saturation is only visible there), all taken from
+the CMC series; one water blank (SDS does not change the blank).
 
 | Block | Batch | Contents | Wells |
 |---|---|---|---|
-| Stock check | 1 | dye in ethanol 0, 1, 4, 12, 20, 32 uM; read once (ethanol evaporates) | 6 |
-| CMC | 2 | SDS 0, 2, 5, 7, 7.6, 8, 8.4, 8.8, 9.5, 10, 11, 16, 22, 32 mM x 3; dye 1 uM | 42 |
-| Dye x SDS | 2 | SDS 0, 6, 10, 16, 25 x dye 0, 1, 4, 12, 32 uM x 2, minus (0, 1) and (16, 1) (already in CMC block) | 46 |
+| Stock check | 1 | dye in ethanol 0, 1, 4, 12, 32 uM x 2; read once (ethanol evaporates) | 10 |
+| CMC | 2 | SDS 0, 5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 11, 12, 14, 16, 32 mM x 3; dye 1 uM | 42 |
+| Dye x SDS | 2 | SDS 0, 7.5, 8, 8.5, 9, 10, 12 x dye 4, 12, 32 uM x 2; blank (0 SDS, 0 dye) x 2; 1 uM from the CMC block | 44 |
 
 - Reads: batch 2 at 0, 1, 2, 4, 8, 12, 16 h (Chanelle's Study 3 times, plus 12 h).
 - Dye: coumarin-6 stock in ethanol, 918 uM (COUMARIN6-004) in the queue; 25 uL per well
@@ -149,10 +151,11 @@ Spec: three blocks on one 96-well black plate with clear bottom (`PLATE_KIND: fl
   ~2.5-5% per run); ethanol refill open 20 mL, put in 20, recorded 17 (~2-3 mL evaporates
   over the queue). 1 mL left in stock and refill vials.
 - Whole queue uses ~1.5 mL coumarin-6 stock, ~14.5 mL 50 mM SDS, ~19 mL ethanol.
-- Analysis: `analysis/surfactant_dye_cmc_analysis.py <run folder> --fluorescence
-  fluorescence_485_530 [--absorbance <col> --epsilon <1/M/cm>]`: CMC and K per read,
-  dye x SDS slopes, stock check, time course. Descriptive for loading: not a capacity or
-  encapsulation measure.
+- Analysis: runs automatically at the end of the workflow (output folder `analysis/`); a
+  failure is a warning. By hand: `analysis/surfactant_dye_cmc_analysis.py <run folder>
+  --fluorescence fluorescence_470_510 --absorbance absorbance_460 --epsilon 54000`: CMC and K
+  per read, dye x SDS slopes, stock check, time course. Descriptive for loading: not a
+  capacity or encapsulation measure.
 
 ### First live run (2026-11-20, reads to 480 min)
 

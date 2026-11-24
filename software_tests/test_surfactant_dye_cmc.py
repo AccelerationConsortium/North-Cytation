@@ -30,14 +30,15 @@ class SurfactantDyeCmcPlanTests(unittest.TestCase):
     def test_default_plan_is_the_coumarin_sds_plate(self):
         wells = build_plan(config())["wells"]
         counts = wells.groupby(["batch", "block"]).size().to_dict()
-        self.assertEqual(counts, {(1, "stock_check"): 6, (2, "cmc"): 42, (2, "dye_matrix"): 46})
+        self.assertEqual(counts, {(1, "stock_check"): 10, (2, "cmc"): 42, (2, "dye_matrix"): 44})
         self.assertTrue(wells.well_index.is_unique)
         self.assertTrue((wells.loc[wells.matrix == "water", "dye_ul"] == BASE["DYE_VOLUME_UL"]).all())
         matrix = wells[wells.block == "dye_matrix"]
         pairs = set(zip(matrix.surfactant_mM, matrix.dye_uM))
-        self.assertNotIn((0.0, 1.0), pairs)
-        self.assertNotIn((16.0, 1.0), pairs)
-        self.assertEqual(len(pairs), 23)
+        self.assertFalse(any(d == 1.0 for _, d in pairs))  # 1 uM: in the cmc block
+        self.assertEqual({p for p in pairs if p[1] == 0.0}, {(0.0, 0.0)})  # one blank
+        self.assertTrue(set(matrix.surfactant_mM) <= set(wells.loc[wells.block == "cmc", "surfactant_mM"]))
+        self.assertEqual(len(pairs), 22)
 
     def test_stock_check_reuses_later_dye_substocks(self):
         plan = build_plan(config())

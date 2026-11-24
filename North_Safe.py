@@ -4211,7 +4211,7 @@ class North_Robot(North_Base):
                 ranked.append((rank, name, int(index)))
         return [(name, index) for _, name, index in sorted(ranked)]
 
-    def condition_tip(self, vial_name, volume_per_cycle_mL=0.1, cycles=5, specified_tip=None):
+    def condition_tip(self, vial_name, volume_per_cycle_mL=0.1, cycles=3, specified_tip=None):
         """
         Unit operation: condition the pipet tip by aspirating from and dispensing back
         into the same vial several times. Leaves the (wet) tip attached.
@@ -4219,12 +4219,13 @@ class North_Robot(North_Base):
         Args:
             vial_name (str): Vial to condition the tip with
             volume_per_cycle_mL (float): Volume aspirated and dispensed per cycle (default 0.1 mL)
-            cycles (int): Number of aspirate/dispense cycles (default 5)
+            cycles (int): Number of aspirate/dispense cycles (default 3)
             specified_tip (str, optional): Tip type to use and keep ("small_tip" or "large_tip")
         """
         # Fast, simple parameters: conditioning does not need calibrated accuracy.
+        # Pump speed codes: lower is faster.
         conditioning_params = PipettingParameters(
-            aspirate_speed=15,
+            aspirate_speed=10,
             dispense_speed=5,
             dispense_wait_time=0.0,
             blowout_vol=0.5,

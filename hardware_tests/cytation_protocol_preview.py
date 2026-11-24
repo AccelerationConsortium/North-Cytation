@@ -34,7 +34,7 @@ from master_usdl_coordinator import Lash_E
 SIMULATE = True
 INPUT_VIAL_STATUS_FILE = None
 PROTOCOL_FILES = [
-    r"C:\Protocols\Coumarin_96.prt",               # fluorescence 485/530
+    r"C:\Protocols\Coumarin_96.prt",               # fluorescence 470/510 (485/530 before 2026-11-23)
     r"C:\Protocols\Coumarin_Abs_96.prt",           # absorbance 460 and 750 nm
     r"C:\Protocols\Coumarin_FluorSpectrum_96.prt", # ex 450, em 480-650, 5 nm
     r"C:\Protocols\Coumarin_AbsSpectrum_96.prt",   # 400-750, 5 nm

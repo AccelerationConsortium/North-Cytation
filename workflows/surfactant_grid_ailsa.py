@@ -255,11 +255,15 @@ _DYE_PROTOCOLS = {
         "implemented": True,
         "fluorescence_protocol_file": r"C:\Protocols\Coumarin_{plate}.prt",
         "raw_column_mapping": {
-            "485_530": "fluorescence_485_530",
+            "470_510": "fluorescence_470_510",  # micelle peak; Coumarin_96.prt read 485/530 before 2026-11-23
         },
-        "primary_metric": "fluorescence_485_530",
+        "primary_metric": "fluorescence_470_510",
         "metric_kind": "intensity",
-        "measurement_value_columns": ("fluorescence_485_530",),
+        "measurement_value_columns": ("fluorescence_470_510",),
+        # surfactant_dye_cmc analysis: absorbance at the dye peak (Coumarin_Abs_96.prt) and
+        # molar absorptivity there (54,000 /M/cm at 459 nm in ethanol, PhotochemCAD).
+        "absorbance_column": "absorbance_460",
+        "epsilon_per_M_cm": 54000.0,
     },
     "nile-red": {
         "implemented": True,
