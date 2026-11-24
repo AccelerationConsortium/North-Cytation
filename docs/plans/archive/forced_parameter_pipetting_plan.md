@@ -1,6 +1,6 @@
 # Forced-parameter pipetting workflow — plan
 
-Date: 2026-11-16 · Status: **draft for discussion, nothing implemented.**
+Date: 2026-11-16 · Status: **done, implemented 2026-11-24 (workflows/forced_parameter_pipetting.py); archived.**
 North_Safe is about to be updated (refill/dispense functions not yet synced), so
 every North_Safe call named below must be re-checked against the synced version
 before implementation (see "Re-check after the North_Safe sync").

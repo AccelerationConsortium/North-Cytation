@@ -32,7 +32,11 @@ def test_vial_gripper_reads_output_from_loaded_config(robot):
 def test_clamp_wrappers(robot):
     robot.open_clamp()
     robot.close_clamp()
-    assert robot.c9.method_calls == [call.open_clamp(), call.close_clamp()]
+    robot.open_clamp('clamp_2')
+    robot.close_clamp('clamp_2')
+    # The SDK switches output clamp_num + 1: main clamp = output 1, clamp_2 = output 6
+    assert robot.c9.method_calls == [call.open_clamp(clamp_num=0), call.close_clamp(clamp_num=0),
+                                     call.open_clamp(clamp_num=5), call.close_clamp(clamp_num=5)]
 
 
 def test_scale_wrappers_return_controller_values(robot):

@@ -1,6 +1,6 @@
 # Scale stability — investigation plan
 
-Date: 2026-11-18 · Status: **active, nothing started.**
+Date: 2026-11-18 · Status: **fixed (marked done 2026-11-24); archived.**
 
 ## Problem
 

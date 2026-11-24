@@ -241,9 +241,15 @@ def test_tip_held_safe_positions_match_the_old_rule():
                                                  ('recap_clamp_vial', ['recap_revs', 'recap_torque_thresh'])])
 def test_capping_defaults_come_from_yaml(method, config_keys):
     robot = _bare_robot()
+    robot.VIAL_POSITIONS = yaml.safe_load(open('robot_state/vial_positions.yaml', encoding='utf-8'))
     asked = []
     robot.get_config_parameter = lambda config, section, key, **kw: asked.append((section, key)) or 0.0
     robot.get_vial_in_location = MagicMock(side_effect=RuntimeError('stop after reading defaults'))
+    # recap: holding vial 0's cap, vial 0 uncapped in the main clamp
+    robot.GRIPPER_STATUS, robot.GRIPPER_VIAL_INDEX = "Cap", 0
+    robot.is_vial_movable = MagicMock(return_value=False)
+    robot.get_vial_info = MagicMock(return_value='clamp')
+    robot.close_clamp = MagicMock(side_effect=RuntimeError('stop after reading defaults'))
     with pytest.raises(RuntimeError):
         getattr(robot, method)()
     assert [key for section, key in asked if section == 'capping'] == config_keys

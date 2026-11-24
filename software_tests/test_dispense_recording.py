@@ -571,9 +571,11 @@ def test_reservoir_unit_op_refuses_vial_not_ready_or_overfill(robot):
 @pytest.mark.parametrize('volume', [0, -1., float('nan'), 'a', None])
 def test_reservoir_refuses_bad_volume_before_moving(robot, volume):
     robot.move_vial_to_location = MagicMock()
-    for call_it in [lambda: robot.dispense_into_vial_from_reservoir(1, 'dest', volume),
-                    lambda: robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', volume),
-                    lambda: robot.prime_reservoir_line(1, 'dest', volume)]:
+    calls = [lambda: robot.dispense_into_vial_from_reservoir(1, 'dest', volume),
+             lambda: robot.dispense_from_reservoir_into_clamp_vial(1, 'dest', volume)]
+    if volume is not None:  # prime_reservoir_line: None means the pump's prime_volume_mL
+        calls.append(lambda: robot.prime_reservoir_line(1, 'dest', volume))
+    for call_it in calls:
         with pytest.raises(ValueError, match='refused before moving: volume must be > 0 mL'):
             call_it()
     robot.move_vial_to_location.assert_not_called()

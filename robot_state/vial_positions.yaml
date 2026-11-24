@@ -36,7 +36,8 @@ large_vial_rack:
 clamp_2:
   rack_present: true
   release_height_offset_mm: 3.0
-  vial_positions_in_Locator: clamp_2  # Single clamp position for gripper
+  vial_positions_in_Locator: clamp_2  # Single clamp position for gripper (also the uncap pose)
+  # cap_position_in_Locator: clamp_2_cap  # Recap pose: not taught yet, so recapping here raises an error
   pipetting_positions_in_Locator: clamp_2_pip  # No pipetting position defined for this clamp
   rack_size: 1  # Single position
   small_tip_safe_indices: [0]
@@ -102,7 +103,8 @@ clamp:
   rack_present: true
   tip_held_move_indices: [0]  # Safe to move a vial to or from with a tip held
   release_height_offset_mm: 1.0
-  vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper
+  vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper (also the uncap pose)
+  cap_position_in_Locator: vial_clamp_cap  # Recap pose (recap_clamp_vial)
   pipetting_positions_in_Locator: vial_clamp_pip  # Single clamp position for pipetting
   rack_size: 1  # Single position
   small_tip_safe_indices: [0]

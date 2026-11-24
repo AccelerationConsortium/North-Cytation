@@ -1451,7 +1451,10 @@ class North_Robot(North_Base):
         self.logger.info("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         try:
-            self.open_clamp()  # First real command to the controller after connecting
+            # Open every clamp in clamp_pneumatics (main clamp first: the first real command to the
+            # controller after connecting)
+            for clamp in self._clamp_outputs():
+                self.open_clamp(clamp)
         except Exception as error:
             # A read timeout here has always meant the controller is switched off. Same error is
             # re-raised; this only adds a clear message and a code for the run's error record.
@@ -3648,9 +3651,13 @@ class North_Robot(North_Base):
     # ====================================================================
 
     #Prime the line from the reservoir to the vial. In theory this could happen automatically. Probably good to do it if you are using a reservoir. 
-    def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=0.5):
-        """Prime the reservoir line by dispensing volume (mL, > 0; default 0.5) into overflow_vial
-        (dispense_into_vial_from_reservoir). Refused before moving like that method."""
+    def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=None):
+        """Prime the reservoir line by dispensing volume (mL, > 0; None: the pump's prime_volume_mL in
+        syringe_pumps.yaml) into overflow_vial (dispense_into_vial_from_reservoir). Refused before moving like that method."""
+        if volume is None:
+            volume = (self.PUMP_CONFIG.get(reservoir_index) or {}).get('prime_volume_mL')
+            if volume is None:
+                raise ValueError(f"Reservoir {reservoir_index} has no prime_volume_mL in syringe_pumps.yaml")
         self._check_reservoir_inputs(reservoir_index, volume)
         overflow_vial = self.normalize_vial_index(overflow_vial) #Convert to int if needed
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
@@ -3905,7 +3912,7 @@ class North_Robot(North_Base):
         self.logger.info(f"Returning vial {self.get_vial_info(vial_index, 'vial_name')} to home location: {home_location} index {home_location_index}")
         
         vial_location = self.get_vial_info(vial_index,'location')
-        if vial_location == 'clamp' and self.GRIPPER_STATUS == "Cap":
+        if vial_location in self._clamp_names() and self.GRIPPER_STATUS == "Cap":
             self.recap_clamp_vial(move_speed=move_speed)
         self.move_vial_to_location(vial_index,home_location,home_location_index, move_speed=move_speed)
         self.save_robot_status()
@@ -3963,7 +3970,7 @@ class North_Robot(North_Base):
         initial_location = self.get_vial_location(vial_index, False)
         loc = self.get_vial_info(vial_index,'location')
 
-        if loc == 'clamp' and self.GRIPPER_STATUS == "Cap":
+        if loc in self._clamp_names() and self.GRIPPER_STATUS == "Cap":
             self.recap_clamp_vial(move_speed=move_speed)
 
         error_check_list = [] #List of specific errors for this method
@@ -4031,16 +4038,31 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=None, move_speed=None):
+    def _clamp_pose(self, clamp, pose_key):
+        """Locator position for a clamp's pose_key in vial_positions.yaml
+        (vial_positions_in_Locator = uncap pose, cap_position_in_Locator = recap pose). Raises if missing."""
+        self._clamp_output(clamp)  # raises for an unknown clamp
+        position_name = (self.VIAL_POSITIONS.get(clamp) or {}).get(pose_key)
+        if position_name is None:
+            raise ValueError(f"Clamp '{clamp}' has no {pose_key} in vial_positions.yaml")
+        return getattr(Locator, position_name)
+
+    def _clamp_names(self):
+        """Clamps listed in clamp_pneumatics (robot_hardware.yaml)."""
+        return set(self._clamp_outputs())
+
+    def uncap_clamp_vial(self, revs=None, move_speed=None, clamp="clamp"):
         """Take the cap off the vial in the clamp (revs: unscrewing turns; None: capping.uncap_revs in
-        robot_hardware.yaml, 3.0) and hold it.
+        robot_hardware.yaml, 3.0) and hold it. clamp: 'clamp' (main) or 'clamp_2'.
         Pauses with an error if the gripper is full, the clamp is empty or the vial is open. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'uncap_clamp_vial', 'move_speed', move_speed)
+        uncap_pose = self._clamp_pose(clamp, 'vial_positions_in_Locator')
+        self._clamp_pose(clamp, 'cap_position_in_Locator')  # don't uncap where we can't recap
         if revs is None:
             revs = self.get_config_parameter('robot_hardware', 'capping', 'uncap_revs', error_on_missing=True)
-        self.logger.debug("Removing cap from clamped vial")
+        self.logger.debug(f"Removing cap from vial in {clamp}")
 
-        clamp_vial_index = self.get_vial_in_location('clamp',0)
+        clamp_vial_index = self.get_vial_in_location(clamp,0)
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot uncap, gripper full"])
@@ -4055,8 +4077,8 @@ class North_Robot(North_Base):
         grip_settle_time_s = self.get_config_parameter(
             'robot_hardware', 'gripper_timing', 'uncap_grip_settle_time_s', error_on_missing=True
         )
-        self.close_clamp() #clamp vial
-        self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
+        self.close_clamp(clamp) #clamp vial
+        self.goto_location_if_not_there(uncap_pose, move_speed=move_speed) #Maybe check if it is already there or not
         if not self.simulate:
             time.sleep(position_settle_time_s)
         
@@ -4073,38 +4095,43 @@ class North_Robot(North_Base):
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False
         self.save_robot_status()
         self.move_rel_xyz(z_distance=5)
-        self.open_clamp()
+        self.open_clamp(clamp)
         self.save_robot_status()
 
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
     def recap_clamp_vial(self, revs=None, torque_thresh=None, move_speed=None):
-        """Screw the held cap onto the vial in the clamp (revs: turns; torque_thresh: C9 torque limit;
-        None: capping.recap_revs / recap_torque_thresh in robot_hardware.yaml, 1.8 and 550). Pauses with an error if no cap is held, the clamp is empty or the vial
-        is capped. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
+        """Screw the held cap back onto its own vial (GRIPPER_VIAL_INDEX), in whichever clamp that vial is
+        (revs: turns; torque_thresh: C9 torque limit; None: capping.recap_revs / recap_torque_thresh in
+        robot_hardware.yaml, 1.8 and 550). Pauses with an error if no cap is held, the cap's vial is not
+        recorded, or that vial is capped. move_speed: percent of max velocity, 1-100 (None: the default speed)."""
         _check_optional_speed(self, 'recap_clamp_vial', 'move_speed', move_speed)
+        vial_index = self.GRIPPER_VIAL_INDEX
+        self.check_for_errors([
+            [self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"],
+            [vial_index is None, False, "Cannot recap, the held cap's vial is not recorded"],
+        ], True)
+        self.check_for_errors([
+            [self.is_vial_movable(vial_index), False, "Can't recap, vial is capped already"],
+        ], True)
+        clamp = self.get_vial_info(vial_index, 'location')
+        self.check_for_errors([
+            [clamp in self._clamp_names(), True, f"Cannot recap, the held cap's vial {vial_index} is at {clamp}, not in a clamp"],
+        ], True)
+        recap_pose = self._clamp_pose(clamp, 'cap_position_in_Locator')
         if revs is None:
             revs = self.get_config_parameter('robot_hardware', 'capping', 'recap_revs', error_on_missing=True)
         if torque_thresh is None:
             torque_thresh = self.get_config_parameter('robot_hardware', 'capping', 'recap_torque_thresh',
                                                       error_on_missing=True)
-        self.logger.debug("Recapping clamped vial")
-        
-        clamp_vial_index = self.get_vial_in_location('clamp',0)
-
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"])
-        error_check_list.append([clamp_vial_index is None, False, "Cannot recap, no vial in clamp"])
-        error_check_list.append([self.is_vial_movable(clamp_vial_index), False, "Can't recap, vial is capped already"])
-        
-        self.check_for_errors(error_check_list,True) #Let's pause if there is an error
+        self.logger.debug(f"Recapping vial {vial_index} in {clamp}")
 
         position_settle_time_s = self.get_config_parameter(
             'robot_hardware', 'gripper_timing', 'recap_position_settle_time_s', error_on_missing=True
         )
-        self.close_clamp() #Make sure vial is clamped
-        self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
+        self.close_clamp(clamp) #Make sure vial is clamped
+        self.goto_location_if_not_there(recap_pose, move_speed=move_speed)
         if not self.simulate:
             time.sleep(position_settle_time_s)
 
@@ -4113,9 +4140,9 @@ class North_Robot(North_Base):
         self.open_vial_gripper()  
         
         self.GRIPPER_STATUS = None
-        self.open_clamp()
+        self.open_clamp(clamp)
 
-        self.VIAL_DF.at[clamp_vial_index, 'capped']=True #Update the vial status
+        self.VIAL_DF.at[vial_index, 'capped']=True #Update the vial status
         self.GRIPPER_VIAL_INDEX = None
         self.save_robot_status()
 
@@ -4585,13 +4612,28 @@ class North_Robot(North_Base):
         """Primitive: close the robot arm's vial gripper (grips a vial or cap)."""
         self.c9.set_output(self._hardware_setting('robot_pneumatics', 'vial_gripper', 7), True)
 
-    def open_clamp(self):
-        """Primitive: open the vial clamp."""
-        self.c9.open_clamp()
+    def _clamp_outputs(self):
+        """clamp_pneumatics from robot_hardware.yaml: clamp name -> pneumatic output."""
+        hardware = getattr(self, 'ROBOT_HARDWARE', None) or _read_yaml_quietly(self.ROBOT_HARDWARE_PATH)
+        return hardware.get('clamp_pneumatics') or {}
 
-    def close_clamp(self):
-        """Primitive: close the vial clamp."""
-        self.c9.close_clamp()
+    def _clamp_output(self, clamp):
+        """Pneumatic output for a clamp, from clamp_pneumatics in robot_hardware.yaml. Raises if missing."""
+        outputs = self._clamp_outputs()
+        if clamp not in outputs:
+            raise ValueError(f"Clamp '{clamp}' has no output in clamp_pneumatics (robot_hardware.yaml); "
+                             f"known: {sorted(outputs)}")
+        return outputs[clamp]
+
+    def open_clamp(self, clamp="clamp"):
+        """Primitive: open a vial clamp ('clamp' = main, 'clamp_2' = secondary)."""
+        # The SDK switches output clamp_num + 1 off and waits CLAMP_DELAY.
+        self.c9.open_clamp(clamp_num=self._clamp_output(clamp) - 1)
+
+    def close_clamp(self, clamp="clamp"):
+        """Primitive: close a vial clamp ('clamp' = main, 'clamp_2' = secondary)."""
+        # The SDK switches output clamp_num + 1 on and waits CLAMP_DELAY.
+        self.c9.close_clamp(clamp_num=self._clamp_output(clamp) - 1)
 
     def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
         """Move the arm by x, y, z distances (mm) from where it is. vel: percent of max velocity, 1-100

@@ -23,7 +23,7 @@ validated on hardware.
 | Area | Current behavior | Implication |
 | --- | --- | --- |
 | Secondary location | `clamp_2` has gripper and pipetting coordinates in [Locator.py](../../robot_state/Locator.py), plus a one-position definition in [vial_positions.yaml](../../robot_state/vial_positions.yaml). | Reuse the existing location system. |
-| Pneumatics | Main-clamp operations use the controller's built-in `open_clamp()` and `close_clamp()`. [test_pnematic_valve.py](../../hardware_tests/test_pnematic_valve.py) switches output 6 alongside output 3. | Secondary actuation needs a robot-level interface; open/closed polarity is not established by this script. |
+| Pneumatics | Main-clamp operations use the controller's built-in `open_clamp()` and `close_clamp()`. [test_pnematic_valve.py](../../hardware_tests/test_pnematic_valve.py) switches output 6 alongside output 3 (output 3 no longer needed, see Pneumatic outputs). | Secondary actuation needs a robot-level interface; open/closed polarity is not established by this script. |
 | Uncap/recap | `North_Robot.uncap_clamp_vial()` and `recap_clamp_vial()` in [North_Safe.py](../../North_Safe.py) hardcode main-clamp location, actuator, and coordinates. | Generalize these central operations. No separate secondary recap coordinate currently exists. |
 | Ordinary pipetting | `get_vial_location()` resolves coordinates from the vial's recorded location. | Already-accessible vials do not need a new location argument just to pipette at the secondary station. |
 | Automatic preparation | `_ensure_vial_accessible_for_pipetting()` moves capped vials to the main clamp. | Automatic station selection is a separate behavior change. |
@@ -63,22 +63,55 @@ strategy, which is outside this plan unless explicitly requested.
 Potential uses without cap parking include open-cap vial staging/pipetting and
 sequential capping operations.
 
-### Output 3 is shared
+### Pneumatic outputs (updated 2026-11-24)
 
-`North_Spin` in [North_Safe.py](../../North_Safe.py) uses output 3 alongside outputs
-10 and 11 for the spin-coater vacuum and lid. These operations independently
-turn output 3 off.
+The secondary clamp is output 6 alone. Output 3 used to send air to the extension
+outputs 6-11; a splitter now feeds both 0-5 and 6-11 all the time, so output 3 is no
+longer needed by the clamp or the spin coater. The main clamp is output 1 (inside the
+SDK's `c9.open_clamp()` / `close_clamp()`: off = open, on = close).
 
-Confirm before reusing that pattern for output 6:
+Output 6 works the same way as output 1 (on = close). Done 2026-11-24:
+`clamp_pneumatics` in `robot_hardware.yaml` and `open_clamp(clamp=...)` /
+`close_clamp(clamp=...)` in North_Safe (default `"clamp"`). Checked in simulation only.
 
-- Which output 6 state opens versus closes the secondary clamp.
-- Required output switching order and settling delay.
-- What output 3 actually enables or selects.
-- Whether switching output 3 affects another active pneumatic device.
-- Whether pressure must remain applied to maintain either clamp state.
-- Behavior on loss of pressure or controller restart.
+### Cap/uncap at clamp_2 (implemented 2026-11-24, simulation only)
 
-Existing switching code is evidence of usage, not proof of independent operation.
+The robot holds one cap, and uncapped vials can't move, so `recap_clamp_vial()` takes
+no clamp: it recaps the cap's own vial (`GRIPPER_VIAL_INDEX`) in whichever clamp that
+vial is, and stops if the owner is not recorded. `uncap_clamp_vial(clamp="clamp")`
+picks the clamp, and refuses a clamp with no recap pose, so a vial is never left open. **Remaining:** teach `clamp_2_cap`,
+uncomment `cap_position_in_Locator` for clamp_2, and test on hardware.
+
+clamp_2 can cap and uncap too. `uncap_clamp_vial()` and `recap_clamp_vial()` get the
+same kind of option as `open_clamp()` / `close_clamp()`: a `clamp="clamp"` argument
+(keyword, added last so existing calls are unchanged).
+
+What is hard-coded to the main clamp in each method today:
+
+| In the method | Today | With `clamp=` |
+| --- | --- | --- |
+| Vial lookup | `get_vial_in_location('clamp', 0)` | `get_vial_in_location(clamp, 0)` |
+| Actuation | `close_clamp()` / `open_clamp()` | `close_clamp(clamp)` / `open_clamp(clamp)` |
+| Uncap pose | Locator `vial_clamp` | the clamp's `vial_positions_in_Locator` (`clamp_2` for clamp_2) |
+| Recap pose | Locator `vial_clamp_cap` | new key `cap_position_in_Locator` per clamp in `vial_positions.yaml` |
+
+New things needed:
+
+- `cap_position_in_Locator: vial_clamp_cap` on `clamp`, and a newly taught
+  `clamp_2_cap` Locator position for clamp_2 (none exists). Missing key -> error.
+- Check on hardware that the `clamp_2` grip pose works for uncapping.
+- Revs and torque: use the shared `capping:` block; split per clamp only if clamp_2
+  needs different values.
+
+Callers in North_Safe (9):
+
+- Uncap (2): `_ensure_vial_accessible_for_pipetting` and the reservoir dispense move
+  the vial to `'clamp'` first, so they stay on the main clamp.
+- Recap (7): cleanup, `dispense_from_vial_into_vial`, reservoir dispense,
+  `return_vial_home`, `grab_vial`, `vortex_vial`, `_return_from_clamp`. These should
+  recap at the location of the held cap's vial (`GRIPPER_VIAL_INDEX`), not assume
+  `'clamp'`. The `loc == 'clamp'` checks in `return_vial_home` and `grab_vial` would
+  then also cover clamp_2. Cleanup currently recaps "the clamp vial" blindly.
 
 ### Tip clearance is a separate constraint
 
@@ -93,8 +126,7 @@ add the station to the safe-location list without confirming physical clearance.
 
 ### Stage 1: Establish hardware facts and calibration
 
-1. Confirm output 6/output 3 actuation behavior and interactions with the
-   spin-coater lid and vacuum.
+1. Confirm on hardware that `open_clamp("clamp_2")` / `close_clamp("clamp_2")` actuate it.
 2. Calibrate secondary vial-grip, uncapping, and recapping poses.
 3. Confirm approach/retraction paths and clearance, both with and without tips.
 4. Confirm pipetting coordinates and minimum height.
@@ -183,7 +215,6 @@ When implementation and validation work are authorized, cover:
 - Return-home, grabbing, vortexing, and interrupted cleanup respect cap ownership.
 - Tip-clearance restrictions remain enforced.
 - Balance, reservoir, and powder operations remain main-station-only.
-- Shared output 3 interactions match the confirmed hardware behavior.
 - Vial state and held-cap ownership are persisted consistently.
 
 Use simulation to execute the real operation sequence with recorded actuator

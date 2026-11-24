@@ -1,8 +1,47 @@
 # Align reservoir transfers and calibration with pipetting
 
 Date: 2026-10-26
-Status: End-to-end code examination complete on 2026-10-26. Ordered implementation
-steps below are proposed; no reservoir execution changes have been made.
+Status: **Paused 2026-11-24.** Done (simulation only): reservoir calibration protocol rewritten,
+priming volume in config, scheduler workflow (calibrate + validate). Next: a live calibration
+run with a small budget and emptied vials (see "Scheduler workflow" below); then connect
+calibrated settings to everyday reservoir dispenses (status check point 3).
+
+## Status check (2026-11-24)
+
+The plan still holds. Current state, checked against the code:
+
+1. **Reservoir calibration protocol: rewritten 2026-11-24, simulation only.** Settings in
+   `protocols/reservoir_hardware.yaml`; `simulate` and `liquid` required from the experiment
+   config; all 5 reservoir parameters + overaspirate required; pump liquid must match; logging;
+   vials swap in file order by the clamp's `vial_volume`. Primes once at start with the pump's
+   `prime_volume_mL` (new in `syringe_pumps.yaml`, 0.5 mL; also the `prime_reservoir_line`
+   default). Only protocol-folder files changed (the program is hardware-agnostic).
+   `run_validation.py` doesn't pass `simulate`, so validation with this protocol stops with
+   "Missing required 'simulate'" until the scheduler workflow (#2) supplies it.
+2. **No scheduler workflow for the reservoir:** `pipette_calibration_workflow.py` hard-codes
+   `calibration_protocol_northrobot`, so reservoir calibration can't be run from the scheduler.
+3. **No wizard in use:** `_get_optimized_reservoir_parameters` in North_Safe uses
+   `ReservoirParameters()` defaults plus overrides; the ReservoirWizard call is a commented-out
+   TODO. `pipetting_data/reservoir_wizard.py` and `optimal_conditions_reservoir.csv` exist but
+   are not connected.
+4. **Every reservoir dispense can be measured:** the vial is always in the clamp on the balance.
+   `dispense_into_vial_from_reservoir(measure_weight=True)` and `record_scale` already exist,
+   but measuring is opt-in.
+
+## Scheduler workflow (2026-11-24, simulation only)
+
+`workflows/reservoir_calibration_workflow.py` (+ `workflow_configs/reservoir_calibration_workflow.yaml`):
+a copy of `pipette_calibration_workflow.py` that calibrates then validates, using the reservoir
+protocol through `workflow_session`. It replaces the base config's pipette hardware parameters
+with the reservoir's five, and extends the top tolerance range to cover reservoir volumes.
+Simulation with a small budget and empty vials passed (calibration + validation 2/2).
+
+**Open: run with a much smaller budget.** Every reservoir dispense adds new liquid (pipetting
+calibration recycles into one vial). The 16 measurement vials hold ~128 mL in all, and
+`status/reservoir_calibration_vials.csv` says ~86 mL are already used (January values; check).
+The default budget (120 measurements of 0.5-2.4 mL + validation) ran out of room after 44
+dispenses in simulation. Before a live run: empty the vials (and update the file) and set a
+budget whose worst case fits. Optional later: a pre-run check that refuses a budget that can't fit.
 
 ## Open: reservoir error is assumed zero in sample tracking (2026-11-21)
 

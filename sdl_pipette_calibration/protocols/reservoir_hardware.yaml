@@ -1,0 +1,6 @@
+# Settings for calibration_protocol_reservoir.py (North Robot reservoir pumps).
+# Pump capacity, carousel position, liquid and prime volume come from robot_state/syringe_pumps.yaml.
+reservoir_index: 1                                   # Pump in syringe_pumps.yaml; its liquid must match the experiment liquid
+vial_status: status/reservoir_calibration_vials.csv  # Measurement vials, used in file order as each fills
+quality_std_threshold_g: 0.004                       # Baseline std (g) below which a mass reading counts as stable
+max_retries_per_measurement: 3                       # Extra dispenses when a reading is unstable

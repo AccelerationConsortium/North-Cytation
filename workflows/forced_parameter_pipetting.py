@@ -1,6 +1,6 @@
 """Forced-parameter pipetting: pipette exactly the given parameters and weigh every dispense.
 
-An idle-time data-gathering workflow (plan: docs/plans/forced_parameter_pipetting_plan.md).
+An idle-time data-gathering workflow (plan: docs/plans/archive/forced_parameter_pipetting_plan.md).
 PARAMETER_FILE lists rows of liquid, volume and a full parameter set. Each row is pipetted
 REPLICATES times (or its own replicates column) from the liquid's source vial on the clamp and back into the same vial, with
 exactly those parameters (liquid=None: no calibration, corrections or defaults can fill a gap),
