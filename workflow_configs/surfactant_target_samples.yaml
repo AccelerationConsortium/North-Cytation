@@ -1,0 +1,39 @@
+# Workflow Configuration File
+# Generated: 2026-11-24 12:32:35
+# Workflow: surfactant_target_samples
+#
+# Edit this file to customize workflow behavior.
+# Changes will be loaded automatically on next run.
+#
+
+SIMULATE: true
+INPUT_VIAL_STATUS_FILE: status/surfactant_target_samples_vials.csv
+TARGET_FILE: inputs/surfactant_target_samples_example.csv
+WELLPLATE_TYPE: 96 WELL PLATE
+WELL_VOLUME_UL: 250.0
+WELL_MIN_UL: 20.0
+WELL_MAX_UL: 240.0
+SUBSTOCK_VOLUME_ML: 4.0
+SUBSTOCK_MIN_TRANSFER_UL: 100.0
+VIAL_DEAD_ML: 2.0
+MAX_ERROR_PCT: 3.0
+SURFACTANTS:
+  SDS:
+    liquid: SDS
+ADDITIVES: {}
+WATER_VIAL: water
+WATER_RESERVOIR: 1
+WATER_VIAL_FILL_ML: 7.5
+BATCH_SIZE: 24
+EQUILIBRATION_MIN: 0.0
+RANDOMIZED_ORDER: true
+RANDOMIZATION_SEED: 42
+PREPARATION_PROTOCOL_FILE: C:\Protocols\shake_5_wait_5.prt
+MEASUREMENT_PROTOCOL_FILES:
+- C:\Protocols\CMC_Absorbance_96.prt
+- C:\Protocols\CMC_Fluorescence_96.prt
+DISPENSE_ORDER:
+- water
+- surfactants
+- additives
+VORTEX_SECONDS: 5

@@ -1,7 +1,7 @@
 """
 Single-surfactant plate with one dye (current run: SDS + coumarin-6), one well plate.
 
-Plan: docs/plans/dye_surfactant_grid_plan.md (sections 4. Workflow and First run).
+Plan: docs/plans/archive/dye_surfactant_grid_plan.md (sections 4. Workflow and First run).
 
 Steps:
 1. Targets: what each well should contain (surfactant mM, dye uM, matrix), built
@@ -119,17 +119,20 @@ BLOCKS = [
 ]
 
 # Reads: one schedule (minutes after that batch is dispensed) per batch, in batch order.
-# Batch 2 follows Study 3 of the CMC/EE studies draft (0, 1, 2, 4, 8, 16 h).
-BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 960]]
+# Batch 2 follows Study 3 of the CMC/EE studies draft (0, 1, 2, 4, 8, 16 h), plus 12 h.
+BATCH_SCHEDULES_MIN = [[0], [0, 60, 120, 240, 480, 720, 960]]
 FLUORESCENCE_PROTOCOL_FILE = None   # None: the DYE's protocol in _DYE_PROTOCOLS
-ABSORBANCE_PROTOCOL_FILE = None     # not created yet; reads are skipped while None
-SPECTRUM_PROTOCOL_FILES = []        # spectral scans (Gen5 protocols with a Spectrum read); saved to spectra.csv
+ABSORBANCE_PROTOCOL_FILE = r"C:\Protocols\Coumarin_Abs_96.prt"  # None skips absorbance reads
+SPECTRUM_PROTOCOL_FILES = [         # spectral scans (Gen5 protocols with a Spectrum read); saved to spectra.csv
+    r"C:\Protocols\Coumarin_FluorSpectrum_96.prt",
+    r"C:\Protocols\Coumarin_AbsSpectrum_96.prt",
+]
 
 DISPENSE_ORDER = ["dye", "water", "surfactant", "solvent"]
 # Waits between components, per batch: [{"batch": 2, "after": "dye", "minutes": 30}]
 # (e.g. dye-in-ethanol first, let the ethanol evaporate, then the aqueous parts:
 # also put "dye" first in DISPENSE_ORDER). Empty = no pauses.
-DISPENSE_PAUSES = [{"batch": 2, "after": "dye", "minutes": 30}]
+DISPENSE_PAUSES = [{"batch": 2, "after": "dye", "minutes": 60}]
 RANDOMIZED_ORDER = True
 RANDOMIZATION_SEED = 42
 VORTEX_SECONDS = 5

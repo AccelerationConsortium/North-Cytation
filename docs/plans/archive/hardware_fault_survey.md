@@ -1,6 +1,6 @@
 # Hardware fault survey
 
-Surveyed 2026-11-16 to support designing structured error records. Read-only: no code, settings or packages were changed, and the robot was not run.
+Done, archived 2026-11-24. Surveyed 2026-11-16 to support designing structured error records. Read-only: no code, settings or packages were changed, and the robot was not run.
 
 **Sources**
 

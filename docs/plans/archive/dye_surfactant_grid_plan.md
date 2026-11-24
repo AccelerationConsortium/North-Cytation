@@ -1,9 +1,6 @@
 # CMC / EE / K / solubilization workflow — plan
 
-Updated 2026-11-21 · Status: first live run done 2026-11-20 (SDS + coumarin-6, reads to
-480 min); four issues open before the next run (see **First live run**). Workflow
-`surfactant_dye_cmc` built, simulated and queued
-(`scheduler/config_lists/surfactant_dye_cmc_queue.yaml`).
+Archived 2026-11-24 · Status: **done.** Issues from the first live run were fixed; workflow `surfactant_dye_cmc` in use.
 
 ## Goal
 

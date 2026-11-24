@@ -1,6 +1,6 @@
 # Surfactant target-samples workflow — plan
 
-Date: 2026-11-16 · Status: **draft for discussion, nothing implemented.**
+Date: 2026-11-16 · Updated 2026-11-24 · Status: **built and simulated, not run on hardware.** See "Built (2026-11-24)".
 North_Safe is about to be updated (new refill/dispensing functions not yet synced);
 refill and dispense steps below name *what* is needed and must be mapped onto the
 synced functions before implementation.
@@ -94,10 +94,9 @@ Hence max dilution per step = `final_volume / MIN_SUBSTOCK_TRANSFER_UL`
 
 1. **Inventory**: every vial with known identity + concentration + tracked volume.
    The vial CSV is **not** changed. Contents (identity, concentration, how long a
-   solution has been open) come from the user's sample metadata system, which is
-   still being built. **This workflow waits for that system**; no temporary
-   backend. The planner reads/writes contents only through that system's
-   interface, so it can be designed and unit-tested now against a fake. Vials
+   solution has been open) come from sample tracking (`ContentsStore`,
+   `sample_tracking.load_stocks()`). The planner reads/writes contents only through
+   that interface, so it can be unit-tested against a fake. Vials
    whose contents are unknown are not used as concentration sources.
 2. **Per-sample source assignment** (generalised `joint_select_sources`): for each
    surfactant in the sample, a source of concentration c is usable if
@@ -214,23 +213,56 @@ Plus a simulated run of the workflow on a small target file.
 ## Decided (2026-11-16)
 
 - Additives are fixed volume; concentration-based additives may be added later.
-- No vial CSV change. Contents come from the user's sample metadata system;
-  implementation waits for it (no temporary backend).
+- No vial CSV change. Contents come from the sample tracking system
+  (`sample_contents.py` / `sample_tracking.py`; decided 2026-11-24, tested as we build).
 - Substocks: use existing vials when within healthy bounds, make new ones on demand.
 - Healthy bounds = transfer within limits, enough volume, contents known. No age
   limit; open time is kept as metadata.
 - Standalone, simple workflow: targets come from elsewhere; no setup, BO or iterations.
+- (2026-11-24) Volumes: 20-240 uL into a well; substock transfer >= 100 uL, final volume ~4 mL
+  (adjustable). Substocks chosen by lowest error, not largest volume: every sample under a
+  max error limit, fewest new substocks, concentrations chosen from the targets. Planner:
+  `workflows/helpers/substock_planning.py` (tests: `software_tests/test_substock_planning.py`).
 
 ## Open decisions
 
-1. **Minimum volumes**: 10 uL per well and 200 uL per substock transfer as today? Per
-   liquid (viscous surfactants higher)?
-2. **Empty vials**: user places empties at positions from the report, or a standing
-   pool of empty vials the planner draws from?
-3. **Substock final volume**: sized to need (plan) or fixed 6 mL?
-4. **Infeasible samples**: drop + report and run the rest (plan), or stop and ask?
-5. **Plate/well**: plate type, well volume, controls, and replicate layout
-   (randomised or not) — same defaults as multidim?
+1. ~~Minimum volumes~~ decided 2026-11-24 (see Decided).
+2. ~~Empty vials~~ decided 2026-11-24: as the scheduler works today, the planner proposes the
+   vial file (stocks, substock empties, positions) and the user fills it in. Provide a template.
+3. ~~Substock final volume~~ decided 2026-11-24: fixed, config `SUBSTOCK_VOLUME_ML` = 4.0.
+   Sizing to need stays a possible later option.
+4. ~~Infeasible samples~~ decided 2026-11-24:
+   - physically impossible (volumes: above the cap, components overflow the well) -> warn, skip;
+   - over the error limit -> warn, still make it by the lowest-error route (limit is a goal);
+   - not enough stock -> not the design's concern; the agent that proposes the vial file sizes
+     stock volumes from the planner's per-source totals;
+   - unknown stock (not in sample tracking) -> error before the run; resolve first.
+5. ~~Plate/well~~ decided 2026-11-24:
+   - Plates: 96-well default (`WELLPLATE_TYPE`). The workflow splits the samples into plates
+     and reads, taking a new plate when one is full; the agent and user supply enough plates
+     (resource planning is not the workflow's job).
+   - Batches: make then measure `BATCH_SIZE` wells at a time (e.g. 24) so samples don't sit;
+     a batch does not span plates.
+   - Well volume: `WELL_VOLUME_UL` = 250 default (config).
+   - Controls: rows in the target file (e.g. blank = all 0); no special rules in the workflow.
+   - Layout: each batch fills the next block of consecutive wells, randomized within that
+     block only (`RANDOMIZED_ORDER`, `RANDOMIZATION_SEED`); matters most on absorbance plates.
+     Helper: `workflows/helpers/plate_blocks.py` (tests: `software_tests/test_plate_blocks.py`).
+
+## Built (2026-11-24)
+
+- Workflow `workflows/surfactant_target_samples.py`; config `workflow_configs/surfactant_target_samples.yaml`;
+  example targets `inputs/surfactant_target_samples_example.csv`; template vial file
+  `status/surfactant_target_samples_vials.csv` (SDS stock + refill, water, 8 empty `SDS_sub_<n>`).
+- Planner `workflows/helpers/substock_planning.py`; layout `workflows/helpers/plate_blocks.py`.
+- Dry run: `python workflows/surfactant_target_samples.py --plan` -> report + planned CSVs in
+  `output/surfactant_target_samples/plans/<time>/`.
+- Tests: `software_tests/test_substock_planning.py`, `test_plate_blocks.py`,
+  `test_surfactant_target_samples.py` (29 pass). Stress: 150 random planner trials; simulations of the
+  example (48 wells) and 135 wells over 2 plates (6 substocks, top-ups) ran clean.
+- `VIAL_DEAD_ML` = 2.0: North_Safe warns on small-tip draws below 2 mL.
+- Not yet verified: live run; reader data merge (`raw_to_columns`) with real reads; two surfactants in a
+  simulation (unit-tested only); reuse of leftover substocks (needs live sample-tracking records).
 
 ## Implementation notes (current syntax, checked 2026-11-18)
 
@@ -239,7 +271,7 @@ flow calls. Most of the work is the planner (pure code).
 
 | Step | Call |
 |---|---|
-| Inventory | `ContentsStore().get(container_id)` (`experiment_tracking/sample_contents.py`) for what a vial holds; `sample_tracking.load_stocks()` for stock concentrations. The sample tracking that now exists may serve as the "sample metadata system" this plan waits for. **Decide this first.** |
+| Inventory | `ContentsStore().get(container_id)` (`experiment_tracking/sample_contents.py`) for what a vial holds; `sample_tracking.load_stocks()` for stock concentrations. Sample tracking is the contents source (decided 2026-11-24). |
 | Comparing contents | `sample_contents.same_contents(a, b)` |
 | New stock records | `sample_tracking.add_stock(components)` / `next_stock_id(material, stocks)` |
 | Refills | `robot.refill_vial(vial, target_volume_mL, reservoir=... or source_vial=..., liquid=...)` (you must give the source; there's no automatic choice yet) |

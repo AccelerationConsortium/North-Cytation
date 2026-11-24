@@ -35,3 +35,6 @@ Small issues to deal with later. Not urgent.
   470 / 510, and the channel in `_DYE_PROTOCOLS` renamed to `fluorescence_470_510`. Before
   the next `surfactant_grid_ailsa.py` coumarin run, check its analysis and note that earlier
   runs (485/530) are not directly comparable.
+- **Small tip: no calibration point between 180 and 200 uL (flagged 2026-11-24).** The small tip
+  is used up to ~195 uL but calibrated only to 180 uL (large tip from 200 uL), so 185-195 uL has
+  no uncertainty estimate and the substock planner avoids it. Low priority: add a ~195 uL point.
