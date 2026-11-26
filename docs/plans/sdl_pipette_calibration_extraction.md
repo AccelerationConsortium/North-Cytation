@@ -37,8 +37,10 @@ of carrying its own copy. The readme already brands the package as DispenseRITE.
   `optimized_parameters/` sets go to Zenodo with a DOI cited in the readme and `CITATION.cff`. The repo
   ships one small example run.
 
-Status: plan only. Nothing has been moved or changed yet. File references are relative to
-`sdl_pipette_calibration/` unless they start with another top-level folder.
+Status (2026-11-26): steps 1-3 done. `AccelerationConsortium/dispense-rite` is public and its CI passes.
+Step 4 (switching Lash-E to the package) is an **open decision**; see "Open questions". Step 5 (Zenodo,
+paper citation, v1.0.0 tag) is not started. File references are relative to `sdl_pipette_calibration/`
+unless they start with another top-level folder.
 
 ## 1. What stays and what goes
 
@@ -227,6 +229,29 @@ The folder was copied out of Lash-E with `git archive` into a fresh venv with on
 **Moved to step 3 (new repo):** `pyproject.toml`, removing the `sys.path` inserts,
 `optimal_conditions_example.csv`, and the readme / config-default corrections in "Should fix".
 
+## Step 3 progress (2026-11-26): `dispense-rite` built locally, not pushed
+
+The repo is at `North Robotics/dispense-rite` (next to `utoronto_demo`). It has a `src/dispense_rite/`
+layout, a `pyproject.toml` with the `dispense-rite-calibrate` and `dispense-rite-validate` commands,
+`examples/`, `tests/` (34 tests, including an end-to-end simulated calibration plus validation), CI
+for Ubuntu and Windows, and `CITATION.cff` (the paper and DOI are still TODO).
+
+**What Lash-E must change when it switches to the package (step 4)**
+
+- **Imports:** `sdl_pipette_calibration` becomes `dispense_rite`. Protocols import the base as
+  `from dispense_rite.protocols.calibration_protocol_base import CalibrationProtocolBase`.
+- **Reservoir and heated protocols stay in Lash-E**, for example in `calibration_protocols/`.
+  `load_hardware_protocol(name, search_paths=[...])` takes the folder. Otherwise, set
+  `experiment.protocol_search_paths` in `experiment_config_workflow.yaml`, or set the
+  `DISPENSE_RITE_PROTOCOL_PATH` environment variable.
+- **`PipettingWizard()` with no `search_directory`** now searches the current working directory
+  instead of the package folder. Lash-E callers that relied on the default must pass their folder.
+- **`calibration_protocol_northrobot` reads `volume_targets_ml` from the `cfg` the engine passes.**
+  It used to look for a `protocols/experiment_config.yaml` that never existed, so it always used its
+  fallback. Tip conditioning now follows the real targets. Check this on the robot.
+- **Tolerance ranges** in the new example config share endpoints (20, 60, 200 µL), with no gaps.
+  `experiment_config_workflow.yaml` still has the gaps; copy the fix if wanted.
+
 ## 4. Extraction steps
 
 1. **Decide the open questions** (below).
@@ -237,7 +262,7 @@ The folder was copied out of Lash-E with `git archive` into a fresh venv with on
    `protocols/north_robot/` (example), `tests/`, `examples/` (one config and one small dataset),
    `README.md`, `LICENSE`, `CITATION.cff` (paper and Zenodo DOI) and a GitHub Actions workflow that runs
    the tests and a short simulated calibration.
-4. **Point Lash-E at it.** `pip install` the new repo at a pinned tag. Then delete the folder from Lash-E,
+4. **Point Lash-E at it (open decision, not started).** `pip install` the new repo at a pinned tag. Then delete the folder from Lash-E,
    move `experiment_config_workflow.yaml` to `workflow_configs/`, and re-run Lash-E's calibration tests
    (`software_tests/test_pipette_calibration_workflow.py`, `software_tests/test_calibration_preflight.py`,
    `software_tests/test_liquid_review.py`).
@@ -248,4 +273,31 @@ The folder was copied out of Lash-E with `git archive` into a fresh venv with on
 
 ## Open questions
 
-None. All decisions are recorded above.
+### Should Lash-E switch to the `dispense-rite` package? (deferred 2026-11-26)
+
+It would work technically:
+
+- Install with `pip install git+https://github.com/AccelerationConsortium/dispense-rite@v1.0.0`, or for
+  development `pip install -e ../dispense-rite` from a local clone.
+- Ax matches: `dispense-rite` pins 0.4.3, the same as `environment.yml` and `requirements-lock.txt`.
+- The North protocol inside the package imports `master_usdl_coordinator` and `pipetting_data`, which are
+  importable when Lash-E workflows run.
+- The package's `PipettingWizard` is used only by the two calibration workflows. `North_Safe.py` and
+  `pipetting_data/` use Lash-E's own `pipetting_data/pipetting_wizard.py`, so the switch touches only the
+  calibration workflows, their tests, `scheduler/liquid_review.py` and the reservoir and heated protocols.
+
+The trade-off is where calibration changes get made:
+
+- **Switch:** there is one copy. Calibration changes are made in `dispense-rite`, and Lash-E then moves
+  its pinned version (or uses an editable local clone). Lab members need to know the code lives in a
+  second repo.
+- **Keep both:** Lash-E keeps `sdl_pipette_calibration/` and `dispense-rite` is the published version
+  from the paper. Lash-E needs no work, but the two copies drift apart and fixes are copied by hand.
+
+Leaning: switch once the calibration method is settled. Keep both while it is still being reworked.
+
+### Unrelated cleanup found along the way
+
+- `requirements.txt` says `ax-platform==1.1.2`, but `environment.yml` and `requirements-lock.txt`
+  pin 0.4.3, and only `recommenders/old/` uses Ax outside the calibration package. Align
+  `requirements.txt` with the lock file.
