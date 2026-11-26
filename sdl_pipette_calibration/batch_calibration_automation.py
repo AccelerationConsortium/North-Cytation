@@ -123,6 +123,10 @@ class BatchCalibrationAutomator:
         with open(CONFIG_FILE, 'r') as f:
             config = yaml.safe_load(f)
         
+        # Batch runs drive the North Robot: the shipped config defaults to simulation.
+        config['experiment']['simulate'] = False
+        config['experiment']['hardware_protocol'] = 'calibration_protocol_northrobot'
+
         # Update liquid type and volumes
         config['experiment']['liquid'] = liquid_config['liquid_name']
         config['experiment']['volume_targets_ml'] = liquid_config['volume_targets_ml']

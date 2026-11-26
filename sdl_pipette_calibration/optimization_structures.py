@@ -8,7 +8,7 @@ the proven patterns from calibration_sdl_simplified.py.
 These structures bridge between the modular experiment framework and 
 the Ax optimization system.
 
-⚠️  CRITICAL: OptimizationTrial vs TrialResult ⚠️
+CRITICAL: OptimizationTrial vs TrialResult
 ==============================================
 
 OptimizationTrial (THIS FILE): For Bayesian optimizer interface ONLY
@@ -155,10 +155,10 @@ class OptimizationConfig:
     # Stopping criteria - ONLY min_good_trials, measurement budget handled elsewhere
     min_good_trials: int = 3  # Default changed to match common config usage
     
-    # Objective thresholds (for "good" trial evaluation)
-    accuracy_threshold_pct: float = 10.0
-    precision_threshold_pct: float = 5.0
-    time_threshold_s: float = 60.0
+    # Ax objective thresholds (reference point for multi-objective optimization)
+    accuracy_threshold_pct: float = 50.0
+    precision_threshold_pct: float = 20.0
+    time_threshold_s: float = 90.0
     
     # Volume-specific tolerance support
     target_volume_ml: Optional[float] = None
@@ -361,44 +361,3 @@ class VolumeOptimizationResult:
         all_params = self.optimal_parameters.to_protocol_dict()
         return {k: v for k, v in all_params.items() 
                 if k not in volume_dependent_params}
-
-
-if __name__ == "__main__":
-    # Test the data structures
-    from data_structures import CalibrationParameters, HardwareParameters, PipettingParameters
-    
-    # Create test parameters
-    cal_params = CalibrationParameters(overaspirate_vol=0.005)
-    hw_params = HardwareParameters(parameters={
-        "aspirate_speed": 20.0,
-        "dispense_speed": 15.0
-    })
-    pipetting_params = PipettingParameters(calibration=cal_params, hardware=hw_params)
-    
-    # Create test objectives
-    objectives = OptimizationObjectives(accuracy=5.2, precision=3.1, time=45.0)
-    
-    # Create test trial
-    trial = OptimizationTrial(parameters=pipetting_params, objectives=objectives, measurement_count=3, trial_index=1)
-    
-    # Create constraints
-    constraints = OptimizationConstraints(
-        target_volume_ml=0.05,
-        max_overaspirate_ml=0.008,
-        fixed_parameters={"retract_speed": 8.0}
-    )
-    
-    # Create config
-    config = OptimizationConfig(
-        optimizer_type=OptimizerType.MULTI_OBJECTIVE,
-        constraints=constraints
-    )
-    
-    # Create state and add trial
-    state = OptimizationState()
-    state.add_trial(trial, config)
-    
-    print("Test structures created successfully:")
-    print(f"  Trial objectives: {trial.objectives.to_dict()}")
-    print(f"  Constraints: {constraints.get_overaspirate_bounds_ul()}")
-    print(f"  State summary: {state.get_summary()}")

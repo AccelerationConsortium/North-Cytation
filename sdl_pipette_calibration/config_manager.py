@@ -354,33 +354,8 @@ class ExperimentConfig:
             'backend_subsequent', self.get_optimizer_backend())
     
     def get_objective_thresholds(self) -> Dict[str, float]:
-        """Get objective thresholds for gradient learning."""
-        return self._config['optimization']['objective_thresholds']
-    
-    # LLM optimization
-    def is_llm_optimization_enabled(self) -> bool:
-        """Check if LLM-based optimization is enabled."""
-        if not self.use_bayesian_optimization():
-            return False
-        optimization_section = self._config.get('optimization', {})
-        llm_section = optimization_section.get('llm_optimization', {})
-        enabled = llm_section.get('enabled', False)
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"[CONFIG DEBUG] optimization section keys: {list(optimization_section.keys())}")
-        logger.info(f"[CONFIG DEBUG] llm_optimization section: {llm_section}")
-        logger.info(f"[CONFIG DEBUG] LLM enabled result: {enabled}")
-        return enabled
-    
-    def get_llm_config_path(self) -> Optional[str]:
-        """Get LLM configuration file path."""
-        config_path = self._config.get('optimization', {}).get('llm_optimization', {}).get('config_path')
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"[CONFIG DEBUG] LLM config path result: {config_path}")
-        return config_path
+        """Get the Ax objective thresholds (missing keys fall back to 50 / 20 / 90)."""
+        return self._config.get('optimization', {}).get('objective_thresholds') or {}
     
     # Adaptive measurement
     def is_adaptive_measurement_enabled(self) -> bool:
@@ -420,16 +395,6 @@ class ExperimentConfig:
     def get_min_good_trials(self) -> int:
         """Get minimum good trials for stopping criteria."""
         return self._config.get('optimization', {}).get('stopping_criteria', {}).get('min_good_trials', 3)
-    
-    def use_llm_for_screening(self) -> bool:
-        """Check if LLM should be used for screening phase."""
-        if not self.use_bayesian_optimization():
-            return False
-        return self._config.get('screening', {}).get('use_llm_suggestions', False)
-    
-    def get_screening_llm_config_path(self) -> Optional[str]:
-        """Get LLM configuration file path for screening phase."""
-        return self._config.get('screening', {}).get('llm_config_path')
     
     # Transfer learning (now called parameter inheritance)
     def is_transfer_learning_enabled(self) -> bool:
@@ -478,8 +443,15 @@ class ExperimentConfig:
         return self._config.get('optimization', {}).get('use_range_based_variability', False)
     
     def should_save_files(self) -> bool:
-        """Simulated pipetting data must never be persisted, even on request."""
-        return not self.is_simulation()
+        """Real runs always save. Simulated runs save unless ``output.save_files`` is false.
+
+        Simulated output folders end in ``_SIMULATED`` and their summaries record
+        ``simulation_mode: true``. A host application that must never persist simulated
+        data (Lash-E) sets ``output.save_files: false`` for simulated runs.
+        """
+        if not self.is_simulation():
+            return True
+        return bool(self._config.get('output', {}).get('save_files', True))
 
     def use_bayesian_optimization(self) -> bool:
         """Hardware always uses the configured Bayesian optimizer."""
@@ -551,15 +523,15 @@ class ExperimentConfig:
             hardware=params.hardware  # Keep hardware params unchanged
         )
     
+    def save_snapshot(self, path) -> None:
+        """Write the settings in effect (not the file on disk) to ``path`` as YAML."""
+        import yaml
+        with open(path, 'w', encoding='utf-8') as f:
+            if self._config_path:
+                f.write(f"# Loaded from: {Path(self._config_path).name} (values below include any in-memory overrides)\n")
+            yaml.safe_dump(self._config, f, sort_keys=False, allow_unicode=True)
+
     def get_raw_config(self) -> Dict[str, Any]:
         """Get raw configuration dictionary for advanced use cases."""
         """Get raw configuration dictionary for advanced use cases."""
         return self._config.copy()
-    
-    def get_hardware_specific_warnings(self) -> str:
-        """Get hardware-specific warnings for LLM prompts."""
-        warnings = self._config.get('hardware', {}).get('parameter_warnings', [])
-        if warnings:
-            return "\\n".join(warnings)
-        # Default warnings if not specified
-        return "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive scaling)\\nNOTE: Speeds are relative units, not absolute velocities\\nCAUTION: Retract speed behaves differently - higher = faster"

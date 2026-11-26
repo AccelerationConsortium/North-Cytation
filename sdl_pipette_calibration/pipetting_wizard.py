@@ -252,10 +252,10 @@ class PipettingWizard:
         # Interpolate overaspirate_vol (special case)
         overasp_values = df['calibration_overaspirate_vol'].values
         
-        # DEBUG: Log interpolation data
-        logging.info(f"DEBUG: Interpolating for {target_volume_ul}uL")
-        logging.info(f"DEBUG: Available volumes: {volumes}")
-        logging.info(f"DEBUG: Available overaspirate values (mL): {overasp_values}")
+        # Interpolation details (debug level)
+        logging.debug(f"Interpolating for {target_volume_ul}uL")
+        logging.debug(f"Available volumes: {volumes}")
+        logging.debug(f"Available overaspirate values (mL): {overasp_values}")
         
         # Sort arrays for proper interpolation (np.interp requires sorted x-values)
         sort_indices = np.argsort(volumes)
@@ -268,14 +268,14 @@ class PipettingWizard:
         if lower_idx < 0:
             lower_idx = 0
         
-        logging.info(f"DEBUG: After sorting, volumes: {volumes_sorted}")
-        logging.info(f"DEBUG: After sorting, overasp: {overasp_sorted}")
-        logging.info(f"DEBUG: Target {target_volume_ul}uL bounds:")
+        logging.debug(f"After sorting, volumes: {volumes_sorted}")
+        logging.debug(f"After sorting, overasp: {overasp_sorted}")
+        logging.debug(f"Target {target_volume_ul}uL bounds:")
         logging.info(f"  Lower: {volumes_sorted[lower_idx]}uL -> {overasp_sorted[lower_idx]*1000:.2f}uL")
         logging.info(f"  Upper: {volumes_sorted[upper_idx]}uL -> {overasp_sorted[upper_idx]*1000:.2f}uL")
         
         interpolated_overasp = np.interp(target_volume_ul, volumes_sorted, overasp_sorted)
-        logging.info(f"DEBUG: np.interp result: {interpolated_overasp*1000:.2f}uL")
+        logging.debug(f"np.interp result: {interpolated_overasp*1000:.2f}uL")
         
         result['overaspirate_vol'] = float(interpolated_overasp)
         

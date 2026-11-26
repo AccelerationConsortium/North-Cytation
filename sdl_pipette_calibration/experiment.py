@@ -124,7 +124,9 @@ class CalibrationExperiment:
             self.output_dir = None
             return
         liquid = self.config.get_liquid_name()
-        self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}_{liquid}"
+        # Simulated runs are labeled in the folder name so they can't be mistaken for real data.
+        suffix = "_SIMULATED" if self.config.is_simulation() else ""
+        self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}_{liquid}{suffix}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def _save_incremental_data(self):
@@ -263,23 +265,13 @@ class CalibrationExperiment:
                 'strategy', 'total_measurement_count'
             ]
             
-            # Get parameter names dynamically if parameters provided
-            param_fieldnames = []
-            param_dict = {}
-            if parameters:
-                protocol_params = parameters.to_protocol_dict()
-                param_fieldnames = sorted(protocol_params.keys())  # Sort for consistent column order
-                param_dict = protocol_params
-            
-            # CRITICAL FIX: Always include ALL possible parameter columns in header
-            # This prevents column mismatch when different trials have different parameter sets
-            all_possible_params = [
-                'aspirate_speed', 'aspirate_wait_time', 'blowout_vol', 'dispense_speed', 
-                'dispense_wait_time', 'overaspirate_vol', 'post_asp_air_vol', 
-                'post_retract_wait_time', 'pre_asp_air_vol', 'retract_speed'
-            ]
-            
-            # Use all possible params for fieldnames, actual params for data
+            param_dict = parameters.to_protocol_dict() if parameters else {}
+
+            # Header lists every configured parameter so every row has the same columns,
+            # whichever parameters a given trial set.
+            all_possible_params = sorted({'overaspirate_vol', *self.config.get_hardware_parameter_names(),
+                                          *self.config.get_fixed_parameters()})
+
             fieldnames = base_fieldnames + all_possible_params
             
             with open(emergency_file, 'a', newline='') as csvfile:
@@ -945,7 +937,7 @@ class CalibrationExperiment:
             print(f"\n[TRIAL] {trial_idx + 1}/{num_trials} - Screening Phase ({target_volume_ml*1000:.0f}uL)")
             print("=" * 60)
             
-            # Generate screening parameters (would use SOBOL or LLM suggestions)
+            # Generate screening parameters from the SOBOL sequence
             parameters = self._generate_screening_parameters(target_volume_ml, trial_idx)
             
             # Execute trial
@@ -967,21 +959,7 @@ class CalibrationExperiment:
         return screening_trials
     
     def _generate_screening_parameters(self, target_volume_ml: float, trial_idx: int) -> PipettingParameters:
-        """Generate screening parameters using SOBOL sequence or LLM suggestions."""
-        
-        # Check if LLM screening is enabled
-        if self.config.use_llm_for_screening():
-            llm_config_path = self.config.get_screening_llm_config_path()
-            if llm_config_path:
-                try:
-                    from .llm_recommender.llm_recommender import LLMRecommender
-                    llm_recommender = LLMRecommender(self.config, llm_config_path, phase="screening")
-                    parameters = llm_recommender.suggest_parameters(target_volume_ml, trial_idx)
-                    logger.info(f"Using LLM-generated parameters for screening trial {trial_idx}")
-                    return self.config.apply_volume_constraints(parameters, target_volume_ml)
-                except Exception as e:
-                    logger.warning(f"LLM screening failed, falling back to SOBOL: {e}")
-        
+        """Generate screening parameters from a SOBOL sequence."""
         # Use SOBOL sampling via temporary Ax client (following calibration_sdl_simplified pattern)
         if not hasattr(self, '_screening_optimizer'):
             from .bayesian_recommender import create_optimizer, OptimizerType
@@ -1021,59 +999,8 @@ class CalibrationExperiment:
         
         return constrained_params
     
-    def _generate_optimization_parameters(self, target_volume_ml: float, iteration: int, optimizer, 
-                                        previous_trials: List[TrialResult] = None) -> PipettingParameters:
-        """Generate optimization parameters using LLM suggestions or Bayesian optimizer."""
-        
-        # Check if LLM optimization is enabled
-        llm_enabled = self.config.is_llm_optimization_enabled()
-        logger.info(f"[DEBUG] LLM optimization enabled check: {llm_enabled}")
-        if llm_enabled:
-            llm_config_path = self.config.get_llm_config_path()
-            logger.info(f"[DEBUG] LLM config path: {llm_config_path}")
-            if llm_config_path:
-                try:
-                    from .llm_recommender.llm_recommender import LLMRecommender
-                    llm_recommender = LLMRecommender(self.config, llm_config_path, phase="optimization")
-                    
-                    # For optimization phase, pass previous trial results for context using new API
-                    parameters = llm_recommender.suggest_parameters(
-                        1,  # n_suggestions_or_volume
-                        previous_trials or []  # previous_results_or_trial
-                    )
-                    # New API returns list, so get first element
-                    if isinstance(parameters, list):
-                        parameters = parameters[0] if parameters else None
-                    
-                    if parameters is None:
-                        raise RuntimeError("LLM failed to generate optimization parameters")
-                    logger.info(f"Using LLM-generated parameters for optimization trial {iteration}")
-                    return self.config.apply_volume_constraints(parameters, target_volume_ml)
-                except ImportError:
-                    logger.error("ERROR: LLM OPTIMIZATION FAILURE: LLM recommender module not available")
-                    logger.error("   You requested LLM optimization but llm_recommender.py cannot be imported")
-                    logger.error("   This means LLM optimization is NOT working as requested")
-                    print("\n" + "="*80)
-                    print("CRITICAL: LLM OPTIMIZATION FAILED - IMPORT ERROR")
-                    print("You enabled LLM optimization but the LLM module is not available.")
-                    print("Either fix the LLM setup or disable LLM optimization in config.")
-                    print("="*80)
-                    input("Press Enter to continue with Bayesian optimization (or Ctrl+C to stop)...")
-                    logger.warning("User chose to continue - falling back to Bayesian optimizer")
-                except Exception as e:
-                    logger.error(f"ERROR: LLM OPTIMIZATION FAILURE: {e}")
-                    logger.error("   You requested LLM optimization but it failed to generate parameters")
-                    logger.error("   This means LLM optimization is NOT working as requested")
-                    print("\n" + "="*80)
-                    print("CRITICAL: LLM OPTIMIZATION FAILED - RUNTIME ERROR")
-                    print(f"Error: {e}")
-                    print("You enabled LLM optimization but it failed to work properly.")
-                    print("Either fix the LLM issue or disable LLM optimization in config.")
-                    print("="*80)
-                    input("Press Enter to continue with Bayesian optimization (or Ctrl+C to stop)...")
-                    logger.warning("User chose to continue - falling back to Bayesian optimizer")
-        
-        # Fallback to Bayesian optimizer (existing behavior)
+    def _generate_optimization_parameters(self, optimizer) -> PipettingParameters:
+        """Ask the Bayesian optimizer for the next parameter set."""
         try:
             return optimizer.suggest_parameters()
         except Exception as e:
@@ -1146,27 +1073,20 @@ class CalibrationExperiment:
             # For subsequent volumes, fix non-volume-dependent parameters
             # Get volume-dependent parameters from config instead of hardcoding
             volume_dependent_params = self.config.get_volume_dependent_parameters()
-            logger.info(f"DEBUG: Volume dependent parameters from config: {volume_dependent_params}")
+            logger.debug(f"Volume dependent parameters from config: {volume_dependent_params}")
             
             previous_best = self.volume_results[-1].optimal_parameters
             
             if previous_best:
                 logger.info("Using transfer learning - fixing non-volume-dependent parameters")
                 all_params = previous_best.to_protocol_dict()
-                logger.info(f"DEBUG: All parameters from previous best: {all_params}")
-                logger.info(f"DEBUG: Previous best overaspirate_vol: {all_params.get('overaspirate_vol', 'NOT_FOUND')}")
+                logger.debug(f"All parameters from previous best: {all_params}")
+                logger.debug(f"Previous best overaspirate_vol: {all_params.get('overaspirate_vol', 'NOT_FOUND')}")
                 
                 fixed_params = {k: v for k, v in all_params.items() 
                               if k not in volume_dependent_params}
-                logger.info(f"DEBUG: Parameters being fixed by transfer learning: {fixed_params}")
+                logger.debug(f"Parameters being fixed by transfer learning: {fixed_params}")
                 
-                # Check specifically for overaspirate_vol
-                if 'overaspirate_vol' in fixed_params:
-                    logger.warning(f"BUG DETECTED: overaspirate_vol={fixed_params['overaspirate_vol']} is being FIXED despite volume_dependent=true!")
-                    logger.warning(f"Volume dependent params: {volume_dependent_params}")
-                    logger.warning(f"overaspirate_vol in volume_dependent? {'overaspirate_vol' in volume_dependent_params}")
-                else:
-                    logger.info("GOOD: overaspirate_vol correctly NOT being fixed by transfer learning")
         
         # Explicit experiment settings take precedence over transfer learning,
         # including parameters marked volume-dependent in the scientific config.
@@ -1271,76 +1191,38 @@ class CalibrationExperiment:
                 logger.info(f"Insufficient volume budget remaining ({remaining_budget}) - stopping optimization")
                 break
             
-            # Get parameter suggestion from optimizer or LLM
+            # Get the next parameter suggestion from the Bayesian optimizer
             try:
                 logger.info("[OPTIMIZER] GETTING PARAMETER SUGGESTION...")
-                
-                # Collect ALL available trial data for LLM context
-                all_available_trials = []
-                all_available_trials.extend(screening_trials)  # External data trials
-                if inherited_trial:
-                    all_available_trials.append(inherited_trial)  # Previous volume trial
-                if hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
-                    all_available_trials.extend(self._current_two_point_trials)  # Two-point calibration trials  
-                all_available_trials.extend(optimization_trials)  # Current optimization trials
-                
-                logger.info(f"[LLM CONTEXT] Providing {len(all_available_trials)} total trials:")
-                logger.info(f"  - Screening trials: {len(screening_trials)}")
-                logger.info(f"  - Inherited trial: {1 if inherited_trial else 0}")
-                logger.info(f"  - Two-point trials: {len(getattr(self, '_current_two_point_trials', []))}")
-                logger.info(f"  - Optimization trials: {len(optimization_trials)}")
-                
-                # Use new method that handles both LLM and Bayesian optimization
-                suggested_params = self._generate_optimization_parameters(
-                    target_volume_ml=target_volume_ml,
-                    iteration=iteration,
-                    optimizer=optimizer,
-                    previous_trials=all_available_trials  # Just pass the trials directly
-                )
+                suggested_params = self._generate_optimization_parameters(optimizer)
                 logger.info("[SUCCESS] GOT PARAMETER SUGGESTION:")
             except Exception as e:
                 logger.error(f"Failed to get suggestion from parameter generator: {e}")
                 break
-            
+
             # Run adaptive measurement
             try:
-                # Determine if this was LLM-generated or Bayesian-generated
-                if self.config.is_llm_optimization_enabled():
-                    trial_source = "LLM_OPT"
-                    strategy_label = "llm_optimization"
-                else:
-                    trial_source = "BAYESIAN_OPT"
-                    strategy_label = "optimization"
-                
                 trial = self._execute_trial(
                     parameters=suggested_params,
                     target_volume_ml=target_volume_ml,
-                    trial_id=f"{trial_source}_{iteration}",
-                    strategy=strategy_label,  # This goes into CSV files
+                    trial_id=f"BAYESIAN_OPT_{iteration}",
+                    strategy="optimization",  # This goes into CSV files
                     liquid=self.config.get_liquid_name()
                 )
-                
+
                 optimization_trials.append(trial)
                 current_volume_measurements += self._trial_budget_consumed(trial)
-                
+
                 # Check if trial is successful using the standard method
                 is_successful = self._is_trial_successful(trial, target_volume_ml)
-                
-                # Only update Bayesian optimizer if it generated the parameters
-                # LLM-generated parameters should not be fed back to Bayesian optimizer
-                if not self.config.is_llm_optimization_enabled():
-                    # Update optimizer with result
-                    objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                    
-                    logger.info("")
-                    logger.info("[UPDATE] UPDATING OPTIMIZER WITH RESULTS...")
-                    optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements), 
-                                               is_successful=is_successful)
-                    logger.info(f"[COMPLETE] TRIAL {iteration} COMPLETE - {'SUCCESS' if is_successful else 'FAILED'}")
-                else:
-                    logger.info("")
-                    logger.info("[LLM MODE] SKIPPING OPTIMIZER UPDATE (LLM-generated parameters)")
-                    logger.info(f"[COMPLETE] LLM TRIAL {iteration} COMPLETE - {'SUCCESS' if is_successful else 'FAILED'}")
+
+                # Update optimizer with result
+                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
+                logger.info("")
+                logger.info("[UPDATE] UPDATING OPTIMIZER WITH RESULTS...")
+                optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements),
+                                           is_successful=is_successful)
+                logger.info(f"[COMPLETE] TRIAL {iteration} COMPLETE - {'SUCCESS' if is_successful else 'FAILED'}")
                 logger.info("")
                 
                 # Log progress
@@ -1764,7 +1646,7 @@ class CalibrationExperiment:
         tolerance_pct = (tolerances.accuracy_tolerance_ul / target_volume_ul) * 100
         
         # Add debugging (can be removed later)
-        logger.info(f"[DEBUG] Calculated tolerance: {tolerance_pct:.1f}% for {target_volume_ul:.0f}uL")
+        logger.debug(f"Calculated tolerance: {tolerance_pct:.1f}% for {target_volume_ul:.0f}uL")
         
         # Check if BOTH deviation AND variability are within tolerance
         deviation_within_tolerance = trial.analysis.absolute_deviation_pct <= tolerance_pct
@@ -1936,17 +1818,11 @@ class CalibrationExperiment:
         
         logger.info(f"Exported experiment summary to {summary_path}")
         
-        # Save the exact config file that was used for this run
+        # Save the settings this run actually used (including any in-memory overrides)
         config_path = self.output_dir / "experiment_config_used.yaml"
-        import shutil
         try:
-            # Copy the original config file to the output directory
-            original_config_path = Path(__file__).parent / "experiment_config.yaml"
-            if original_config_path.exists():
-                shutil.copy2(original_config_path, config_path)
-                logger.info(f"Saved config file used for this run to {config_path}")
-            else:
-                logger.warning("Could not find original config file to save")
+            self.config.save_snapshot(config_path)
+            logger.info(f"Saved config used for this run to {config_path}")
         except Exception as e:
             logger.warning(f"Failed to save config file: {e}")
     

@@ -86,7 +86,8 @@ class ValidationRunner:
             base_dir = Path(output_dir_name)
             
         liquid = config.get_liquid_name()
-        self.output_dir = base_dir / f"validation_run_{timestamp}_{liquid}"
+        suffix = "_SIMULATED" if config.is_simulation() else ""
+        self.output_dir = base_dir / f"validation_run_{timestamp}_{liquid}{suffix}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.logger.info(f"Validation results will be saved to: {self.output_dir}")
@@ -444,14 +445,11 @@ class ValidationRunner:
         with open(self.output_dir / "validation_analysis.json", 'w') as f:
             json.dump(analysis_for_json, f, indent=2)
         
-        # Save the exact config file that was used for this validation
+        # Save the settings this validation actually used (including any in-memory overrides)
         try:
-            import shutil
-            original_config_path = Path(__file__).parent / "experiment_config.yaml"
             config_backup_path = self.output_dir / "experiment_config_used.yaml"
-            if original_config_path.exists():
-                shutil.copy2(original_config_path, config_backup_path)
-                self.logger.info(f"Saved config file used for this validation to {config_backup_path}")
+            self.config.save_snapshot(config_backup_path)
+            self.logger.info(f"Saved config used for this validation to {config_backup_path}")
         except Exception as e:
             self.logger.warning(f"Failed to save config file: {e}")
         

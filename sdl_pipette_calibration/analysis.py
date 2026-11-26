@@ -326,7 +326,7 @@ class CalibrationAnalyzer:
         """
         Find best trials with optional quality filtering.
         
-        CRITICAL FIX: Recalculates all composite scores using the same baseline
+        Recalculates all composite scores using the same baseline
         for fair comparison instead of using stale scores calculated at different times.
         
         Args:
@@ -354,7 +354,7 @@ class CalibrationAnalyzer:
             logger.warning("   No valid trials found for selection!")
             return []
         
-        # CRITICAL FIX: Recalculate all composite scores using SDL normalization
+        # Recalculate all composite scores using SDL normalization
         # This ensures fair comparison using relative population normalization
         logger.info("    [RECALC] Recalculating composite scores with SDL normalization:")
         

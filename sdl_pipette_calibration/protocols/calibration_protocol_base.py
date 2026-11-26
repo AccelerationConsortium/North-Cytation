@@ -140,27 +140,3 @@ class CalibrationProtocolBase(ABC):
                 return False
                 
         return True
-
-
-# Factory function for protocol loading
-def create_protocol(protocol_name: str) -> CalibrationProtocolBase:
-    """Create a protocol instance by name.
-    
-    Args:
-        protocol_name: Name of protocol ('simulated', 'hardware', etc.)
-        
-    Returns:
-        Protocol instance implementing CalibrationProtocolBase
-        
-    Raises:
-        ValueError: If protocol name is unknown
-        ImportError: If protocol module cannot be imported
-    """
-    if protocol_name == 'simulated':
-        from calibration_protocol_simulated import SimulatedCalibrationProtocol
-        return SimulatedCalibrationProtocol()
-    elif protocol_name == 'hardware':
-        from calibration_protocol_hardware import HardwareCalibrationProtocol
-        return HardwareCalibrationProtocol()
-    else:
-        raise ValueError(f"Unknown protocol: {protocol_name}. Available: 'simulated', 'hardware'")

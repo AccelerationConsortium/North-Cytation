@@ -323,11 +323,9 @@ def _effective_config(config, base_path):
             experiment["fixed_parameters"][name] = value
         else:
             experiment["fixed_parameters"].pop(name, None)
-    for section, key in ((raw["optimization"]["llm_optimization"], "config_path"),
-                         (raw["screening"], "llm_config_path"),
-                         (raw["screening"]["external_data"], "data_path")):
-        if section[key] is not None:
-            section[key] = str(_base_path(section[key], base_path))
+    external = raw["screening"]["external_data"]
+    if external["data_path"] is not None:
+        external["data_path"] = str(_base_path(external["data_path"], base_path))
     raw["validation"]["volumes_ml"] = deepcopy(config["VALIDATION_VOLUMES_ML"])
     raw["validation"]["replicates_per_volume"] = config["REPLICATES_PER_VOLUME"]
     if raw["output"]["export_optimal_conditions"] is not True:

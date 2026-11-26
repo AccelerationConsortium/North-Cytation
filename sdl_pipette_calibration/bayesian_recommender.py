@@ -199,35 +199,8 @@ class AxBayesianOptimizer:
                         logger.info(f"Added protocol constraint: {constraint}")
                         
                 except Exception as e:
-                    logger.warning(f"Failed to get constraints from protocol: {e}")
-        
-        # Get static constraints from configuration (if any remain)
-        try:
-            constraints_config = self.config.experiment_config.get_parameter_constraints()
-            
-            for constraint_def in constraints_config:
-                constraint_expr = constraint_def.get('constraint')
-                description = constraint_def.get('description', '')
-                
-                if constraint_expr:
-                    # Check if all parameters in constraint are being optimized
-                    optimize_params = self._get_optimize_params()
-                    
-                    # Simple check - if constraint contains parameter names that are being optimized
-                    constraint_applicable = False
-                    for param in optimize_params:
-                        if param in constraint_expr:
-                            constraint_applicable = True
-                            break
-                    
-                    if constraint_applicable:
-                        constraint_list.append(constraint_expr)
-                        logger.info(f"Added config constraint: {constraint_expr}")
-                        if description:
-                            logger.info(f"  Description: {description}")
-        except AttributeError:
-            # No config constraints defined, that's fine
-            pass
+                    # Running without a hardware constraint (e.g. tip volume) is unsafe: stop here.
+                    raise RuntimeError(f"Failed to get parameter constraints from protocol: {e}") from e
         
         # Summary logging (reduced verbosity)
         if constraint_list:
@@ -275,15 +248,13 @@ class AxBayesianOptimizer:
                 continue
             
             # Constraint has both fixed and variable parameters - simplify it
-            try:
-                simplified = self._simplify_mixed_constraint(constraint, constraint_fixed, constraint_vars)
-                if simplified:
-                    processed_constraints.append(simplified)
-                    logger.info(f"  Simplified to: '{simplified}'")
-                else:
-                    logger.warning(f"  Could not simplify constraint: '{constraint}'")
-            except Exception as e:
-                logger.error(f"  Error simplifying constraint '{constraint}': {e}")
+            # A constraint that can't be simplified would otherwise be dropped silently.
+            simplified = self._simplify_mixed_constraint(constraint, constraint_fixed, constraint_vars)
+            if not simplified:
+                raise ValueError(f"Could not simplify parameter constraint '{constraint}' with fixed "
+                                 f"values {constraint_fixed}. Only linear constraints are supported.")
+            processed_constraints.append(simplified)
+            logger.info(f"  Simplified to: '{simplified}'")
         
         return processed_constraints
     
@@ -480,7 +451,7 @@ class AxBayesianOptimizer:
         # Create Ax client with custom strategy
         ax_client = AxClient(
             generation_strategy=generation_strategy,
-            verbose_logging=True  # 🔍 ENABLE AX DECISION LOGGING
+            verbose_logging=True  # ENABLE AX DECISION LOGGING
         )
         
         # Create experiment
@@ -489,16 +460,16 @@ class AxBayesianOptimizer:
         is_multi_objective = (backend in ["qNEHVI", "MOO"] or 
                              self.config.optimizer_type in [OptimizerType.MULTI_OBJECTIVE, OptimizerType.MOO])
         
+        # Ax objective thresholds come from optimization.objective_thresholds in the config.
+        deviation = ObjectiveProperties(minimize=True, threshold=self.config.accuracy_threshold_pct)
         if is_multi_objective:
             objectives = {
-                "deviation": ObjectiveProperties(minimize=True, threshold=50.0),
-                "variability": ObjectiveProperties(minimize=True, threshold=20.0), 
-                "time": ObjectiveProperties(minimize=True, threshold=90.0),
+                "deviation": deviation,
+                "variability": ObjectiveProperties(minimize=True, threshold=self.config.precision_threshold_pct),
+                "time": ObjectiveProperties(minimize=True, threshold=self.config.time_threshold_s),
             }
         else:  # Single objective (accuracy only)
-            objectives = {
-                "deviation": ObjectiveProperties(minimize=True, threshold=50.0),
-            }
+            objectives = {"deviation": deviation}
         
         ax_client.create_experiment(
             parameters=self._get_parameter_bounds(),
@@ -997,10 +968,10 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         experiment_config=config,
         protocol=protocol_instance,  # Pass protocol for constraints
         min_good_trials=min_good_trials if min_good_trials is not None else config.get_min_good_trials(),  # Use volume-specific value
-        # Load objective thresholds from YAML config
-        accuracy_threshold_pct=objective_thresholds.get('deviation_threshold_pct', 10.0),
-        precision_threshold_pct=objective_thresholds.get('variability_threshold_pct', 5.0),
-        time_threshold_s=objective_thresholds.get('time_threshold_s', 60.0)
+        # Ax objective thresholds from the YAML config (defaults match the published runs)
+        accuracy_threshold_pct=objective_thresholds.get('deviation_threshold_pct', 50.0),
+        precision_threshold_pct=objective_thresholds.get('variability_threshold_pct', 20.0),
+        time_threshold_s=objective_thresholds.get('time_threshold_s', 90.0)
     )
     
     return AxBayesianOptimizer(optimization_config, is_first_volume=is_first_volume)

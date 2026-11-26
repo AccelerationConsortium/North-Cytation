@@ -137,10 +137,10 @@ optimization:
     accuracy_weight: 0.4                           # OPTIONAL: Weight for measurement accuracy (0-1)
     precision_weight: 0.5                          # OPTIONAL: Weight for measurement precision/reproducibility (0-1)
     time_weight: 0.1                               # OPTIONAL: Weight for operation time (0-1)
-  objective_thresholds:                            # OPTIONAL: Maximum useful thresholds for each objective - used by the Bayesian optimizer to avoid over-optimizing beyond practical limits.
+  objective_thresholds:                            # OPTIONAL: Ax objective thresholds (multi-objective reference point). Trials worse than these are treated as not useful. Defaults: 50 / 20 / 90
     deviation_threshold_pct: 50.0                  # OPTIONAL: Target accuracy threshold (%)
-    variability_threshold_pct: 25.0                # OPTIONAL: Target precision threshold (%)
-    time_threshold_s: 120.0                        # OPTIONAL: Target time threshold (seconds)
+    variability_threshold_pct: 20.0                # OPTIONAL: Target precision threshold (%)
+    time_threshold_s: 90.0                         # OPTIONAL: Target time threshold (seconds)
   optimizer:                                       # OPTIONAL: Optimizer algorithm selection
     type: multi_objective                          # OPTIONAL: "multi_objective" or "single_objective"
     backend: qNEHVI                                # OPTIONAL: "qNEHVI" (multi-objective) or "qLogEI" (single-objective)
@@ -154,15 +154,12 @@ optimization:
     enabled: true                                 # OPTIONAL: Enable final calibration (default: false)
     skip_if_good_trial: true                       # OPTIONAL: Skip if already meeting quality (default: true)
     description: Performs final 2-point overaspirate calibration on first volume before proceeding to next volume
-  # OPTIONAL: LLM-assisted optimization (experimental - requires API key)
-  llm_optimization:
-    enabled: false                                 # OPTIONAL: Enable LLM parameter suggestions (default: false)
-    config_path: calibration_screening_llm_template.json  # OPTIONAL: LLM config path
 
 # ── Output ──────────────────────────────────────────────────────────────────
 # OPTIONAL: All fields here have sensible defaults.
 output:
   base_directory: ../output/pipette_calibration/runs/                          # OPTIONAL: Directory for run outputs (default: output/)
+  save_files: true                                 # OPTIONAL: Save simulated runs too (default: true; real runs always save). Folders end in _SIMULATED
   export_optimal_conditions: true                  # OPTIONAL: Export optimized parameters to CSV (default: true)
   generate_plots: true                             # OPTIONAL: Generate analysis plots (default: true)
   save_raw_measurements: true                      # OPTIONAL: Save raw measurement data (default: true)
@@ -183,8 +180,6 @@ validation:
 # ── Advanced: screening options ────────────────────────────────────────────
 # OPTIONAL: Advanced features for bootstrapping optimization from prior data.
 screening:
-  use_llm_suggestions: false                       # OPTIONAL: Enable AI parameter suggestions (experimental, default: false)
-  llm_config_path: calibration_screening_llm_template.json  # OPTIONAL: LLM config file path
   external_data:                                   # OPTIONAL: Bootstrap from prior calibration data
     enabled: false                                 # OPTIONAL: Enable external data injection (default: false)
     data_path: input_data/external_calibration_data.csv  # OPTIONAL: Path to external CSV data

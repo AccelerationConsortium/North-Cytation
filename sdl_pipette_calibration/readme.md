@@ -64,7 +64,6 @@ flowchart TD
 - **Volume-Dependent Parameters** — re-optimize per target volume with transfer learning
 - **Type-Safe Configuration** — YAML with strict schema validation
 - **External Data Bootstrapping** — seed the optimizer from prior experiments (optional)
-- **LLM-Guided Screening** — experimental AI-assisted parameter suggestions
 
 ## Quick Start
 
@@ -93,7 +92,10 @@ python run_calibration.py
 ```
 
 Results land in `output/<run_name>/` — CSV summaries, optimized-parameter
-files, and plots. No hardware needed.
+files, and plots. No hardware needed. Simulated run folders end in `_SIMULATED`
+and their summaries record `simulation_mode: true`, so they can't be mistaken
+for real calibrations. Set `output.save_files: false` to keep simulated runs in
+memory only.
 
 ### 3. Validate the optimized parameters
 
@@ -378,32 +380,6 @@ screening:
     liquid_filter: water     # Only use rows matching this liquid type (optional)
 ```
 
-### LLM-Powered Parameter Suggestions *(experimental)*
-The system can use a large language model to suggest promising parameter
-combinations during the screening phase, in addition to or instead of random
-exploration. In practice, the current calibration data and parameter
-descriptions are sent to the LLM as a prompt; the response is parsed for
-concrete parameter values which are then run as screening trials.
-
-The implementation uses [LM Studio](https://lmstudio.ai/) as a local model
-server with an OpenAI-compatible API endpoint, so no external API key or cloud
-service is required — the model runs on your own machine.
-
-> **Note:** This feature is experimental. Results depend heavily on the model
-> and prompt template used. The Bayesian optimizer will still run regardless of
-> LLM suggestion quality.
-
-```yaml
-optimization:
-  llm_optimization:
-    enabled: true
-    config_path: "llm_recommender/calibration_screening_llm_template.json"
-
-screening:
-  use_llm_suggestions: true
-  llm_config_path: "llm_recommender/calibration_screening_llm_template.json"
-```
-
 ### Adaptive Measurements
 Control when additional replicates are performed:
 
@@ -446,7 +422,6 @@ sdl_pipette_calibration/
 │   ├── calibration_protocol_template.py # Start here for new hardware
 │   ├── calibration_protocol_simulated.py# Simulation (no hardware needed)
 │   └── calibration_protocol_northrobot.py, ...  # Reference implementations
-├── llm_recommender/                     # Optional LLM-guided screening
 ├── tools/                               # Demo GUI and dashboards (not required)
 └── output/                              # Run outputs — results and plots (gitignored)
 ```

@@ -33,21 +33,25 @@ def test_independent_switches_and_hardware_defaults(raw, simulate, save_files, b
     raw["output"]["save_files"] = save_files
     raw["optimization"]["use_bayesian"] = bayesian
     config = ExperimentConfig(raw)
-    assert config.should_save_files() == (not simulate)
+    # Real runs always save; simulated runs follow output.save_files.
+    assert config.should_save_files() == (not simulate or save_files)
     assert config.use_bayesian_optimization() == (not simulate or bayesian)
 
 
-def test_standalone_simulation_defaults_never_allow_saving(raw):
+def test_standalone_simulation_saves_by_default_and_is_labeled(raw, tmp_path):
     del raw["output"]["save_files"]
     del raw["optimization"]["use_bayesian"]
+    raw["output"]["base_directory"] = str(tmp_path)
     config = ExperimentConfig(raw)
-    assert not config.should_save_files()
+    assert config.should_save_files()
     assert config.use_bayesian_optimization()
+    experiment = CalibrationExperiment(config)
+    assert experiment.output_dir.parent == tmp_path
+    assert experiment.output_dir.name.endswith("_SIMULATED")
 
 
-@pytest.mark.parametrize("save_files", [True, False])
-def test_all_calibration_output_sinks_are_disabled(raw, tmp_path, save_files):
-    raw["output"]["save_files"] = save_files
+def test_all_calibration_output_sinks_are_disabled(raw, tmp_path):
+    raw["output"]["save_files"] = False  # How Lash-E runs simulated calibrations
     raw["output"]["base_directory"] = str(tmp_path)
     experiment = CalibrationExperiment(ExperimentConfig(raw))
     assert experiment.output_dir is None

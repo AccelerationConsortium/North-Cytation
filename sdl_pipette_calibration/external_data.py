@@ -51,7 +51,7 @@ class ExternalDataLoader:
         self.data: Optional[pd.DataFrame] = None
         self.is_loaded = False
         
-        logger.info("=== EXTERNAL DATA LOADER INIT DEBUG ===")
+        logger.debug("=== EXTERNAL DATA LOADER INIT DEBUG ===")
         enabled = config.is_external_data_enabled()
         logger.info(f"External data enabled check: {enabled}")
         
@@ -60,11 +60,11 @@ class ExternalDataLoader:
             self._load_external_data()
         else:
             logger.info("External data is disabled; no loading will occur")
-        logger.info("=== EXTERNAL DATA LOADER INIT COMPLETE ===")
+        logger.debug("=== EXTERNAL DATA LOADER INIT COMPLETE ===")
     
     def _load_external_data(self):
         """Load external data from configured CSV file."""
-        logger.info("=== _load_external_data() START ===")
+        logger.debug("=== _load_external_data() START ===")
         data_path = self.config.get_external_data_path()
         logger.info(f"Config returned data_path: '{data_path}'")
         
@@ -160,13 +160,13 @@ class ExternalDataLoader:
     def has_valid_data(self) -> bool:
         """Check if valid external data is available."""
         result = self.is_loaded and self.data is not None and len(self.data) > 0
-        logger.info(f"=== has_valid_data() DEBUG ===")
-        logger.info(f"is_loaded: {self.is_loaded}")
-        logger.info(f"data is not None: {self.data is not None}")
+        logger.debug(f"=== has_valid_data() DEBUG ===")
+        logger.debug(f"is_loaded: {self.is_loaded}")
+        logger.debug(f"data is not None: {self.data is not None}")
         if self.data is not None:
-            logger.info(f"data length: {len(self.data)}")
-        logger.info(f"has_valid_data result: {result}")
-        logger.info(f"=== has_valid_data() END ===")
+            logger.debug(f"data length: {len(self.data)}")
+        logger.debug(f"has_valid_data result: {result}")
+        logger.debug(f"=== has_valid_data() END ===")
         return result
     
     def generate_screening_trials(self, target_volume_ml: float, 

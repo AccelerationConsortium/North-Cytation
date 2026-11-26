@@ -81,7 +81,7 @@ _USE_BAYES_OPT_ON_SIMULATE = False
 With these defaults, Ax uses seeded Sobol suggestions throughout screening and
 optimization, without Bayesian model fitting or prediction diagnostics. Calibration,
 two-point correction, parameter transfer, measurement budgets, and independent
-validation still run. LLM suggestions are disabled in this mode.
+validation still run.
 
 Calibration and validation results stay in memory. No calibration output folders,
 snapshots, backups, CSV/JSON exports, analysis reports, or plots are created.

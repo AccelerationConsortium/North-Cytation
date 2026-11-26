@@ -114,7 +114,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                     
                     if abs(current_temp - target_temp) <= TEMP_TOLERANCE:
                         temp_reached = True
-                        print(f"✓ Target temperature reached: {current_temp:.1f}C")
+                        print(f"Target temperature reached: {current_temp:.1f}C")
                     else:
                         print(f"Heating... {current_temp:.1f}C -> {target_temp:.1f}C")
                         time.sleep(TEMP_CHECK_INTERVAL)
@@ -206,7 +206,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                           measurement_volume > 1.0)
             
             if should_swap:
-                print(f"🔄 HEATED SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL, measurement vial has {measurement_volume:.2f}mL")
+                print(f"HEATED SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL, measurement vial has {measurement_volume:.2f}mL")
                 
                 # Turn off heating temporarily
                 if not state.get('simulate', True):
@@ -250,7 +250,7 @@ class HeatedCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"HEATED SWAP complete: source={state['source_vial']} (at heater), measurement={state['measurement_vial']} (at clamp)")
             else:
-                print(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
+                print(f"NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
             print(f"WARNING: Heated vial swap check failed: {e}")

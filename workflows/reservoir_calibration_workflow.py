@@ -254,11 +254,9 @@ def _effective_config(config, base_path):
                           "description": _CONFIG_DOCS[prefix + "_FIXED_VALUE"]["description"]}
         if fixed:
             experiment["fixed_parameters"][name] = value
-    for section, key in ((raw["optimization"]["llm_optimization"], "config_path"),
-                         (raw["screening"], "llm_config_path"),
-                         (raw["screening"]["external_data"], "data_path")):
-        if section[key] is not None:
-            section[key] = str(_base_path(section[key], base_path))
+    external = raw["screening"]["external_data"]
+    if external["data_path"] is not None:
+        external["data_path"] = str(_base_path(external["data_path"], base_path))
     if raw["screening"]["external_data"]["enabled"]:
         raise ValueError("Base config enables external screening data, which is pipetting data")
     # Volumes above the base config's tolerance ranges (pipette volumes) get its top range's tolerance

@@ -1,6 +1,6 @@
 """Hardware calibration protocol for the North Robotics SDL platform.
 
-⚠️  THIS FILE IS HARDWARE-SPECIFIC AND WILL NOT RUN ON OTHER SYSTEMS ⚠️
+THIS FILE IS HARDWARE-SPECIFIC AND WILL NOT RUN ON OTHER SYSTEMS
 
 This protocol is the production implementation used in the North Robotics lab.
 It imports proprietary North Robot libraries (master_usdl_coordinator, Lash_E,
@@ -352,7 +352,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                           measurement_volume > 1.0)
             
             if should_swap:
-                self._report(f"🔄 SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
+                self._report(f"SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
                 
                 # First: Return the old measurement vial (at clamp) to its home position
                 lash_e.nr_robot.remove_pipet()
@@ -383,7 +383,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 self._report(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
             else:
-                self._report(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
+                self._report(f"NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
             self._report(f"WARNING: Vial swap check failed: {e}")
@@ -635,7 +635,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         # Safety check: Only apply correction if mass difference is reasonable (< 300mg)
                         max_reasonable_mass_g = 0.3  # 300mg threshold
                         if abs(actual_mass_consumed_g) > max_reasonable_mass_g:
-                            self._report(f"    ⚠️  IGNORING volume correction: Mass change {actual_mass_consumed_g*1000:.1f}mg exceeds {max_reasonable_mass_g*1000:.0f}mg threshold")
+                            self._report(f"    WARNING: IGNORING volume correction: Mass change {actual_mass_consumed_g*1000:.1f}mg exceeds {max_reasonable_mass_g*1000:.0f}mg threshold")
                             self._report(f"    Keeping robot's nominal volume tracking (likely scale positioning issue)")
                         else:
                             # Calculate corrected source volume based on actual consumption
@@ -662,14 +662,14 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                             # Manually override robot's source volume tracking with actual measurement
                             if source_vial_index is not None:
                                 lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
-                                self._report(f"    ✅ Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
+                                self._report(f"    Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
                             
                             # Save the corrected volume
                             lash_e.nr_robot.save_robot_status()
                             
                             # Warning if source volume is getting low
                             if corrected_source_volume < 0.5:
-                                self._report(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
+                                self._report(f"    WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
                         
                     except Exception as e:
                         self._report(f"    Warning: Could not correct volume tracking: {e}")
@@ -786,13 +786,13 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     print("CLEANUP: Closing North Robot serial connection...")
                     # Use the correct API: network.disconnect() 
                     lash_e.nr_robot.c9.network.disconnect()
-                    print("CLEANUP: ✓ Serial connection closed via network.disconnect() - port released for optimization")
+                    print("CLEANUP: Serial connection closed via network.disconnect() - port released for optimization")
                 except Exception as e:
                     print(f"WARNING: Failed to close serial connection: {e}")
                     # Fallback: just release the object
                     try:
                         del state['lash_e']
-                        print("CLEANUP: ✓ Fallback - Lash_E object released for garbage collection")
+                        print("CLEANUP: Fallback - Lash_E object released for garbage collection")
                     except Exception as e2:
                         print(f"WARNING: All cleanup methods failed: {e2}")
 

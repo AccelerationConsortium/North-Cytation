@@ -258,7 +258,7 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
-        print(f"📏 Simulated constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")
+        print(f"Simulated constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")
         
         return constraints
 

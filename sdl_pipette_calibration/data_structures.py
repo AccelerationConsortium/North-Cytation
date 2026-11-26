@@ -16,7 +16,7 @@ Data Flow Hierarchy:
     PipettingParameters -> RawMeasurement -> AdaptiveMeasurementResult -> 
     TrialResult -> VolumeCalibrationResult -> ExperimentResults
 
-⚠️  CRITICAL: Two Different Trial Types ⚠️
+CRITICAL: Two Different Trial Types
 ===========================================
 
 1. TrialResult (THIS FILE): Main experiment data structure
@@ -262,7 +262,7 @@ class TrialResult:
     def to_optimization_objectives(self):
         """Convert to OptimizationObjectives for Bayesian optimizer."""
         # Import here to avoid circular dependency
-        from optimization_structures import OptimizationObjectives
+        from .optimization_structures import OptimizationObjectives
         return OptimizationObjectives.from_adaptive_result(self.analysis)
 
 

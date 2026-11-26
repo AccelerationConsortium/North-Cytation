@@ -243,7 +243,7 @@ class ProtocolWrapper:
     def _create_raw_measurement(self, protocol_result: Dict[str, Any], parameters, target_volume_ml: float):
         """Convert protocol result back to RawMeasurement format."""
         # Import here to avoid circular imports
-        from data_structures import RawMeasurement
+        from .data_structures import RawMeasurement
         import time
         
         return RawMeasurement(
